@@ -44,9 +44,26 @@ It covers:
 - **Deployment:** Docker Compose on Raspberry Pi OS Lite 64-bit / ARM64
 - **AI:** Provider-neutral gateway for NVIDIA NIM, OpenAI-compatible APIs, and local models
 
-## Repository foundation
+## Secure local configuration
 
-The repository now includes the Milestone 1 configuration scaffold:
+The repository is safe to publish publicly: `.env` files, databases, runtime data, logs, build output, and editor settings are ignored. `.env.example` contains placeholders only and is the committed configuration contract.
+
+Set up local configuration without putting secrets in Git:
+
+```sh
+cp .env.example .env
+# Generate a secret locally, for example:
+python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+# Put the generated value in JWT_SECRET inside .env.
+python3 scripts/validate_env.py --env-file .env
+docker compose --env-file .env config
+```
+
+`NEXUS_ENV=production` requires a non-placeholder `JWT_SECRET` of at least 32 characters and `SESSION_COOKIE_SECURE=true`. Select an AI provider only after setting its corresponding local credential (`NVIDIA_API_KEY`, `OPENAI_API_KEY`, or `AI_API_KEY`). The validator reports missing or unsafe variable names without printing secret values.
+
+The current repository has no FastAPI or Next.js runtime yet. `scripts/validate_env.py` is therefore the dependency-free executable configuration contract for this scaffold; the first application milestone must reuse the same environment names and fail startup with equivalent safe errors.
+
+The repository foundation is:
 
 ```text
 nexusos/
@@ -54,17 +71,11 @@ nexusos/
 ├── .env.example         # safe template; commit this
 ├── .gitignore           # protects secrets and runtime data
 ├── docker-compose.yml   # ARM64 placeholder topology
+├── scripts/
+│   └── validate_env.py  # safe configuration validation
 ├── README.md
 ├── docs/
 └── ...
-```
-
-Set up local configuration without putting secrets in Git:
-
-```sh
-cp .env.example .env
-# Edit .env locally, then validate the scaffold.
-docker compose config
 ```
 
 `docker compose up` currently starts the ARM64 no-op foundation containers (`nexus-proxy`, `nexus-api`, `nexus-web`, and `nexus-worker`). They validate the private network, restart policy, healthcheck, and external data mounts. They are placeholders only; application images and endpoints will be introduced in approved implementation milestones. The optional `nexus-ai` placeholder requires `docker compose --profile ai-scaffold up`.
