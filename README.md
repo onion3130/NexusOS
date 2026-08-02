@@ -55,8 +55,12 @@ cp .env.example .env
 # Generate a secret locally, for example:
 python3 -c "import secrets; print(secrets.token_urlsafe(48))"
 # Put the generated value in JWT_SECRET inside .env.
+# Windows
+python scripts/validate_env.py --env-file .env
+# macOS/Linux
 python3 scripts/validate_env.py --env-file .env
 docker compose --env-file .env config
+docker compose --env-file .env up -d
 ```
 
 `NEXUS_ENV=production` requires a non-placeholder `JWT_SECRET` of at least 32 characters and `SESSION_COOKIE_SECURE=true`. Select an AI provider only after setting its corresponding local credential (`NVIDIA_API_KEY`, `OPENAI_API_KEY`, or `AI_API_KEY`). The validator reports missing or unsafe variable names without printing secret values.
@@ -78,7 +82,9 @@ nexusos/
 └── ...
 ```
 
-`docker compose up` currently starts the ARM64 no-op foundation containers (`nexus-proxy`, `nexus-api`, `nexus-web`, and `nexus-worker`). They validate the private network, restart policy, healthcheck, and external data mounts. They are placeholders only; application images and endpoints will be introduced in approved implementation milestones. The optional `nexus-ai` placeholder requires `docker compose --profile ai-scaffold up`.
+`docker compose --env-file .env up -d` currently starts the ARM64 no-op foundation containers (`nexus-proxy`, `nexus-api`, `nexus-web`, and `nexus-worker`). They validate the private network, restart policy, healthcheck, and external data mounts. They are placeholders only: no web UI or API endpoint is available until the application implementation milestone replaces them with real images. The optional `nexus-ai` placeholder requires `docker compose --env-file .env --profile ai-scaffold up`. Stop the scaffold with `docker compose --env-file .env down`.
+
+There is no automated test suite, application build, or real web/API startup available yet; those will be added with the first implementation milestone.
 
 On the Raspberry Pi, set `DATA_DIR` in `.env` to a directory on the external SSD before starting the stack. Do not commit `.env`, `data/`, database files, logs, backups, or model files.
 
