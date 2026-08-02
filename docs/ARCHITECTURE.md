@@ -1,6 +1,6 @@
 # NexusOS Architecture
 
-**Status:** Proposed — awaiting owner approval before Milestone 1 implementation  
+**Status:** Phase 1 architecture complete — awaiting owner approval before implementation
 **Last updated:** 2026-08-02  
 **Scope:** Architecture, boundaries, contracts, operations, and milestones only. No application code is specified for generation in this document.
 
@@ -682,20 +682,26 @@ Each milestone is intentionally small and should produce something usable. Durat
 
 ## 16. Documentation status
 
-Present in this architecture milestone:
+Present in this Phase 0/Phase 1 milestone:
 
 - `README.md`
+- `CHANGELOG.md`
+- `LICENSE`
+- `.gitignore`
+- `.env.example`
+- `.dockerignore`
+- `docker-compose.yml`
 - `docs/ARCHITECTURE.md`
 - `docs/API.md`
-
-Planned and created alongside the relevant implementation milestone, not claimed to exist yet:
-
-- `CHANGELOG.md`
 - `docs/SETUP.md`
 - `docs/DEPLOYMENT.md`
 - `docs/SECURITY.md`
 - `docs/ENVIRONMENT.md`
-- Architecture decision records under `docs/adr/`
+- `docs/adr/0001-modular-monolith.md`
+- `docs/adr/0002-sqlite-first.md`
+- `docs/adr/0003-local-ai-gateway.md`
+
+Infrastructure skeleton documentation is present under `infrastructure/`. Application source, Dockerfiles, package manifests, migrations, and executable health endpoints remain intentionally deferred until owner approval.
 
 Documentation must be updated in the same commit as the feature or milestone it describes.
 
@@ -724,4 +730,4 @@ These decisions should be answered before or during Milestone 1:
 - Make read-only features precede system write actions.
 - Treat the external SSD as primary runtime storage, never as the only backup.
 - Keep the Pi deployment LAN-private by default.
-- Do not generate Milestone 1 code until this architecture is approved.
+- Do not generate Milestone 1 code until this architecture is approved by the owner.

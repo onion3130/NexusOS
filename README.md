@@ -4,13 +4,13 @@ NexusOS is a local-first personal AI operating system for a Raspberry Pi 5. It i
 
 ## Current status
 
-**Phase: architecture approved for review — no application code generated yet.**
+**Phase 1 architecture complete — implementation awaits owner approval; no application code generated yet.**
 
 The system is being built incrementally. Each milestone should produce a usable, tested slice of the product and should take roughly 2–6 hours.
 
 ## Architecture
 
-The complete architecture and milestone plan are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The implementation-independent API contracts are in [`docs/API.md`](docs/API.md).
+The complete architecture and milestone plan are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The implementation-independent API contracts are in [`docs/API.md`](docs/API.md). Setup, environment, deployment, and security guidance are in [`docs/SETUP.md`](docs/SETUP.md), [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md), [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), and [`docs/SECURITY.md`](docs/SECURITY.md).
 
 It covers:
 
@@ -23,6 +23,7 @@ It covers:
 - Authentication, authorization, and security controls
 - Testing, observability, backups, and Raspberry Pi operations
 - Incremental implementation milestones
+- Architecture decision records under [`docs/adr/`](docs/adr/)
 
 ## Development rules
 
@@ -88,6 +89,6 @@ There is no automated test suite, application build, or real web/API startup ava
 
 On the Raspberry Pi, set `DATA_DIR` in `.env` to a directory on the external SSD before starting the stack. Do not commit `.env`, `data/`, database files, logs, backups, or model files.
 
-## First implementation milestone
+## Approval boundary
 
-After architecture approval, Milestone 1 will replace the placeholders with the minimal ARM64 development and deployment foundation: repository conventions, configuration contracts, Docker Compose scaffolding, health endpoints, and validation scripts. It will not implement the dashboard or AI assistant yet.
+Phase 0 and Phase 1 are complete as documentation and infrastructure design. No feature code has been generated. After owner approval, the next requested milestone will replace the placeholders with the minimal ARM64 development and deployment foundation: repository conventions, configuration contracts, Docker Compose scaffolding, health endpoints, and validation scripts. It will not implement the dashboard or AI assistant yet.

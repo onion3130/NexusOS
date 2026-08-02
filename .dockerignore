@@ -1,0 +1,29 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Runtime and sensitive data
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Dependency/build output
+node_modules/
+.next/
+dist/
+build/
+out/
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+
+# Repository/editor metadata
+.git/
+.github/
+.idea/
+.vscode/
+.DS_Store
