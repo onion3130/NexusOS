@@ -1,0 +1,39 @@
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# NexusOS runtime data — databases, uploads, logs, backups, and caches
+data/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.npm/
+
+# Build and tool caches
+.cache/
+.tmp/
+*.log
+
+# IDE and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local Docker overrides
+compose.override.yml
+docker-compose.override.yml

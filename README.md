@@ -44,6 +44,33 @@ It covers:
 - **Deployment:** Docker Compose on Raspberry Pi OS Lite 64-bit / ARM64
 - **AI:** Provider-neutral gateway for NVIDIA NIM, OpenAI-compatible APIs, and local models
 
+## Repository foundation
+
+The repository now includes the Milestone 1 configuration scaffold:
+
+```text
+nexusos/
+├── .env                 # local only; never commit
+├── .env.example         # safe template; commit this
+├── .gitignore           # protects secrets and runtime data
+├── docker-compose.yml   # ARM64 placeholder topology
+├── README.md
+├── docs/
+└── ...
+```
+
+Set up local configuration without putting secrets in Git:
+
+```sh
+cp .env.example .env
+# Edit .env locally, then validate the scaffold.
+docker compose config
+```
+
+`docker compose up` currently starts the ARM64 no-op foundation containers (`nexus-proxy`, `nexus-api`, `nexus-web`, and `nexus-worker`). They validate the private network, restart policy, healthcheck, and external data mounts. They are placeholders only; application images and endpoints will be introduced in approved implementation milestones. The optional `nexus-ai` placeholder requires `docker compose --profile ai-scaffold up`.
+
+On the Raspberry Pi, set `DATA_DIR` in `.env` to a directory on the external SSD before starting the stack. Do not commit `.env`, `data/`, database files, logs, backups, or model files.
+
 ## First implementation milestone
 
-After architecture approval, Milestone 1 will create the minimal ARM64 development and deployment foundation: repository conventions, configuration contracts, Docker Compose scaffolding, health endpoints, and validation scripts. It will not implement the dashboard or AI assistant yet.
+After architecture approval, Milestone 1 will replace the placeholders with the minimal ARM64 development and deployment foundation: repository conventions, configuration contracts, Docker Compose scaffolding, health endpoints, and validation scripts. It will not implement the dashboard or AI assistant yet.
