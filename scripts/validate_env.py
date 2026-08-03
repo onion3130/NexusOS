@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Validate NexusOS configuration without exposing secret values.
 
-The application runtime is not implemented yet, so this script is the current
-executable configuration contract. It reads the process environment by
- default, or a local dotenv-style file supplied with ``--env-file``.
+The FastAPI application reads process environment variables only. This script
+validates those variables by default, or a local dotenv-style file supplied
+with ``--env-file``; it does not export values into the calling shell.
 """
 
 from __future__ import annotations

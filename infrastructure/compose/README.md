@@ -24,4 +24,4 @@ docker compose --env-file .env up -d
 docker compose --env-file .env down
 ```
 
-The current no-op containers do not expose a web UI or API endpoint. They validate topology only.
+The current default stack exposes the implemented web shell on `127.0.0.1:3000` and the API health endpoints on `127.0.0.1:8000`. The proxy, worker, and AI profile remain placeholders and validate topology/process behavior only.

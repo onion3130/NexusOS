@@ -1,68 +1,69 @@
 # NexusOS
 
-NexusOS is a local-first personal AI operating system for a Raspberry Pi 5. It is designed to bring an AI assistant, home-server monitoring, personal productivity, projects, files, and integrations into one cohesive dashboard.
+NexusOS is a local-first personal AI operating system intended to run on a Raspberry Pi 5 with an external SSD. The long-term product will unify an assistant, productivity, files, development tools, finance, media, and home-server operations in one private dashboard.
 
-## Current status
+## Current milestone
 
-**Milestone 1 implemented — API/web foundation complete; authentication, persistence, and feature modules are deferred.**
+**Milestone 1 — foundation implemented.**
 
-The system is being built incrementally. Each milestone should produce a usable, tested slice of the product and should take roughly 2–6 hours.
+The repository currently contains:
 
-## Architecture
+- A FastAPI API with environment-backed startup validation.
+- Implemented liveness and storage-readiness endpoints.
+- A responsive static Next.js dashboard shell.
+- ARM64-aware, non-root API and web Dockerfiles.
+- A Docker Compose development topology with loopback-only ports.
+- Public-repository protections, environment templates, tests, and operational documentation.
 
-The complete architecture and milestone plan are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The current API contract is in [`docs/API.md`](docs/API.md). Persistence and AI designs are in [`docs/DATABASE.md`](docs/DATABASE.md) and [`docs/AI_SYSTEM.md`](docs/AI_SYSTEM.md). Setup, development, environment, deployment, and security guidance are in [`docs/SETUP.md`](docs/SETUP.md), [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md), [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md), [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), and [`docs/SECURITY.md`](docs/SECURITY.md). These documents are the project handoff for future coding agents; previous conversations are not required.
+Authentication, database persistence, AI calls, tool calling, tasks, notes, system telemetry, backups, and other product modules are not implemented yet. The authoritative next-step plan is [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-It covers:
+## Start here for a new coding agent
 
-- System boundaries and runtime topology
-- Repository and module structure
-- SQLite-first database design with PostgreSQL migration support
-- Versioned FastAPI API design
-- Docker Compose and ARM64 deployment strategy
-- AI provider routing and tool-calling boundaries
-- Authentication, authorization, and security controls
-- Testing, observability, backups, and Raspberry Pi operations
-- Incremental implementation milestones
-- Architecture decision records under [`docs/adr/`](docs/adr/)
+Read these files before changing code:
 
-## Development rules
+1. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — current boundaries and design decisions.
+2. [`docs/API.md`](docs/API.md) — implemented health API and clearly marked future contracts.
+3. [`docs/DATABASE.md`](docs/DATABASE.md) — current zero-database state and persistence blueprint.
+4. [`docs/AI_SYSTEM.md`](docs/AI_SYSTEM.md) — current disabled state and future AI safety boundary.
+5. [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — local commands and change workflow.
+6. [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — current Compose deployment and limitations.
+7. [`docs/ROADMAP.md`](docs/ROADMAP.md) — milestone order and acceptance criteria.
 
-1. Do not generate the entire application at once.
-2. Before each feature, explain the implementation plan and files affected.
-3. Implement only the approved feature or milestone.
-4. Keep components and modules independently testable.
-5. Document important functions, APIs, migrations, and operational behavior.
-6. Run validation before committing.
-7. Commit and push after every major milestone or approved feature.
-8. Never commit secrets, tokens, private keys, databases, model files, or personal data.
+The repository is the project context. Previous conversations are not required.
 
-## Planned stack
+## Technology
 
-- **Frontend:** Next.js, React, TypeScript, Tailwind CSS, shadcn/ui
-- **Backend:** FastAPI, Python 3.12+
-- **Persistence:** SQLAlchemy + Alembic, SQLite initially, PostgreSQL-compatible schema
-- **Authentication:** JWT in secure HttpOnly cookies, Argon2id password hashing, roles
-- **Deployment:** Docker Compose on Raspberry Pi OS Lite 64-bit / ARM64
-- **AI:** Provider-neutral gateway for NVIDIA NIM, OpenAI-compatible APIs, and local models
+- **Frontend:** Next.js 15, React 19, TypeScript
+- **Backend:** FastAPI, Python 3.11+ locally and Python 3.12 in the API image
+- **Persistence plan:** SQLAlchemy 2.x + Alembic, SQLite first, PostgreSQL compatibility later
+- **Deployment:** Docker Compose, ARM64 target, Raspberry Pi OS Lite 64-bit
+- **AI plan:** provider-neutral gateway for NVIDIA NIM, OpenAI-compatible APIs, and optional local endpoints
 
 ## Secure local configuration
 
-The repository is safe to publish publicly: `.env` files, databases, runtime data, logs, build output, and editor settings are ignored. `.env.example` contains placeholders only and is the committed configuration contract.
-
-From the repository root:
+Copy the public template and replace only local values:
 
 ```sh
 cp .env.example .env
-# Generate a secret locally, then put it in JWT_SECRET inside .env.
-python scripts/validate_env.py --env-file .env       # Windows
-python3 scripts/validate_env.py --env-file .env     # macOS/Linux
+python scripts/validate_env.py --env-file .env       # Windows-compatible Python command
+python3 scripts/validate_env.py --env-file .env     # macOS/Linux alternative
 ```
 
-`NEXUS_ENV=production` requires a non-placeholder `JWT_SECRET` of at least 32 characters and `SESSION_COOKIE_SECURE=true`. Keep `AI_PROVIDER=disabled` until a provider credential is intentionally configured. The API reports missing or unsafe settings without printing secret values.
+Validation does not export values into the current shell. For a local API process on macOS/Linux, export the file before starting Uvicorn:
 
-## Milestone 1 development
+```sh
+set -a
+. ./.env
+set +a
+```
 
-Install and run the API locally:
+On PowerShell, set the variables in the current session or use Docker Compose, which is the recommended local path. Use a randomly generated `JWT_SECRET` of at least 32 characters. Keep `AI_PROVIDER=disabled` while AI is not intentionally configured. `.env`, databases, runtime data, logs, build output, credentials, and personal data are ignored and must never be committed.
+
+The API reads process environment variables only. Missing or invalid required settings produce a safe startup error naming variable names without printing values.
+
+## Run locally
+
+### API
 
 ```sh
 cd apps/api
@@ -74,7 +75,9 @@ cd ../..
 python -m uvicorn app.main:app --app-dir apps/api --reload --port 8000
 ```
 
-In another shell, run the web shell:
+### Web shell
+
+In a second terminal:
 
 ```sh
 cd apps/web
@@ -82,37 +85,56 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. API checks are available at `http://127.0.0.1:8000/api/v1/health/live` and `/api/v1/health/ready`.
+Open `http://localhost:3000`. The web shell is static in Milestone 1 and does not authenticate or call feature APIs.
 
-Or run the ARM64-aware Docker development stack:
+### Health API
+
+```sh
+curl http://127.0.0.1:8000/api/v1/health/live
+curl http://127.0.0.1:8000/api/v1/health/ready
+```
+
+`/live` checks only that the process responds. `/ready` checks that `DATA_DIR` exists, disk usage can be read, and the API user can create/delete a temporary file. Database checks are deferred.
+
+## Run with Docker Compose
+
+After `.env` is configured:
 
 ```sh
 docker compose --env-file .env config --quiet
 docker compose --env-file .env up --build -d
+docker compose --env-file .env ps
+docker compose --env-file .env down
 ```
 
-The web shell is on `http://127.0.0.1:3000`; the API is on `http://127.0.0.1:8000`. Both ports bind to loopback only. Stop with `docker compose --env-file .env down`.
+The API is available at `http://127.0.0.1:8000` and the web shell at `http://127.0.0.1:3000`. Ports bind to loopback only. Do not expose this development stack publicly.
 
-Milestone 1 does not implement authentication, database persistence, AI calls, tool calling, tasks, notes, calendar, files, finance, media, plugins, reverse-proxy TLS, backups, or Raspberry Pi write actions.
-
-## Repository foundation
+## Repository map
 
 ```text
 nexusos/
-├── .env / .env.example       # local secrets / public template
-├── apps/
-│   ├── api/                  # FastAPI health foundation and tests
-│   └── web/                  # Next.js static shell
-├── infrastructure/
-│   └── docker/               # non-root API/web images
-├── scripts/validate_env.py   # safe configuration validation
-├── docker-compose.yml        # ARM64 development stack
-├── docs/                     # architecture, contracts, setup, security
-└── ...
+├── apps/api/                  FastAPI package, settings, routes, tests
+├── apps/web/                  Next.js static shell
+├── infrastructure/docker/     API and web images
+├── infrastructure/            Deployment contracts and future profiles
+├── scripts/validate_env.py    Safe environment template validator
+├── docker-compose.yml         Current ARM64 development topology
+├── docs/                      Project handoff and design documentation
+├── .env.example               Placeholder-only configuration contract
+└── data/                      Ignored local runtime mount
 ```
 
-Never commit `.env`, databases, runtime data, logs, backups, model files, credentials, private keys, or personal data.
+## Development rules
 
-## Approval boundary
+1. Work in small approved milestones; do not generate the whole application at once.
+2. Before coding, explain the plan and exact files affected.
+3. Keep implementation, tests, documentation, and operational behavior aligned.
+4. Treat design-only APIs and schemas as unimplemented until code and tests exist.
+5. Never allow AI output or user input to become arbitrary host commands.
+6. Run relevant tests and builds before committing.
+7. Commit completed milestones with a descriptive message and push them to Git.
+8. Never commit secrets, tokens, private keys, databases, model files, logs, or personal data.
 
-Milestone 1 is complete within its approved scope. The next implementation milestone requires a new plan and approval before coding authentication or persistence.
+## Remaining work
+
+The next approved milestone is identity and persistence. Later work includes the authenticated dashboard, system read-only telemetry, AI gateway, tasks, notes/search, safe host actions, files/projects, and production deployment hardening. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the ordered plan.

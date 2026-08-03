@@ -1,54 +1,47 @@
-# NexusOS development guide
+# NexusOS development
 
-**Status:** Milestone 1 foundation implemented; this guide describes the current workflow and the rules for future milestones.
+**Current milestone:** Milestone 1 foundation
+**Status:** API health service and static web shell are implemented; feature development is deferred until an approved milestone begins.
 **Last updated:** 2026-08-02
 
-A new coding agent should read this document, [`README.md`](../README.md), and [`ARCHITECTURE.md`](ARCHITECTURE.md) before changing code. The repository is the source of project context; previous chat history is not required.
+A new AI coding agent should read this file, [`README.md`](../README.md), and [`ROADMAP.md`](ROADMAP.md) before changing code. The repository is the project context.
 
-## Current scope
+## Implemented files
 
-Implemented:
+- `apps/api/app/main.py`: FastAPI application and startup settings validation.
+- `apps/api/app/core/config.py`: process-environment settings and safe validation errors.
+- `apps/api/app/api/routes/health.py`: liveness and storage readiness routes.
+- `apps/api/tests/test_health.py`: liveness, readiness, and placeholder-secret tests.
+- `apps/web/app/page.tsx`: static foundation dashboard shell.
+- `infrastructure/docker/*.Dockerfile`: non-root API/web images.
+- `docker-compose.yml`: current ARM64 development topology.
 
-- FastAPI API package under `apps/api`.
-- Environment-only validated configuration.
-- `GET /api/v1/health/live` and `GET /api/v1/health/ready`.
-- Responsive static Next.js shell under `apps/web`.
-- ARM64-aware non-root API/web Dockerfiles and Compose development stack.
-- Backend tests, frontend typecheck/build configuration, and public-repository security baseline.
+## Deferred files and modules
 
-Deferred:
+There is currently no `app/db`, `app/domain`, `app/modules`, `app/ai`, `app/workers`, authentication implementation, migration directory, or feature API. Create those only as part of an approved milestone.
 
-- Authentication, database models/migrations, dashboard data, AI calls/tools, jobs, system adapters, backups, reverse-proxy TLS, and feature modules.
-
-Do not add deferred feature code without a written plan and owner approval for that milestone.
-
-## Repository map
-
-```text
-apps/api/                  FastAPI package and pytest suite
-apps/web/                  Next.js app and npm scripts
-infrastructure/docker/     API and web image definitions
-docker-compose.yml         Current development services
-scripts/validate_env.py    Safe environment template validator
-docs/                      Architecture, contracts, operations, and ADRs
-data/                      Local runtime mount; ignored and not committed
-```
-
-## Local setup
+## Environment setup
 
 From the repository root:
 
 ```sh
 cp .env.example .env
-# Replace the JWT placeholder with a locally generated secret of at least 32 characters.
 python scripts/validate_env.py --env-file .env
 ```
 
-On Windows, use `copy .env.example .env` in Command Prompt or `Copy-Item .env.example .env` in PowerShell. Keep `AI_PROVIDER=disabled` for the foundation.
+Validation does not export variables into the calling shell. On macOS/Linux, export them before starting a local API process:
 
-The API reads process environment variables only. For a local API process, export the variables from `.env` using a shell/tool appropriate to the operating system; do not add dotenv loading to application code unless the configuration decision is explicitly changed. Docker Compose reads `.env` and passes the required values to the API.
+```sh
+set -a
+. ./.env
+set +a
+```
 
-## Run and test the API
+On Windows, use `copy .env.example .env` or `Copy-Item .env.example .env`, then set the variables in the current PowerShell session or use Docker Compose. Replace `JWT_SECRET` with a local random value of at least 32 characters. Keep `AI_PROVIDER=disabled`.
+
+The API reads process variables only. Docker Compose supplies `.env`; local processes need the variables exported by the shell or another explicitly chosen environment loader. Do not silently add dotenv loading to application code.
+
+## Backend commands
 
 ```sh
 cd apps/api
@@ -62,14 +55,7 @@ cd ../..
 python -m uvicorn app.main:app --app-dir apps/api --reload --port 8000
 ```
 
-The API requires all required environment variables. Startup errors name invalid setting names without printing values. Health checks:
-
-```sh
-curl http://127.0.0.1:8000/api/v1/health/live
-curl http://127.0.0.1:8000/api/v1/health/ready
-```
-
-## Run and build the web shell
+## Frontend commands
 
 ```sh
 cd apps/web
@@ -79,11 +65,9 @@ npm run build
 npm run dev
 ```
 
-The current shell is intentionally static and does not call the API or hold credentials.
+The current web shell does not authenticate or call the API.
 
-## Compose validation
-
-With `.env` configured:
+## Compose commands
 
 ```sh
 cd ../..
@@ -93,38 +77,24 @@ docker compose --env-file .env ps
 docker compose --env-file .env down
 ```
 
-The development ports bind to `127.0.0.1`. Do not expose them publicly. Validate ARM64 builds on the Pi or in CI before calling a deployment compatible with the target hardware.
+The development ports are loopback-only. Validate ARM64 builds on the Pi or in CI before using an image in deployment.
 
 ## Change workflow
 
-For every approved feature or milestone:
+For every feature or milestone:
 
-1. Read the relevant architecture, API, database, AI, security, and deployment docs.
-2. Explain the implementation plan and exact files before coding.
-3. Confirm the scope does not silently implement a later milestone.
-4. Add/update tests with the behavior.
-5. Update the relevant docs in the same change.
-6. Run backend tests/compilation, frontend typecheck/build, Compose validation, and security checks appropriate to the change.
-7. Review the complete diff and staged file list; check `git diff --check`.
+1. Read the relevant architecture, API, database, AI, deployment, and security docs.
+2. Explain the plan and exact files before coding.
+3. Implement only the approved scope.
+4. Add tests for behavior and failure states.
+5. Update documentation in the same change.
+6. Run backend tests/compilation, frontend typecheck/build, Compose validation, and security checks relevant to the change.
+7. Review `git diff`, run `git diff --check`, and inspect the staged file list.
 8. Commit with a concise descriptive message.
 9. Push completed major milestones to `origin/main` without force-pushing.
-10. Record the shipped behavior, decisions, validation, and remaining work in `CHANGELOG.md`.
 
-Never commit `.env`, credentials, tokens, private keys, databases, runtime data, logs, backups, model files, or personal data. If a secret is exposed, rotate it immediately and inspect Git history.
-
-## Documentation ownership
-
-- `README.md`: orientation, current status, quick start, and repository map.
-- `CHANGELOG.md`: shipped milestone summary, security notes, and remaining planned work.
-- `docs/ARCHITECTURE.md`: system boundaries, design decisions, and milestone plan.
-- `docs/API.md`: endpoint/resource contract; mark implemented versus planned behavior.
-- `docs/DATABASE.md`: persistence design, schema ownership, and migration rules.
-- `docs/AI_SYSTEM.md`: provider, tool, memory, and safety boundaries.
-- `docs/DEPLOYMENT.md`: Pi/Compose operations, recovery, and production gates.
-- `docs/DEVELOPMENT.md`: this workflow and commands.
-
-Update documentation when behavior changes. Avoid wording that makes a design-only endpoint or feature appear implemented.
+Never commit `.env`, credentials, tokens, private keys, databases, runtime data, logs, backups, model files, or personal data. If a secret is exposed, rotate it and inspect Git history.
 
 ## Definition of done
 
-A change is complete only when its code, tests, docs, error states, security implications, and operational behavior are reviewed. A milestone is not complete because it compiles: it must have a usable slice, clear rollback/limitations, and a clean pushed commit.
+A milestone is complete only when its code, tests, documentation, security implications, failure states, deployment behavior, and remaining limitations have been reviewed. Design text alone does not make an API, database, AI provider, or feature implemented.
