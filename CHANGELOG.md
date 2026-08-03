@@ -6,6 +6,13 @@ All notable NexusOS changes are recorded here. Version `1.0.0` is a private, loc
 
 No changes yet.
 
+## [1.0.1] — 2026-08-03
+
+### Docker packaging fix
+
+- Fixed the web ARM64 image build to copy the committed `package-lock.json` before running `npm ci`.
+- Confirmed backend tests, frontend typecheck, and frontend production build remain green.
+
 ## [1.0.0] — 2026-08-03
 
 NexusOS v1.0.0 establishes a private, local-first personal AI operating system for Raspberry Pi 5 with an authenticated dashboard, productivity modules, bounded assistant tools, read-only telemetry, and safe maintenance workflows.
@@ -52,5 +59,6 @@ NexusOS v1.0.0 establishes a private, local-first personal AI operating system f
 
 This release is intended for private, local-first use. Docker and Raspberry Pi runtime validation must be completed on a Docker-enabled ARM64 host. Reverse-proxy TLS, encrypted off-host replication, restore drills, retention cleanup, systemd orchestration, production monitoring, semantic retrieval, embeddings, autonomous memory, and external notification channels remain follow-up work.
 
+[1.0.1]: https://github.com/onion3130/NexusOS/releases/tag/v1.0.1
 [1.0.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.0.0
 [Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.0.0...HEAD

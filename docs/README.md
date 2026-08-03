@@ -24,6 +24,7 @@ This directory contains the detailed design, setup, development, deployment, sec
 - [Infrastructure](../infrastructure/README.md) — Compose and deployment boundaries
 - [Changelog](../CHANGELOG.md) — project history
 - [v1.0.0 release notes](releases/v1.0.0.md) — GitHub-ready release description
+- [v1.0.1 release notes](releases/v1.0.1.md) — Docker packaging patch
 
 ## Community
 

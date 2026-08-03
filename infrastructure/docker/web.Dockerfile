@@ -1,6 +1,6 @@
 FROM node:20-alpine AS dependencies
 WORKDIR /app
-COPY apps/web/package.json ./
+COPY apps/web/package.json apps/web/package-lock.json ./
 RUN npm ci --ignore-scripts
 
 FROM node:20-alpine AS builder
