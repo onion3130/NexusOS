@@ -6,6 +6,17 @@
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
 
+## Checkpoint status — 2026-08-02
+
+The project is paused after Milestone 1. The checkpoint found no confirmed application bug requiring feature work. Available automated validation is green, while Docker/ARM64 image builds and on-device Raspberry Pi 5 behavior remain unverified on the current workstation.
+
+Before Milestone 2 begins, preserve these boundaries:
+
+- The only live API routes are `/api/v1/health/live` and `/api/v1/health/ready`.
+- The database and AI documents describe designs, not implemented services.
+- Compose is a loopback-only development topology, not a production or LAN deployment.
+- Any healthcheck timeout adjustment must be validated on the target Pi rather than guessed.
+
 ## Status summary
 
 | Milestone | Status | Outcome |

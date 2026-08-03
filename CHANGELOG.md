@@ -4,6 +4,13 @@ All notable NexusOS changes are recorded here. The repository is currently pre-r
 
 ## [Unreleased]
 
+### Checkpoint — 2026-08-02
+
+- Confirmed Phase 0 and Milestone 1 are complete within scope; no new product feature was started.
+- Reviewed API, frontend, Docker, Compose, environment, security, Raspberry Pi/ARM64, and architecture alignment.
+- Confirmed the current runtime is limited to the FastAPI health service and static Next.js shell.
+- Recorded remaining technical debt: ARM64/on-device validation, healthcheck timing validation on a loaded Pi, and production deployment hardening.
+
 ### Documentation
 
 - Refreshed the project handoff so a new coding agent can continue without previous conversation history.

@@ -17,6 +17,51 @@ The repository currently contains:
 
 Authentication, database persistence, AI calls, tool calling, tasks, notes, system telemetry, backups, and other product modules are not implemented yet. The authoritative next-step plan is [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
+## Project checkpoint — 2026-08-02
+
+The foundation checkpoint is complete. Phase 0 repository setup and architecture work are complete, and Milestone 1 is implemented and pushed. No new product feature was started during this checkpoint.
+
+### What has been built
+
+- Public GitHub foundation: `.gitignore`, placeholder-only `.env.example`, license, changelog, and security guidance.
+- FastAPI runtime in `apps/api` with process-environment configuration validation.
+- `GET /api/v1/health/live` and storage-only `GET /api/v1/health/ready`.
+- Three backend health/configuration tests.
+- Static Next.js 15/React 19 shell in `apps/web`, including standalone output configuration.
+- Non-root ARM64-targeted API/web Dockerfiles and loopback-only Compose development services.
+- Self-contained architecture, API, database, AI, deployment, development, setup, environment, security, and roadmap documentation.
+
+### Current structure and important files
+
+```text
+apps/api/app/                 FastAPI entrypoint, settings, health route
+apps/api/tests/               Health/configuration tests
+apps/web/app/                 Static Next.js dashboard shell
+infrastructure/docker/        API and web images
+infrastructure/healthchecks/  Health contract and current endpoint notes
+infrastructure/compose/       Future Compose profile guidance
+scripts/validate_env.py       Safe dotenv-style validation helper
+docker-compose.yml            Current API/web plus placeholder service topology
+docs/                         Handoff, contracts, architecture, and roadmap
+```
+
+### Working now
+
+The API starts when required environment variables are valid, liveness works without storage, readiness detects missing/unwritable storage, the web production build succeeds, and the frontend/backend checks pass. Docker is configured for `linux/arm64`, non-root runtime users, private networking, restart policies, and loopback host bindings.
+
+### Incomplete
+
+There is no authentication, database connection/schema/migration, AI provider call, tool registry, job worker, feature API, Pi telemetry adapter, host action, reverse-proxy TLS, systemd service, encrypted backup, or public/LAN access mode. These are roadmap work, not hidden implementation.
+
+### Checkpoint findings and technical debt
+
+- No hardcoded production secrets, arbitrary shell execution, privileged containers, or Docker socket mounts were found in the current implementation.
+- Next.js standalone output is configured and matches the web runner image.
+- Raspberry Pi 5 ARM64 compatibility is designed but still requires an actual `linux/arm64` image build and on-device resource/healthcheck test.
+- Inline Python/Node healthchecks use short timeouts; validate or tune them on a loaded Pi before production deployment.
+- The development stack intentionally binds to loopback, so it is not a LAN-accessible Pi deployment yet.
+- Docker image reproducibility and production hardening remain future work; use the roadmap rather than treating the current Compose file as production infrastructure.
+
 ## Start here for a new coding agent
 
 Read these files before changing code:

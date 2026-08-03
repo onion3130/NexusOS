@@ -133,3 +133,25 @@ Not implemented today:
 - Plugin loading and package verification.
 
 See [`ROADMAP.md`](ROADMAP.md) for the approved sequence and [`DEVELOPMENT.md`](DEVELOPMENT.md) for implementation rules.
+
+## 8. Checkpoint review — 2026-08-02
+
+The architecture still matches the Nexus requirements at the current stage: local-first operation, privacy by default, modular-monolith evolution, ARM64 targeting, optional AI, explicit host-action boundaries, and incremental delivery. The current implementation is deliberately much smaller than the target architecture.
+
+### Verified
+
+- API and web are separate runtime services on a private Compose network.
+- Host ports are loopback-only in the development stack.
+- API/web images use non-root users; placeholder services use read-only filesystems and temporary filesystems where appropriate.
+- The API accepts configuration through environment variables and does not connect to a database or AI provider yet.
+- The web image's `output: "standalone"` setting matches its runner-stage copy.
+- No arbitrary subprocess, shell execution, Docker socket mount, or privileged container was found in the current implementation.
+
+### Open technical debt
+
+- Build and runtime behavior still needs a real `linux/arm64` build and Raspberry Pi 5 test; this workstation cannot prove Pi compatibility.
+- Healthcheck interpreter startup and timeout behavior should be measured on a loaded Pi before production use.
+- Current Compose is a development topology: no reverse proxy, TLS, LAN access, resource limits, systemd startup, database, backups, or monitoring.
+- Docker image dependency reproducibility and image digest pinning remain hardening work.
+
+These are documented risks and future gates, not reasons to start a later feature early.

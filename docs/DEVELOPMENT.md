@@ -6,6 +6,23 @@
 
 A new AI coding agent should read this file, [`README.md`](../README.md), and [`ROADMAP.md`](ROADMAP.md) before changing code. The repository is the project context.
 
+## Project checkpoint — 2026-08-02
+
+The checkpoint reviewed the current implementation without starting a new feature. Phase 0 and Milestone 1 are complete. The working tree was validated for API behavior, frontend build health, environment safety, Docker boundaries, Raspberry Pi compatibility assumptions, and architecture drift.
+
+### Files created/modified across the foundation
+
+- API: `apps/api/pyproject.toml`, `app/main.py`, `app/core/config.py`, `app/api/routes/health.py`, and `tests/test_health.py`.
+- Web: `apps/web/package.json`, Next config, TypeScript config, layout, page, styles, and public placeholder.
+- Infrastructure: `docker-compose.yml`, API/web Dockerfiles, Compose/healthcheck/systemd guidance.
+- Project contract: `.gitignore`, `.env.example`, `README.md`, `CHANGELOG.md`, and the `docs/` handoff set.
+
+### Review result
+
+No confirmed application bug was found in the current scope. The static Next.js shell uses standalone output as required by its Docker runner. The API has no shell execution, database connection, AI call, host action, privileged container, or Docker socket access. The remaining risks are unverified `linux/arm64`/Pi execution, healthcheck timing under load, and production deployment hardening.
+
+Docker validation must be run on a machine with Docker or on the Raspberry Pi. Do not call the stack production-ready until those checks, backups, TLS, authentication, persistence, and recovery controls exist.
+
 ## Implemented files
 
 - `apps/api/app/main.py`: FastAPI application and startup settings validation.
