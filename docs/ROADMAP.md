@@ -1,7 +1,7 @@
 # NexusOS roadmap
 
-**Current milestone:** v1.0 release hardening complete
-**Next milestone:** Milestone 9 — files, projects, Git, and Docker views
+**Current milestone:** Milestone 9 — files, projects, Git, and Docker views
+**Next milestone:** Milestone 10 — deployment hardening
 **Last updated:** 2026-08-03
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
@@ -23,7 +23,7 @@ Milestone 6 is implemented within its approved scope. NexusOS now has an authent
 | 6. Tasks and reminders | Complete | Tasks, due dates, priorities, categories, tags, recurrence, reminders, notifications, worker, assistant actions |
 | 7. Notes and scoped search | Complete | Notes, tags, SQLite FTS5 search, source-aware retrieval chunks, assistant read tools |
 | 8. Safe host actions | Complete | Confirmation-gated maintenance actions, audit events, verified SQLite backups, and recovery documentation |
-| 9. Files, projects, Git, Docker views | Planned | Approved paths, repository/project metadata, safe read operations |
+| 9. Files, projects, Git, Docker views | Complete | Approved roots, repository/project metadata, sanitized Docker read operations |
 | 10. Deployment hardening | Planned | Reverse proxy, systemd, SSD operations, backups, restore drill |
 | 11. Integrations and plugins | Planned | Calendar/media/finance ports and out-of-process plugin boundary |
 
@@ -97,9 +97,26 @@ Implemented:
 
 The v1.0 release remains private/local-first: reverse-proxy TLS, encrypted off-host replication, restore drills, and systemd orchestration remain operational follow-up work rather than hidden claims.
 
-## Milestones 9 — useful modules
+## Milestone 9 complete — files, projects, Git, and Docker views
 
-Add files/projects/Git/Docker read views. Each future write capability requires permissions, validation, confirmation where risky, audit events, and tests.
+Implemented:
+
+- Reversible Alembic migration `0007_workspace_views` for the dedicated `workspace_views.read` permission.
+- Bounded read-only Files, Projects, Git, and Docker API views.
+- Server-configured approved roots through `WORKSPACE_ROOTS`; request paths are never accepted.
+- Sensitive filename filtering, symlink exclusion, depth/item bounds, and relative-path responses.
+- Fixed-command Git inspection with timeouts, bounded output, and no mutation operations.
+- Optional sanitized Docker metadata through an explicitly supplied Unix socket boundary; Docker inspection is unavailable by default.
+- Read-only assistant tools for recent files, projects, Git repositories, and Docker containers.
+- Responsive Files, Projects, Git, and Docker workspaces with loading, empty, unavailable, retry, and read-only boundary states.
+- Backend security, adapter, permission, authentication, migration, and read-only behavior coverage.
+
+Known limitations:
+
+- File views expose metadata only; file content reading and editing remain deferred.
+- Project discovery uses safe direct-child markers and does not execute project tooling.
+- Docker health/restart details are intentionally limited to metadata returned by the read-only container listing endpoint.
+- The default Compose topology does not mount the Docker socket; Docker views remain unavailable until an operator creates a separately reviewed socket boundary. A filesystem read-only mount does not limit Docker API capabilities.
 
 ## Milestones 10–11 — production and expansion
 

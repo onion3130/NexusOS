@@ -1,20 +1,20 @@
 # NexusOS architecture
 
-**Current milestone:** v1.0 release hardening complete
-**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions service, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
+**Current milestone:** Milestone 9 — files, projects, Git, and Docker views
+**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views service, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-03
 
 NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an external SSD. The browser, API, persistence, worker, provider, and future host-action boundaries remain separate.
 
 ## Runtime components
 
-- `apps/api`: FastAPI application with identity, read-only telemetry, assistant gateway, tasks, reminders, and notifications.
+- `apps/api`: FastAPI application with identity, read-only telemetry, workspace views, assistant gateway, tasks, reminders, and notifications.
 - `apps/api/app/modules/tasks`: task service, schemas, recurrence calculator, and reminder dispatcher.
 - `apps/api/app/modules/notes`: canonical notes, SQLite FTS5 search, deterministic chunks, and source-aware retrieval.
 - `apps/api/app/modules/host_actions`: typed action catalog, proposal lifecycle, SQLite backups, fixed executor, and worker processing.
 - `apps/api/app/worker.py`: dedicated bounded SQLite reminder and confirmed host-action worker.
 - `apps/api/app/db`: SQLAlchemy engine/session and all persisted models.
-- `apps/api/migrations`: explicit Alembic migration history through `0006_v1_hardening`.
+- `apps/api/migrations`: explicit Alembic migration history through `0007_workspace_views`.
 - `apps/web`: authenticated Next.js shell with overview, assistant, tasks, and notification center.
 - `docker-compose.yml`: ARM64 development topology with API, web, and real worker services; proxy and optional AI remain placeholders.
 
@@ -29,7 +29,8 @@ FastAPI
   ├── bounded assistant gateway -> typed tool registry
   ├── tasks service -> tasks/categories/tags/reminders/notifications
   ├── notes service -> notes/tags/search projection/retrieval chunks
-  └── host-actions service -> typed proposals -> confirmed job queue -> fixed backup/integrity adapters
+  ├── host-actions service -> typed proposals -> confirmed job queue -> fixed backup/integrity adapters
+  └── workspace-views service -> approved-root file/project/Git adapters -> optional Docker metadata adapter
 
 Dedicated worker -> SQLite reminder claims -> notifications
 Dedicated worker -> confirmed host-action claims -> verified backup/integrity results
@@ -42,7 +43,7 @@ Docker Compose -> private bridge network
   └── nexus-ai (opt-in placeholder profile)
 ```
 
-The API and worker share the SQLite database on the external SSD. The worker has no published port. Host actions are limited to SQLite APIs under a fixed data-directory boundary; no shell, Docker socket, privileged command, or arbitrary filesystem operation exists.
+The API and worker share the SQLite database on the external SSD. The worker has no published port. Host actions are limited to SQLite APIs under a fixed data-directory boundary; workspace views use approved roots and an optional API-only Docker socket. Docker socket access is a powerful host-control boundary even with a filesystem `:ro` mount, so it is disabled by default and must be separately reviewed; no browser-facing shell, privileged command, or arbitrary filesystem operation exists.
 
 ## Task architecture
 
@@ -86,6 +87,10 @@ Development ports bind to loopback. No TLS, LAN exposure, public access, or host
 
 No arbitrary shell command, Docker argument, filesystem path, SQL, or provider URL is accepted from model output or browser input. User-owned mutations are validated, permissioned, CSRF-protected for cookies, and audited.
 
+## Workspace view architecture
+
+Milestone 9 exposes live read-only metadata beneath server-configured approved roots. Files are bounded direct filesystem metadata scans; projects use safe marker discovery; Git uses fixed commands with timeout and output bounds; Docker inspection is disabled unless an operator explicitly supplies a Unix socket boundary. The Docker endpoint issues only a fixed metadata request, but socket access itself is not a security sandbox and can control the daemon; use only in a trusted, separately reviewed deployment. No workspace view accepts arbitrary paths, commands, container controls, or file contents.
+
 ## Notes and retrieval architecture
 
 Notes are canonical user-authored sources. A derived search projection feeds SQLite FTS5, while deterministic versioned chunks provide provenance for future RAG. Search and retrieval always join through owned canonical notes. Assistant note tools are read-only and return bounded, explicitly source-labeled content; retrieved text is untrusted context and cannot grant tool permissions.
@@ -99,7 +104,7 @@ Not implemented today:
 - Embeddings, vector search, and semantic memory extraction
 - External document ingestion and file sources
 - Privileged host actions and service/container control
-- Files, projects, Git, Docker views
+- File contents, project execution, Git mutations, and Docker control
 - Production reverse proxy, systemd, encrypted backups, restore drills, limits, and monitoring
 - Plugin loading and package verification
 

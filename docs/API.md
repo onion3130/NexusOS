@@ -1,7 +1,7 @@
 # NexusOS API
 
-**Current milestone:** v1.0 release hardening complete
-**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, confirmation-gated maintenance actions, verified SQLite backups, and audit visibility are implemented. Restore replication, embeddings, files, and streaming remain planned.
+**Current milestone:** Milestone 9 — files, projects, Git, and Docker views
+**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, confirmation-gated maintenance actions, verified SQLite backups, audit visibility, and read-only workspace views are implemented. Restore replication, embeddings, and streaming remain planned.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-03
 
@@ -132,6 +132,26 @@ Rejects one owned task mutation proposal without executing it.
 
 Task mutation proposals expire after a bounded period and all approvals, rejections, and task changes are audited.
 
+### Files, projects, Git, and Docker views
+
+All workspace view routes require the `workspace_views.read` permission and expose metadata only. They never accept arbitrary paths or commands.
+
+#### `GET /api/v1/files/recent`
+
+Returns bounded recent file metadata from server-configured `WORKSPACE_ROOTS`. Sensitive credential filenames, symlinks, absolute host paths, and file contents are excluded.
+
+#### `GET /api/v1/projects`
+
+Returns project metadata discovered from safe marker files and direct-child Git roots beneath approved roots.
+
+#### `GET /api/v1/git/repositories`
+
+Returns branch, short commit, commit subject, clean/dirty state, and timestamps from fixed, bounded Git inspection commands. No Git mutation is available.
+
+#### `GET /api/v1/docker/containers`
+
+Returns sanitized container names, images, states, selected ports, creation times, and Compose service labels when an operator explicitly supplies a Docker Unix socket boundary. The default Compose stack does not mount the socket, so the response reports `docker_unavailable` by default.
+
 ### Safe host-action and maintenance routes
 
 #### `GET /api/v1/system/actions`
@@ -172,7 +192,7 @@ Returns the current user's bounded host-action proposal, confirmation, rejection
 - Cookie-authenticated mutations require CSRF validation.
 - CORS allows `PATCH` in addition to existing methods.
 - Database migrations are explicit; startup never mutates schema.
-- Readiness verifies the current Alembic head `0006_v1_hardening` and the notes FTS5 table.
+- Readiness verifies the current Alembic head `0007_workspace_views` and the notes FTS5 table.
 - Notifications are persistent in-app records only.
 - No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, or provider URLs from a client.
 - Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf.
@@ -181,10 +201,6 @@ Returns the current user's bounded host-action proposal, confirmation, rejection
 
 - `GET /api/v1/conversations/{id}/stream`
 - `GET /api/v1/jobs/{id}`
-- `GET /api/v1/files/recent`
-- `GET /api/v1/projects`
-- `GET /api/v1/git/repositories`
-- `GET /api/v1/docker/containers`
 - `POST /api/v1/system/actions/{action}` (superseded by typed proposals and confirmation)
 
 Every future write action requires authentication, authorization, typed input, confirmation when risky, idempotency where appropriate, and an audit event.

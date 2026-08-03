@@ -1,6 +1,6 @@
 # NexusOS security baseline
 
-**Status:** v1.0 application security controls implemented for safe host actions, backups, audit, notes, search, retrieval, tasks, reminders, notifications, and assistant actions; public-internet deployment hardening remains deferred.
+**Status:** Milestone 9 workspace-view controls are implemented alongside the v1.0 safe host actions, backups, audit, notes, search, retrieval, tasks, reminders, notifications, and assistant controls; public-internet deployment hardening remains deferred.
 **Last updated:** 2026-08-03
 
 ## Runtime boundaries
@@ -31,6 +31,15 @@
 - Rejection never invokes the task service.
 - Task deletion is soft deletion and is audited.
 - All task changes, reminder changes, notification state changes, and assistant approvals/rejections create bounded audit events.
+
+## Workspace view controls
+
+- Files, Projects, Git, and Docker routes require `workspace_views.read` server-side.
+- `WORKSPACE_ROOTS` is the only source of filesystem/project/repository roots; clients cannot submit paths.
+- Files are bounded by depth and item count, exclude symlinks and common credential filenames, and return relative paths only.
+- Git uses fixed `git -C` argument lists, `shell=False` behavior, short timeouts, bounded output, and no mutation commands. Remotes and credentials are never returned.
+- Docker metadata is unavailable by default. If enabled, it requires an operator-supplied Unix socket boundary and returns only an allowlisted subset of container metadata; environment variables, mounts, commands, and raw inspect output are excluded. A Unix socket `:ro` filesystem mount does not restrict Docker API capabilities, so socket access remains a powerful host-control boundary; use only on a trusted host, preferably through a filtered/rootless proxy.
+- Workspace view output is treated as untrusted host metadata and is rendered as text in the browser and assistant context.
 
 ## Host-action and recovery controls
 

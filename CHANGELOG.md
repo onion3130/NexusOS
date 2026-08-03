@@ -4,7 +4,11 @@ All notable NexusOS changes are recorded here. Version `1.0.0` is a private, loc
 
 ## [Unreleased]
 
-No changes yet.
+### Milestone 9 workspace views
+
+- Added authenticated read-only Files, Projects, Git, and Docker metadata workspaces.
+- Added approved-root configuration, sensitive filename filtering, bounded scans, fixed Git inspection, and optional sanitized Docker inspection.
+- Added the `workspace_views.read` permission, migration `0007_workspace_views`, assistant read tools, and security-focused tests.
 
 ## [1.0.1] — 2026-08-03
 

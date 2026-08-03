@@ -1,7 +1,7 @@
 # NexusOS deployment
 
-**Current milestone:** v1.0 release hardening complete
-**Status:** v1.0.0 private/local-first release with a real API, web shell, reminder/maintenance worker, notes, SQLite FTS5 search, confirmation-gated backups, bounded worker recovery, and audit visibility. Reverse-proxy TLS, off-host encrypted replication, and restore drills remain operational follow-up work.
+**Current milestone:** Milestone 9 — files, projects, Git, and Docker views
+**Status:** v1.0.0 private/local-first release with a real API, web shell, reminder/maintenance worker, notes, SQLite FTS5 search, read-only workspace views, confirmation-gated backups, bounded worker recovery, and audit visibility. Reverse-proxy TLS, off-host encrypted replication, and restore drills remain operational follow-up work.
 **Last updated:** 2026-08-03
 
 ## Target hardware
@@ -52,7 +52,13 @@ The worker shares the API's SQLite data mount, publishes no host port, and runs 
 7. Check `/api/v1/health/live`, `/api/v1/health/ready`, and `http://127.0.0.1:3000`.
 8. Stop with `docker compose --env-file .env down`.
 
-Ports remain loopback-only. Do not expose this development topology directly to the internet.
+Ports remain loopback-only in the default topology. Do not expose this development topology directly to the internet. Workspace views use `WORKSPACE_ROOTS`; Docker inspection remains unavailable unless an operator separately mounts and configures a reviewed socket boundary. A filesystem `:ro` mount does not make the Docker API read-only: access to the Docker Unix socket is a powerful host-control boundary. Never mount the Docker socket into the web or worker service.
+
+## Workspace view deployment
+
+Set `WORKSPACE_ROOTS` to a comma-separated list of approved absolute roots, or paths relative to `DATA_DIR`. Empty configuration scans only the configured data root. The API returns metadata only and does not accept request paths.
+
+Docker metadata is disabled by default. If it is required for a trusted local deployment, mount the Docker Unix socket only into the API service using a deployment-local override, set `DOCKER_SOCKET_PATH` to the container path, and understand that socket access is a powerful host-control boundary—not a sandbox, even when the mount is marked `:ro`. Prefer a filtered/rootless Docker API proxy if this boundary must be exposed. Do not expose the socket to the browser, web service, worker, or assistant directly.
 
 ## Safe maintenance behavior
 

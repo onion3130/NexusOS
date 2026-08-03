@@ -59,7 +59,7 @@ docker compose --env-file .env up --build -d
 docker compose --env-file .env ps
 ```
 
-The API, web, and worker use ARM64-compatible non-root images and the worker shares the SSD-backed SQLite mount. Ports bind to loopback only. Stop with `docker compose --env-file .env down`.
+The API, web, and worker use ARM64-compatible non-root images and the worker shares the SSD-backed SQLite mount. Ports bind to loopback only. Read-only Files, Projects, and Git views scan `WORKSPACE_ROOTS`; Docker views are disabled by default and remain unavailable unless an operator supplies a separately reviewed socket boundary. Stop with `docker compose --env-file .env down`.
 
 ## Validation
 

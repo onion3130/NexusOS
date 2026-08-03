@@ -1,7 +1,7 @@
 # NexusOS development
 
-**Current milestone:** v1.0 release hardening complete
-**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, and confirmation-gated host maintenance are implemented. Restore replication, memory, RAG, and privileged host control remain deferred.
+**Current milestone:** Milestone 9 — files, projects, Git, and Docker views
+**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, confirmation-gated host maintenance, and read-only workspace views are implemented. Restore replication, memory, RAG, and privileged host control remain deferred.
 **Last updated:** 2026-08-03
 
 Read this document with [`README.md`](../README.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`API.md`](API.md), [`DATABASE.md`](DATABASE.md), [`AI_SYSTEM.md`](AI_SYSTEM.md), [`SECURITY.md`](SECURITY.md), and [`ROADMAP.md`](ROADMAP.md) before changing code.
@@ -22,6 +22,10 @@ Backend:
 - `app/api/routes/host_actions.py`: authenticated catalog, confirmation, backup, job, and audit routes.
 - `migrations/versions/0005_host_actions.py`: reversible host-action and backup metadata migration.
 - `migrations/versions/0006_v1_hardening.py`: worker claim indexes for bounded SQLite scheduling.
+- `migrations/versions/0007_workspace_views.py`: dedicated read-only workspace permission.
+- `app/modules/workspace_views/`: approved-root Files, Projects, Git, and optional Docker adapters.
+- `app/api/routes/workspace_views.py`: authenticated read-only workspace routes.
+- `tests/test_workspace_views.py`: adapter, permission, authentication, and redaction coverage.
 - `tests/test_host_actions.py`: proposal, CSRF, ownership, expiry, worker, backup, and audit coverage.
 
 Frontend:
@@ -30,6 +34,8 @@ Frontend:
 - `components/notification-center.tsx`: persistent notification polling and read actions.
 - `components/assistant-action-confirmation.tsx`: task mutation confirmation UI.
 - `lib/tasks.ts` and `lib/notifications.ts`: authenticated clients.
+- `components/files-workspace.tsx`, `projects-workspace.tsx`, `git-workspace.tsx`, and `docker-workspace.tsx`: read-only workspace views.
+- `lib/workspace-views.ts`: authenticated workspace view clients.
 - `lib/auth.ts`: CSRF headers for browser mutations.
 
 ## Local setup
@@ -54,7 +60,7 @@ python -m alembic heads
 python -m alembic check
 ```
 
-The current expected migration head is `0006_v1_hardening`. The readiness check also requires the SQLite FTS5 notes index.
+The current expected migration head is `0007_workspace_views`. The readiness check also requires the SQLite FTS5 notes index.
 
 ## Frontend validation
 
@@ -84,7 +90,7 @@ cd apps/web
 npm run dev
 ```
 
-The task workspace, Notes/Search workspaces, and Maintenance workspace are available from authenticated navigation. The notification center polls every 30 seconds. Notes use synchronous SQLite FTS5 projection updates and deterministic retrieval chunks. The assistant remains usable in disabled-provider mode for conversations; task mutations require a configured provider and explicit approval, while note tools are read-only.
+The task workspace, Notes/Search workspaces, Maintenance workspace, and read-only Files/Projects/Git/Docker workspaces are available from authenticated navigation. The notification center polls every 30 seconds. Notes use synchronous SQLite FTS5 projection updates and deterministic retrieval chunks. The assistant remains usable in disabled-provider mode for conversations; task mutations require a configured provider and explicit approval, while note tools are read-only.
 
 Run the reminder worker separately for local scheduler testing:
 
@@ -114,6 +120,7 @@ The API, web, and worker target `linux/arm64`, use non-root runtime users, share
 - Task deletion is soft deletion.
 - No provider key, token, arbitrary command, filesystem path, Docker socket, privileged host operation, or SQL reaches the browser or task/host-action service.
 - Host actions are proposed, explicitly confirmed, queued, fixed-adapter executed, and audited; backups remain on the configured data volume.
+- Workspace views use server-configured roots, bounded adapters, sanitized output, and no browser-controlled paths or commands.
 
 ## Definition of done
 

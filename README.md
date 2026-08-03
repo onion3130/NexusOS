@@ -44,9 +44,9 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 | Item | Status |
 | --- | --- |
-| **Current milestone** | v1.0 release hardening complete ✅ |
+| **Current milestone** | Milestone 9 — Files, projects, Git, and Docker views ✅ |
 | **Current version** | `1.0.0` — local-first release |
-| **Next milestone** | Milestone 9 — Files, projects, Git, and Docker views |
+| **Next milestone** | Milestone 10 — Deployment hardening |
 
 NexusOS v1.0 is ready for private, local-first Raspberry Pi use. Public internet exposure, off-host encrypted replication, restore drills, and reverse-proxy TLS remain explicitly outside this release. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
 

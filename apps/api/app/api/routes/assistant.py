@@ -11,6 +11,7 @@ from app.modules.assistant.gateway import gateway_from_settings
 from app.modules.assistant.schemas import AssistantError, ConversationCreate, ConversationResponse, ConversationSummary, SendMessageRequest, SendMessageResponse
 from app.modules.assistant.service import approve_tool_call, conversation_response, create_conversation, get_conversation, list_conversations, reject_tool_call, send_message
 from app.modules.assistant.tools.registry import ToolRegistry
+from app.modules.workspace_views.service import WorkspaceViewService
 from app.modules.identity.dependencies import AuthContext, get_auth_context, require_csrf, require_permission
 from app.modules.identity.service import permission_names
 from app.modules.system.service import SystemService
@@ -50,7 +51,7 @@ async def message(conversation_id: str, payload: SendMessageRequest, db: OrmSess
     """Send one bounded message through the configured assistant gateway."""
     conversation = _owned_or_404(db, context, conversation_id)
     try:
-        return await send_message(db, settings, conversation, payload.content, gateway_from_settings(settings), ToolRegistry(SystemService(settings.data_dir), db, context.user.id), set(permission_names(context.user)))
+        return await send_message(db, settings, conversation, payload.content, gateway_from_settings(settings), ToolRegistry(SystemService(settings.data_dir), db, context.user.id, WorkspaceViewService(settings)), set(permission_names(context.user)))
     except AssistantError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.code) from exc
     except Exception as exc:
@@ -63,7 +64,7 @@ def approve(tool_call_id: str, request: Request, db: OrmSession = Depends(get_db
     require_csrf(request, context)
     require_permission("assistant.task_actions", context)
     try:
-        tool_call, result = approve_tool_call(db, context.user.id, tool_call_id, set(permission_names(context.user)), ToolRegistry(SystemService(settings.data_dir), db, context.user.id), request.headers.get("Idempotency-Key"))
+        tool_call, result = approve_tool_call(db, context.user.id, tool_call_id, set(permission_names(context.user)), ToolRegistry(SystemService(settings.data_dir), db, context.user.id, WorkspaceViewService(settings)), request.headers.get("Idempotency-Key"))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     if tool_call is None:

@@ -39,6 +39,7 @@ OWNER_PERMISSIONS = (
     ("system.host_actions", "Propose and confirm safe host maintenance actions"),
     ("system.backups.read", "Read owned backup metadata"),
     ("system.audit.read", "Read the current user's host-action audit history"),
+    ("workspace_views.read", "Read approved files, projects, Git, and Docker metadata"),
 )
 
 

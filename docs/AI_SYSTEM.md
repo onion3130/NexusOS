@@ -1,7 +1,7 @@
 # NexusOS AI system
 
-**Current milestone:** v1.0 release hardening complete
-**Status:** The bounded assistant gateway, conversation storage, provider normalization, read-only system/task/note tools, confirmation-gated task mutations, lexical search, source-aware note chunks, and confirmation-gated maintenance proposals are implemented. Embeddings, autonomous memory, semantic RAG, streaming, and privileged host control remain deferred.
+**Current milestone:** Milestone 9 — files, projects, Git, and Docker views
+**Status:** The bounded assistant gateway, conversation storage, provider normalization, read-only system/task/note/workspace-view tools, confirmation-gated task mutations, lexical search, source-aware note chunks, and confirmation-gated maintenance proposals are implemented. Embeddings, autonomous memory, semantic RAG, streaming, and privileged host control remain deferred.
 **Last updated:** 2026-08-03
 
 ## Current behavior
@@ -29,6 +29,15 @@ Note content never grants permissions or triggers tool execution. The tools use 
 - `tasks.delete`: confirmation-gated soft deletion
 
 Approval and rejection are authenticated, ownership-scoped, CSRF-protected for cookies, expiry-bounded, permission-checked, typed, and audited. The same task service is used by REST routes and assistant tools.
+
+## Implemented workspace view tools
+
+- `files.recent`: bounded metadata from approved roots
+- `projects.list`: safe project metadata
+- `git.repositories`: read-only repository status
+- `docker.containers`: sanitized container metadata when the optional, trusted socket boundary is available; socket access is not a Docker API sandbox
+
+These tools require `workspace_views.read`, share the REST service layer, return bounded untrusted metadata, and cannot write files, mutate Git, control containers, or execute commands.
 
 ## Implemented maintenance tool
 

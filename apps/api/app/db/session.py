@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sqlalchemy import Engine, create_engine, event, inspect, text
 
-CURRENT_MIGRATION_HEAD = "0006_v1_hardening"
+CURRENT_MIGRATION_HEAD = "0007_workspace_views"
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import sessionmaker
@@ -69,7 +69,7 @@ def reset_database_caches() -> None:
 
 
 def database_status(settings: Settings) -> tuple[bool, str | None]:
-    """Check connectivity and whether the identity migration has been applied."""
+    """Check connectivity and whether the current migration head has been applied."""
     try:
         engine = get_engine()
         with engine.connect() as connection:

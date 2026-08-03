@@ -1,7 +1,7 @@
 # NexusOS database
 
-**Current milestone:** v1.0 release hardening complete
-**Current status:** Identity, assistant, task, notes, search/retrieval, host-action proposals, and backup metadata are implemented through Alembic revisions `0001_identity`, `0002_assistant`, `0003_tasks_notifications`, `0004_notes_search`, `0005_host_actions`, and `0006_v1_hardening`.
+**Current milestone:** Milestone 9 — files, projects, Git, and Docker views
+**Current status:** Identity, assistant, task, notes, search/retrieval, host-action proposals, backup metadata, and the workspace view permission are implemented through Alembic revisions `0001_identity`, `0002_assistant`, `0003_tasks_notifications`, `0004_notes_search`, `0005_host_actions`, `0006_v1_hardening`, and `0007_workspace_views`.
 **Last updated:** 2026-08-03
 
 ## Current database state
@@ -18,6 +18,7 @@ The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys
 - `0003_tasks_notifications` creates categories, tags, task series, tasks, task tags, reminders, notifications, jobs, and approval lifecycle columns, including recoverable assistant-processing leases.
 - `0005_host_actions` creates expiring host-action proposals and verified backup metadata, and seeds owner permissions for host actions, backups, and audit history.
 - `0006_v1_hardening` adds composite claim indexes for bounded reminder and host-action worker queries.
+- `0007_workspace_views` seeds the dedicated `workspace_views.read` permission; workspace host metadata itself is not persisted.
 
 ## Milestone 7 tables
 
@@ -79,6 +80,8 @@ Every user-owned table includes a user boundary directly or through an owned par
 ## Notes and retrieval
 
 Note content changes increment `content_version`. Current chunks retain the source note ID, version, offsets, content hash, and chunk index. Search results are joined back to canonical notes with user ownership and deletion filters. Search input is normalized into a safe parameterized FTS5 query; raw FTS syntax is not exposed.
+
+Milestone 9 intentionally adds no host metadata tables. Files, projects, Git, and Docker views are live read-only adapter results; only the `workspace_views.read` permission is migration-backed.
 
 ## Remaining database work
 

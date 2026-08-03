@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     ai_max_response_bytes: int = Field(default=1_048_576, validation_alias="AI_MAX_RESPONSE_BYTES")
     task_worker_interval_seconds: int = Field(default=30, validation_alias="TASK_WORKER_INTERVAL_SECONDS")
     task_worker_batch_size: int = Field(default=50, validation_alias="TASK_WORKER_BATCH_SIZE")
+    workspace_roots: str = Field(default="", validation_alias="WORKSPACE_ROOTS")
+    docker_socket_path: str = Field(default="", validation_alias="DOCKER_SOCKET_PATH")
     nvidia_api_key: SecretStr | None = Field(default=None, validation_alias="NVIDIA_API_KEY")
     openai_api_key: SecretStr | None = Field(default=None, validation_alias="OPENAI_API_KEY")
 

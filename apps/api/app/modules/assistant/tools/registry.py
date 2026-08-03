@@ -19,6 +19,7 @@ from app.modules.notes.search import search_notes
 from app.modules.notes.service import get_note
 from app.modules.host_actions.schemas import ActionProposalCreate
 from app.modules.host_actions.service import create_proposal
+from app.modules.workspace_views.service import WorkspaceViewService
 
 
 @dataclass(frozen=True)
@@ -34,7 +35,7 @@ class RegisteredTool:
 class ToolRegistry:
     """Resolve only server-defined tools; never evaluate model-provided code."""
 
-    def __init__(self, system_service: SystemService, db: OrmSession | None = None, user_id: str | None = None) -> None:
+    def __init__(self, system_service: SystemService, db: OrmSession | None = None, user_id: str | None = None, workspace_service: WorkspaceViewService | None = None) -> None:
         self._tools: dict[str, RegisteredTool] = {
             "system.get_overview": RegisteredTool(
                 definition=ToolDefinition(key="system.get_overview", description="Read the current Raspberry Pi system telemetry.", parameters={"type": "object", "properties": {}, "additionalProperties": False}),
@@ -44,6 +45,8 @@ class ToolRegistry:
         }
         if db is not None and user_id is not None:
             self._register_task_tools(db, user_id)
+        if workspace_service is not None:
+            self._register_workspace_tools(workspace_service)
 
     def _register_task_tools(self, db: OrmSession, user_id: str) -> None:
         """Register task tools against the current authenticated user context."""
@@ -87,6 +90,31 @@ class ToolRegistry:
                 definition=ToolDefinition(key="tasks.delete", description="Soft-delete an owned task after explicit confirmation.", parameters={"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}),
                 required_permission="tasks.delete", requires_confirmation=True,
                 execute=lambda call: _delete_task(db, user_id, call),
+            ),
+        })
+
+    def _register_workspace_tools(self, service: WorkspaceViewService) -> None:
+        """Register read-only workspace views against the configured host boundary."""
+        self._tools.update({
+            "files.recent": RegisteredTool(
+                definition=ToolDefinition(key="files.recent", description="List bounded recent file metadata beneath approved workspace roots.", parameters={"type": "object", "properties": {"limit": {"type": "integer", "maximum": 20}}, "additionalProperties": False}),
+                required_permission="workspace_views.read", requires_confirmation=False,
+                execute=lambda call: service.recent_files(min(int(call.arguments.get("limit", 10)), 20)).model_dump(mode="json"),
+            ),
+            "projects.list": RegisteredTool(
+                definition=ToolDefinition(key="projects.list", description="List safe project metadata beneath approved workspace roots.", parameters={"type": "object", "properties": {}, "additionalProperties": False}),
+                required_permission="workspace_views.read", requires_confirmation=False,
+                execute=lambda _call: service.projects().model_dump(mode="json"),
+            ),
+            "git.repositories": RegisteredTool(
+                definition=ToolDefinition(key="git.repositories", description="Read bounded Git repository status beneath approved workspace roots.", parameters={"type": "object", "properties": {}, "additionalProperties": False}),
+                required_permission="workspace_views.read", requires_confirmation=False,
+                execute=lambda _call: service.repositories().model_dump(mode="json"),
+            ),
+            "docker.containers": RegisteredTool(
+                definition=ToolDefinition(key="docker.containers", description="Read sanitized Docker container metadata when the optional read-only boundary is available.", parameters={"type": "object", "properties": {}, "additionalProperties": False}),
+                required_permission="workspace_views.read", requires_confirmation=False,
+                execute=lambda _call: service.containers().model_dump(mode="json"),
             ),
         })
 

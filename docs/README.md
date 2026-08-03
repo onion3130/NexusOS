@@ -25,6 +25,7 @@ This directory contains the detailed design, setup, development, deployment, sec
 - [Changelog](../CHANGELOG.md) — project history
 - [v1.0.0 release notes](releases/v1.0.0.md) — GitHub-ready release description
 - [v1.0.1 release notes](releases/v1.0.1.md) — Docker packaging patch
+- [Milestone 9 workspace views](ROADMAP.md#milestone-9-complete--files-projects-git-and-docker-views) — read-only Files, Projects, Git, and Docker scope
 
 ## Community
 
