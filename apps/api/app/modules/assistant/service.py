@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session as OrmSession
+from sqlalchemy import func, select, update
+from sqlalchemy.orm import Session as OrmSession, selectinload
 
 from app.core.config import Settings
-from app.db.models import AssistantMessage, AssistantModelRun, AssistantToolCall, Conversation
+from app.db.models import AssistantMessage, AssistantModelRun, AssistantToolCall, Conversation, Job
+from app.modules.identity.service import add_audit_event
 from app.modules.assistant.gateway import ModelGateway
 from app.modules.assistant.schemas import (
     ConversationCreate,
@@ -18,11 +20,17 @@ from app.modules.assistant.schemas import (
     ConversationSummary,
     GatewayMessage,
     MessageResponse,
+    ProposedToolCall,
     ModelRunResponse,
     SendMessageResponse,
     ToolCallResponse,
 )
 from app.modules.assistant.tools.registry import ToolRegistry
+
+
+def _approval_key(user_id: str, operation: str, key: str) -> str:
+    """Return a bounded user-scoped idempotency key."""
+    return hashlib.sha256(f"{user_id}:{operation}:{key}".encode("utf-8")).hexdigest()
 
 
 def _message_response(message: AssistantMessage) -> MessageResponse:
@@ -134,17 +142,21 @@ async def send_message(
             input_json=json.dumps(proposed.arguments, separators=(",", ":"))[:16000],
         )
         try:
-            result = tools.execute(proposed, permissions)
-            serialized_result = json.dumps(result, separators=(",", ":"))[:16000]
-            tool_call.status = "executed"
-            tool_call.output_json = serialized_result
-            tool_results.append(GatewayMessage(role="tool", content=serialized_result, tool_call_id=proposed.provider_id))
+            if tools.requires_confirmation(proposed.tool_key):
+                tool_call.status = "proposed"
+                tool_call.expires_at = datetime.now(UTC) + timedelta(minutes=10)
+            else:
+                result = tools.execute(proposed, permissions)
+                serialized_result = json.dumps(result, separators=(",", ":"))[:16000]
+                tool_call.status = "executed"
+                tool_call.output_json = serialized_result
+                tool_results.append(GatewayMessage(role="tool", content=serialized_result, tool_call_id=proposed.provider_id))
         except Exception:
             tool_call.status = "failed"
             tool_call.error_code = "ai_tool_not_allowed"
         db.add(tool_call)
         db.flush()
-        tool_responses.append(ToolCallResponse(id=tool_call.id, tool_key=tool_call.tool_key, status=tool_call.status, error_code=tool_call.error_code))
+        tool_responses.append(ToolCallResponse(id=tool_call.id, tool_key=tool_call.tool_key, status=tool_call.status, error_code=tool_call.error_code, requires_confirmation=tools.requires_confirmation(proposed.tool_key), arguments=proposed.arguments))
 
     db.commit()
     if tool_results:
@@ -178,3 +190,82 @@ async def send_message(
         model_run=ModelRunResponse(id=model_run.id, provider=model_run.provider, model=model_run.model, status=model_run.status, latency_ms=model_run.latency_ms),
         tool_calls=tool_responses,
     )
+
+
+def approve_tool_call(db: OrmSession, user_id: str, tool_call_id: str, permissions: set[str], tools: ToolRegistry, idempotency_key: str | None = None) -> tuple[AssistantToolCall | None, dict[str, object] | None]:
+    """Execute one unexpired owned task proposal exactly once."""
+    approval_payload = {"tool_call_id": tool_call_id, "operation": "approve"}
+    if idempotency_key:
+        prior = db.scalar(select(Job).where(Job.idempotency_key == _approval_key(user_id, "assistant-approve", idempotency_key)))
+        if prior:
+            stored = json.loads(prior.payload_json or "{}")
+            if stored.get("fingerprint") != hashlib.sha256(json.dumps(approval_payload, sort_keys=True).encode()).hexdigest():
+                raise ValueError("Idempotency-Key was already used for a different operation")
+            replay = db.get(AssistantToolCall, stored.get("resource_id"))
+            if replay is not None:
+                return replay, json.loads(replay.output_json) if replay.output_json else None
+    statement = select(AssistantToolCall).join(AssistantModelRun).join(Conversation).where(AssistantToolCall.id == tool_call_id, Conversation.user_id == user_id).options(selectinload(AssistantToolCall.model_run).selectinload(AssistantModelRun.conversation))
+    tool_call = db.scalar(statement)
+    if tool_call is None:
+        return None, None
+    if tool_call.status == "executed":
+        return tool_call, json.loads(tool_call.output_json) if tool_call.output_json else None
+    if tool_call.status == "rejected":
+        return tool_call, None
+    now = datetime.now(UTC)
+    if tool_call.status == "processing" and tool_call.processing_until is not None and tool_call.processing_until > now:
+        return tool_call, None
+    if tool_call.status not in {"proposed", "processing"} or tool_call.expires_at is None or tool_call.expires_at <= now:
+        return tool_call, None
+    claim = db.execute(update(AssistantToolCall).where(AssistantToolCall.id == tool_call.id, AssistantToolCall.status.in_(["proposed", "processing"]), AssistantToolCall.expires_at > now, (AssistantToolCall.processing_until.is_(None) | (AssistantToolCall.processing_until <= now))).values(status="processing", processing_until=now + timedelta(minutes=2)))
+    db.commit()
+    if claim.rowcount != 1:
+        return db.get(AssistantToolCall, tool_call.id), None
+    tool_call = db.get(AssistantToolCall, tool_call.id)
+    if tool_call is None:
+        return None, None
+    proposed = ProposedToolCall(provider_id=tool_call.id, tool_key=tool_call.tool_key, arguments=json.loads(tool_call.input_json))
+    try:
+        result = tools.execute(proposed, permissions)
+    except Exception:
+        tool_call.status = "failed"
+        tool_call.error_code = "ai_tool_not_allowed"
+        tool_call.processing_until = None
+        db.commit()
+        raise
+    tool_call.status = "executed"
+    tool_call.output_json = json.dumps(result, separators=(",", ":"))[:16000]
+    tool_call.approved_at = datetime.now(UTC)
+    tool_call.completed_at = datetime.now(UTC)
+    tool_call.processing_until = None
+    if idempotency_key:            db.add(Job(job_type="mutation", status="completed", available_at=datetime.now(UTC), idempotency_key=_approval_key(user_id, "assistant-approve", idempotency_key), payload_json=json.dumps({"resource_id": tool_call.id, "fingerprint": hashlib.sha256(json.dumps(approval_payload, sort_keys=True).encode()).hexdigest()}, separators=(",", ":")), completed_at=datetime.now(UTC)))
+    add_audit_event(db, action="assistant.task_action_approve", result="success", actor_user_id=user_id, target=tool_call.id, metadata={"tool": tool_call.tool_key})
+    db.commit()
+    return tool_call, result
+
+
+def reject_tool_call(db: OrmSession, user_id: str, tool_call_id: str, idempotency_key: str | None = None) -> AssistantToolCall | None:
+    """Reject one owned pending assistant task proposal without executing it."""
+    reject_payload = {"tool_call_id": tool_call_id, "operation": "reject"}
+    if idempotency_key:
+        prior = db.scalar(select(Job).where(Job.idempotency_key == _approval_key(user_id, "assistant-reject", idempotency_key)))
+        if prior and prior.payload_json:
+            stored = json.loads(prior.payload_json)
+            if stored.get("fingerprint") != hashlib.sha256(json.dumps(reject_payload, sort_keys=True).encode()).hexdigest():
+                raise ValueError("Idempotency-Key was already used for a different operation")
+            replay = db.get(AssistantToolCall, stored.get("resource_id"))
+            if replay is not None:
+                return replay
+    statement = select(AssistantToolCall).join(AssistantModelRun).join(Conversation).where(AssistantToolCall.id == tool_call_id, Conversation.user_id == user_id)
+    tool_call = db.scalar(statement)
+    if tool_call is None:
+        return None
+    if tool_call.status == "proposed":
+        tool_call.status = "rejected"
+        tool_call.rejected_at = datetime.now(UTC)
+        if idempotency_key:
+            reject_payload = {"tool_call_id": tool_call_id, "operation": "reject"}
+            db.add(Job(job_type="mutation", status="completed", available_at=datetime.now(UTC), idempotency_key=_approval_key(user_id, "assistant-reject", idempotency_key), payload_json=json.dumps({"resource_id": tool_call.id, "fingerprint": hashlib.sha256(json.dumps(reject_payload, sort_keys=True).encode()).hexdigest()}, separators=(",", ":")), completed_at=datetime.now(UTC)))
+        add_audit_event(db, action="assistant.task_action_reject", result="success", actor_user_id=user_id, target=tool_call.id)
+        db.commit()
+    return tool_call

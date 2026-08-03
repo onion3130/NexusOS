@@ -1,128 +1,109 @@
 # NexusOS development
 
-**Current milestone:** Milestone 5 assistant gateway
-**Status:** SQLite identity/assistant persistence, session authentication, modular responsive frontend shell, authenticated read-only Pi telemetry, and the bounded assistant gateway are implemented; tasks, notes, memory, RAG, and host actions remain deferred.
-**Last updated:** 2026-08-02
+**Current milestone:** Milestone 6 — tasks, reminders, and notifications
+**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, and in-app notifications are implemented. Notes, memory, RAG, and host actions remain deferred.
+**Last updated:** 2026-08-03
 
-A new AI coding agent should read this file, [`README.md`](../README.md), and [`ROADMAP.md`](ROADMAP.md) before changing code. The repository is the project context.
+Read this document with [`README.md`](../README.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`API.md`](API.md), [`DATABASE.md`](DATABASE.md), [`AI_SYSTEM.md`](AI_SYSTEM.md), [`SECURITY.md`](SECURITY.md), and [`ROADMAP.md`](ROADMAP.md) before changing code.
 
-## Project checkpoint — 2026-08-02
+## Implemented Milestone 6 files
 
-The checkpoint reviewed the current implementation without starting a later feature. Phase 0, Milestone 1, Milestone 2 identity/persistence, Milestone 3 shell/design-system, Milestone 4 telemetry, and Milestone 5 assistant-gateway scope are complete.
- The working tree was validated for API behavior, frontend build health, environment safety, Docker boundaries, Raspberry Pi compatibility assumptions, and architecture drift.
+Backend:
 
-### Files created/modified across the foundation
+- `app/modules/tasks/`: schemas, recurrence, service, and reminder processing.
+- `app/api/routes/tasks.py`: authenticated task/category/tag/reminder/notification routes.
+- `app/worker.py`: dedicated reminder worker entrypoint.
+- `app/db/models.py`: task, series, reminder, notification, job, and approval persistence.
+- `migrations/versions/0003_tasks_notifications.py`: reversible schema migration.
+- `tests/test_tasks.py`: CRUD, CSRF, recurrence, worker, and assistant policy coverage.
 
-- API: `apps/api/pyproject.toml`, `app/main.py`, `app/core/config.py`, `app/api/routes/health.py`, and `tests/test_health.py`.
-- Web: `apps/web/package.json`, Next config, TypeScript config, layout, page, styles, and public placeholder.
-- Infrastructure: `docker-compose.yml`, API/web Dockerfiles, Compose/healthcheck/systemd guidance.
-- Project contract: `.gitignore`, `.env.example`, `README.md`, `CHANGELOG.md`, and the `docs/` handoff set.
+Frontend:
 
-### Review result
+- `components/task-workspace.tsx`: task creation, filtering, completion, deletion, and state handling.
+- `components/notification-center.tsx`: persistent notification polling and read actions.
+- `components/assistant-action-confirmation.tsx`: task mutation confirmation UI.
+- `lib/tasks.ts` and `lib/notifications.ts`: authenticated clients.
+- `lib/auth.ts`: CSRF headers for browser mutations.
 
-No confirmed application bug was found in the current scope. The authenticated Next.js shell uses standalone output as required by its Docker runner. The API has no shell execution, AI call, host action, privileged container, or Docker socket access; its SQLite identity database is accessed only after explicit migration. The API/web `linux/arm64` images, Compose configuration, non-root web container, and web runtime smoke test have been verified on the available Raspberry Pi 5. Remaining risks are sustained-load/healthcheck timing behavior and production deployment hardening.
-
-Docker validation has been run on the available Raspberry Pi 5 for the current API/web images and web smoke test. Do not call the stack production-ready until sustained-load checks, backups, TLS, authentication, persistence, and recovery controls exist.
-
-## Implemented files
-
-- `apps/api/app/main.py`: FastAPI application, CORS setup, and startup settings validation.
-- `apps/api/app/core/config.py`: process-environment settings and safe validation errors.
-- `apps/api/app/api/routes/health.py`: liveness and storage/database readiness routes.
-- `apps/api/app/api/routes/system.py` and `app/modules/system/`: authenticated read-only telemetry boundary and adapters.
-- `apps/api/app/api/routes/assistant.py` and `app/modules/assistant/`: authenticated conversations, provider gateway, and read-only tool registry.
-- `apps/api/migrations/versions/0002_assistant.py`: assistant persistence migration.
-- `apps/api/app/api/routes/auth.py`: login, refresh, logout, current-user, and session routes.
-- `apps/api/app/db/` and `apps/api/migrations/`: identity persistence and migration history.
-- `apps/api/tests/`: health, migration, identity, CSRF, and security tests.
-- `apps/web/app/page.tsx`: authenticated workspace composition.
-- `apps/web/components/`: auth screens, dashboard shell, theme provider/toggle, command palette, and reusable status states.
-- `apps/web/lib/auth.ts`: browser session API boundary.
-- `apps/web/lib/system.ts` and `components/system-overview.tsx`: authenticated telemetry client and presentation.
-- `infrastructure/docker/*.Dockerfile`: non-root API/web images.
-- `docker-compose.yml`: current ARM64 development topology.
-
-## Deferred files and modules
-
-There is currently no domain feature persistence beyond identity and assistant conversations, no `app/domain`, `app/workers`, task/note API, memory/RAG subsystem, streaming endpoint, or host-action module. The read-only system telemetry and assistant modules are implemented under `app/modules/system` and `app/modules/assistant`; create additional feature modules only as part of an approved milestone.
-
-## Environment setup
-
-From the repository root:
+## Local setup
 
 ```sh
 cp .env.example .env
 python scripts/validate_env.py --env-file .env
 ```
 
-Validation does not export variables into the calling shell. On macOS/Linux, export them before starting a local API process:
+Use a random local `JWT_SECRET` of at least 32 characters and keep `AI_PROVIDER=disabled` unless a server-side provider is intentionally configured.
 
-```sh
-set -a
-. ./.env
-set +a
-```
-
-On Windows, use `copy .env.example .env` or `Copy-Item .env.example .env`, then set the variables in the current PowerShell session or use Docker Compose. Replace `JWT_SECRET` with a local random value of at least 32 characters. Keep `AI_PROVIDER=disabled`.
-
-The API reads process variables only. Docker Compose supplies `.env`; local processes need the variables exported by the shell or another explicitly chosen environment loader. Do not silently add dotenv loading to application code. Run the explicit owner-bootstrap command before expecting database readiness.
-
-## Backend commands
+## Backend validation
 
 ```sh
 cd apps/api
-python -m venv .venv
-. .venv/bin/activate                 # macOS/Linux
-# Windows PowerShell: .venv\\Scripts\\Activate.ps1
 python -m pip install -e '.[test]'
 python -m pytest
 python -m py_compile $(find app migrations tests -name '*.py' -print)
-# Run explicit migrations/owner bootstrap once, interactively:
-python -m app.cli.bootstrap_owner --username owner
-cd ../..
-python -m uvicorn app.main:app --app-dir apps/api --reload --port 8000
+python -m alembic heads
 ```
 
-## Frontend commands
+The current expected migration head is `0003_tasks_notifications`.
+
+## Frontend validation
 
 ```sh
 cd apps/web
 npm install
 npm run typecheck
 npm run build
+```
+
+## Run locally
+
+Run explicit migrations and owner bootstrap before starting the API:
+
+```sh
+cd apps/api
+python -m alembic upgrade head
+python -m app.cli.bootstrap_owner --username owner
+cd ../..
+python -m uvicorn app.main:app --app-dir apps/api --reload --port 8000
+```
+
+Start the web shell in another terminal:
+
+```sh
+cd apps/web
 npm run dev
 ```
 
-The current web shell calls the identity, system, and assistant APIs through the same-origin Next.js rewrite, presents login when unauthenticated, refreshes access sessions, sends CSRF-protected logout, and polls read-only telemetry every 30 seconds. It supports theme persistence, responsive navigation, command shortcuts, conversation loading, bounded message submission, disabled-provider/error states, and locked future modules. It does not call task, note, memory, or host-action APIs.
+The task workspace is available from the authenticated Tasks navigation item. The notification center polls every 30 seconds. The assistant remains usable in disabled-provider mode for conversations; task mutations require a configured provider and explicit approval.
 
-## Compose commands
+Run the reminder worker separately for local scheduler testing:
 
 ```sh
-cd ../..
+cd apps/api
+python -m app.worker
+```
+
+## Compose and ARM64 validation
+
+```sh
 docker compose --env-file .env config --quiet
+docker compose --env-file .env run --rm nexus-api python -m alembic upgrade head
+docker compose --env-file .env run --rm nexus-api python -m app.cli.bootstrap_owner --username owner
 docker compose --env-file .env up --build -d
 docker compose --env-file .env ps
 docker compose --env-file .env down
 ```
 
-The development ports are loopback-only. Validate ARM64 builds on the Pi or in CI before using an image in deployment.
+The API, web, and worker target `linux/arm64`, use non-root runtime users, share the SSD-backed SQLite volume, and use a private network. The current environment lacks Docker, so Compose and target-Pi execution remain required external checks.
 
-## Change workflow
+## Security rules
 
-For every feature or milestone:
-
-1. Read the relevant architecture, API, database, AI, deployment, and security docs.
-2. Explain the plan and exact files before coding.
-3. Implement only the approved scope.
-4. Add tests for behavior and failure states.
-5. Update documentation in the same change.
-6. Run backend tests/compilation, frontend typecheck/build, Compose validation, and security checks relevant to the change.
-7. Review `git diff`, run `git diff --check`, and inspect the staged file list.
-8. Commit with a concise descriptive message.
-9. Push completed major milestones to `origin/main` without force-pushing.
-
-Never commit `.env`, credentials, tokens, private keys, databases, runtime data, logs, backups, model files, or personal data. If a secret is exposed, rotate it and inspect Git history.
+- Every task/category/tag/reminder/notification query is user-scoped.
+- Cookie mutations require CSRF.
+- Assistant task writes require permissions, typed validation, expiry, explicit approval, and audit events.
+- Task deletion is soft deletion.
+- No provider key, token, arbitrary command, filesystem path, or SQL reaches the browser or task service.
 
 ## Definition of done
 
-A milestone is complete only when its code, tests, documentation, security implications, failure states, deployment behavior, and remaining limitations have been reviewed. Design text alone does not make an API, database, AI provider, or feature implemented.
+A milestone is complete only when its code, tests, documentation, security implications, failure states, deployment behavior, and remaining limitations have been reviewed. Design text alone does not make a feature implemented.

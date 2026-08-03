@@ -1,28 +1,32 @@
 # Environment contract
 
-`.env.example` is the public, placeholder-only contract. `.env` is local-only and ignored by Git. The Milestone 2 API reads these names from the process environment and fails startup with value-free errors when required values are missing or invalid. The web shell has no provider or database credentials. The template `DATABASE_URL` is container-oriented; host-only Uvicorn development should override it with `sqlite:///./data/nexus.db`.
+`.env.example` is the public, placeholder-only contract. `.env` is local-only and ignored by Git. The API and worker read process environment variables only.
 
 | Variable | Required | Example/template | Secret | Purpose |
 |---|---:|---|---:|---|
-| `NEXUS_ENV` | yes | `development` | no | `development`, `test`, or `production` |
-| `TZ` | yes | `UTC` | no | Runtime timezone |
-| `DATA_DIR` | yes | `./data` | no | Persistent data root; Docker maps it to the API data mount |
-| `DB_TYPE` | yes | `sqlite` | no | SQLite persistence policy for Milestone 2 |
-| `DATABASE_URL` | yes | `sqlite:////var/lib/nexus/data/nexus.db` | no | SQLite identity database URL; use a local path for host-only development |
-| `JWT_SECRET` | yes | placeholder only in template | yes | Session/JWT signing material |
-| `SESSION_COOKIE_SECURE` | yes | `false` | no | Must be `true` in production |
-| `CORS_ORIGINS` | optional | `http://localhost:3000,http://127.0.0.1:3000` | no | Comma-separated browser origins |
-| `AI_PROVIDER` | yes | `disabled` | no | Reserved provider policy |
-| `AI_BASE_URL` | optional | empty | no | Reserved approved provider endpoint |
-| `AI_API_KEY` | conditional | placeholder only | yes | Reserved generic AI provider credential |
-| `AI_MODEL` | optional | placeholder only | no | Reserved provider model identifier |
-| `NVIDIA_API_KEY` | conditional | placeholder only | yes | Reserved NVIDIA NIM credential |
-| `OPENAI_API_KEY` | conditional | placeholder only | yes | Reserved OpenAI-compatible credential |
+| `NEXUS_ENV` | yes | `development` | no | Runtime environment |
+| `TZ` | yes | `UTC` | no | Process timezone |
+| `DATA_DIR` | yes | `./data` | no | Persistent data root |
+| `DB_TYPE` | yes | `sqlite` | no | SQLite persistence policy |
+| `DATABASE_URL` | yes | `sqlite:////var/lib/nexus/data/nexus.db` | no | SQLite database URL |
+| `JWT_SECRET` | yes | placeholder only | yes | JWT signing material |
+| `SESSION_COOKIE_SECURE` | yes | `false` | no | Must be true in production |
+| `CORS_ORIGINS` | optional | local origins | no | Credential-safe browser origins |
+| `AI_PROVIDER` | yes | `disabled` | no | Server-side provider policy |
+| `AI_BASE_URL` | optional | empty | no | Approved provider endpoint |
+| `AI_API_KEY` | conditional | placeholder only | yes | Provider credential |
+| `AI_MODEL` | optional | placeholder only | no | Provider model identifier |
+| `AI_TIMEOUT_SECONDS` | optional | `20` | no | Bounded provider timeout |
+| `AI_MAX_CONTEXT_MESSAGES` | optional | `20` | no | Context bound |
+| `AI_MAX_OUTPUT_TOKENS` | optional | `512` | no | Output bound |
+| `AI_MAX_RESPONSE_BYTES` | optional | `1048576` | no | Response memory bound |
+| `TASK_WORKER_INTERVAL_SECONDS` | optional | `30` | no | Worker polling interval, 5–3600 |
+| `TASK_WORKER_BATCH_SIZE` | optional | `50` | no | Reminder batch size, 1–200 |
 
 ## Rules
 
-- Never log environment values or include them in API responses.
-- Process environment variables are the only API runtime source; Docker/CI controls precedence.
-- Production rejects placeholder or short JWT secrets and insecure session cookies.
-- Provider keys are required only when the corresponding provider is enabled in a future AI milestone.
-- Future integration credentials use Docker secrets or the approved encrypted credential boundary, not ordinary settings rows.
+- Never log environment values or return them from the API.
+- Production rejects placeholder/short JWT secrets and insecure cookies.
+- Provider keys are required only when AI is enabled.
+- Worker settings are bounded to preserve Raspberry Pi resource use.
+- Future integration credentials use Docker secrets or an approved encrypted credential boundary, not ordinary settings rows.

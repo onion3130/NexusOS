@@ -36,6 +36,8 @@ export type AssistantResult = {
     tool_key: string;
     status: "proposed" | "validated" | "executed" | "failed";
     error_code: string | null;
+    requires_confirmation: boolean;
+    arguments: Record<string, unknown>;
   }>;
 };
 
@@ -61,6 +63,20 @@ export async function createConversation(title?: string): Promise<ConversationSu
 
 export async function readConversation(id: string): Promise<Conversation> {
   return parse<Conversation>(await authenticatedFetch(`/api/v1/conversations/${encodeURIComponent(id)}`, { cache: "no-store" }));
+}
+
+function idempotencyKey(): string {
+  return typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+}
+
+export async function approveToolCall(id: string): Promise<void> {
+  const response = await authenticatedFetch(`/api/v1/ai/tool-calls/${encodeURIComponent(id)}/approve`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey() } });
+  if (!response.ok) throw new Error(`Approval failed with ${response.status}`);
+}
+
+export async function rejectToolCall(id: string): Promise<void> {
+  const response = await authenticatedFetch(`/api/v1/ai/tool-calls/${encodeURIComponent(id)}/reject`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey() } });
+  if (!response.ok) throw new Error(`Rejection failed with ${response.status}`);
 }
 
 export async function sendMessage(id: string, content: string): Promise<AssistantResult> {

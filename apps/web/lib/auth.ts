@@ -40,7 +40,12 @@ export async function authenticatedFetch(
   input: RequestInfo | URL,
   init: RequestInit = {},
 ): Promise<Response> {
-  const requestInit: RequestInit = { ...init, credentials: "include" };
+  const method = (init.method ?? "GET").toUpperCase();
+  const headers = new Headers(init.headers);
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+    for (const [key, value] of Object.entries(csrfHeader())) headers.set(key, value);
+  }
+  const requestInit: RequestInit = { ...init, headers, credentials: "include" };
   let response = await fetch(input, requestInit);
   if (response.status !== 401) return response;
 
@@ -51,7 +56,11 @@ export async function authenticatedFetch(
   });
   if (!refreshed.ok) return response;
 
-  response = await fetch(input, requestInit);
+  const retryHeaders = new Headers(init.headers);
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+    for (const [key, value] of Object.entries(csrfHeader())) retryHeaders.set(key, value);
+  }
+  response = await fetch(input, { ...requestInit, headers: retryHeaders });
   return response;
 }
 

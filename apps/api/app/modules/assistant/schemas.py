@@ -10,7 +10,7 @@ from pydantic.fields import FieldInfo
 
 MessageRole = Literal["user", "assistant", "tool"]
 ModelRunStatus = Literal["started", "succeeded", "failed", "disabled"]
-ToolCallStatus = Literal["proposed", "validated", "executed", "failed"]
+ToolCallStatus = Literal["proposed", "validated", "processing", "executed", "rejected", "failed"]
 
 
 class ConversationCreate(BaseModel):
@@ -40,12 +40,14 @@ class MessageResponse(BaseModel):
 
 
 class ToolCallResponse(BaseModel):
-    """Sanitized tool execution metadata."""
+    """Sanitized tool execution or confirmation metadata."""
 
     id: str
     tool_key: str
     status: ToolCallStatus
     error_code: str | None = None
+    requires_confirmation: bool = False
+    arguments: dict[str, object] = Field(default_factory=dict)
 
 
 class ModelRunResponse(BaseModel):
@@ -107,6 +109,7 @@ class ToolDefinition(BaseModel):
 
 
 class ProposedToolCall(BaseModel):
+    model_config = {"extra": "forbid"}
     """A provider-proposed call before registry validation."""
 
     provider_id: str

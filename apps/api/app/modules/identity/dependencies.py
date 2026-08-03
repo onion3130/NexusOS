@@ -66,6 +66,14 @@ def require_csrf(request: Request, context: AuthContext) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF validation failed")
 
 
+def require_permission(permission: str, context: AuthContext) -> None:
+    """Require one server-owned permission without exposing resource existence."""
+    from app.modules.identity.service import permission_names
+
+    if permission not in permission_names(context.user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+
+
 def require_user(context: AuthContext = Depends(get_auth_context)) -> User:
     """Return the authenticated user for route handlers."""
     return context.user

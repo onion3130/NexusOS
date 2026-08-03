@@ -27,6 +27,12 @@ OWNER_PERMISSIONS = (
     ("identity.manage_sessions", "Manage the current user's sessions"),
     ("admin.manage_users", "Manage local user accounts"),
     ("system.read_overview", "Read Raspberry Pi system telemetry"),
+    ("tasks.read", "Read owned tasks"),
+    ("tasks.write", "Create and update owned tasks"),
+    ("tasks.delete", "Soft-delete owned tasks"),
+    ("notifications.read", "Read owned notifications"),
+    ("notifications.write", "Update owned notification state"),
+    ("assistant.task_actions", "Propose and approve assistant task actions"),
 )
 
 

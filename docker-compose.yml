@@ -1,7 +1,7 @@
-# NexusOS Milestone 4 development stack
+# NexusOS Milestone 6 development stack
 #
-# API and web are now real identity/persistence/telemetry services. Worker, proxy, and AI remain
-# deferred placeholders until their approved milestones. Configure .env first.
+# API/web/task worker are real services. Proxy and AI remain deferred/optional boundaries.
+# Configure .env first.
 
 services:
   nexus-proxy:
@@ -73,22 +73,24 @@ services:
       retries: 3
 
   nexus-worker:
-    image: alpine:3.20
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
     platform: linux/arm64
-    user: "1000:1000"
-    read_only: true
-    tmpfs:
-      - /tmp
-    command: ["sh", "-c", "trap : TERM INT; sleep infinity & wait"]
+    env_file:
+      - .env
     environment:
-      NEXUS_ENV: ${NEXUS_ENV:-development}
-      TZ: ${TZ:-UTC}
+      DATA_DIR: /var/lib/nexus/data
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////var/lib/nexus/data/nexus.db}
+      TASK_WORKER_INTERVAL_SECONDS: ${TASK_WORKER_INTERVAL_SECONDS:-30}
+      TASK_WORKER_BATCH_SIZE: ${TASK_WORKER_BATCH_SIZE:-50}
     volumes:
-      - "${DATA_DIR:-./data}/backups:/var/lib/nexus/backups"
+      - "${DATA_DIR:-./data}/db:/var/lib/nexus/data"
       - "${DATA_DIR:-./data}/logs:/var/log/nexus"
     networks:
       - nexus-private
     restart: unless-stopped
+    command: ["python", "-m", "app.worker"]
     healthcheck:
       test: ["CMD-SHELL", "kill -0 1"]
       interval: 30s

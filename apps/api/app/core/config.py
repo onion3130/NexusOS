@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     ai_max_context_messages: int = Field(default=20, validation_alias="AI_MAX_CONTEXT_MESSAGES")
     ai_max_output_tokens: int = Field(default=512, validation_alias="AI_MAX_OUTPUT_TOKENS")
     ai_max_response_bytes: int = Field(default=1_048_576, validation_alias="AI_MAX_RESPONSE_BYTES")
+    task_worker_interval_seconds: int = Field(default=30, validation_alias="TASK_WORKER_INTERVAL_SECONDS")
+    task_worker_batch_size: int = Field(default=50, validation_alias="TASK_WORKER_BATCH_SIZE")
     nvidia_api_key: SecretStr | None = Field(default=None, validation_alias="NVIDIA_API_KEY")
     openai_api_key: SecretStr | None = Field(default=None, validation_alias="OPENAI_API_KEY")
 
@@ -140,6 +142,22 @@ class Settings(BaseSettings):
         """Bound provider response memory use on the Raspberry Pi."""
         if not 16_384 <= value <= 8_388_608:
             raise ValueError("must be between 16384 and 8388608 bytes")
+        return value
+
+    @field_validator("task_worker_interval_seconds")
+    @classmethod
+    def validate_worker_interval(cls, value: int) -> int:
+        """Bound worker polling for predictable Pi resource use."""
+        if not 5 <= value <= 3600:
+            raise ValueError("must be between 5 and 3600 seconds")
+        return value
+
+    @field_validator("task_worker_batch_size")
+    @classmethod
+    def validate_worker_batch(cls, value: int) -> int:
+        """Bound one reminder batch."""
+        if not 1 <= value <= 200:
+            raise ValueError("must be between 1 and 200")
         return value
 
     @field_validator("ai_base_url")

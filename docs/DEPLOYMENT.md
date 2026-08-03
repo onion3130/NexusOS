@@ -1,75 +1,80 @@
 # NexusOS deployment
 
-**Current milestone:** Milestone 5 assistant gateway deployment
-**Status:** Local/ARM64 foundation only. Production hardening is not complete.
-**Last updated:** 2026-08-02
+**Current milestone:** Milestone 6 tasks, reminders, and notifications
+**Status:** Local/ARM64 development deployment with a real API, web shell, and reminder worker. Production hardening is not complete.
+**Last updated:** 2026-08-03
 
 ## Target hardware
 
 - Raspberry Pi 5, 8 GB
 - Raspberry Pi OS Lite 64-bit
 - Docker Engine and Compose v2
-- External SSD mounted as the host-side `DATA_DIR`
+- External SSD mounted as host-side `DATA_DIR`
 
 ## Current Compose services
 
 | Service | Current state | Purpose |
 |---|---|---|
-| `nexus-api` | Implemented | FastAPI health/identity/system/assistant service, non-root, port 8000 on loopback |
-| `nexus-web` | Implemented | Next.js authenticated shell, non-root, port 3000 on loopback |
+| `nexus-api` | Implemented | FastAPI identity, telemetry, assistant, task, reminder, and notification API |
+| `nexus-web` | Implemented | Next.js authenticated shell and task workspace |
+| `nexus-worker` | Implemented | Dedicated non-root ARM64 reminder dispatcher |
 | `nexus-proxy` | Placeholder | Future TLS/routing boundary |
-| `nexus-worker` | Placeholder | Future jobs, reminders, backups, and scans |
-| `nexus-ai` | Opt-in placeholder profile | Future local/provider boundary |
+| `nexus-ai` | Opt-in placeholder profile | Optional future local/provider boundary |
 
-All services use the private `nexus-private` bridge network.The web image's same-origin `/api/v1` rewrite targets `nexus-api:8000` inside that network, while local development defaults to `127.0.0.1:8000`. The shell itself adds no new runtime service or native dependency.
- The development Compose file does not include a database container; SQLite is stored in the API-mounted `/var/lib/nexus/data` volume. Run the explicit owner bootstrap/migration command before expecting readiness.
+The worker shares the API's SQLite data mount, publishes no host port, and runs `python -m app.worker`. Run exactly one worker in the current deployment topology.
 
 ## Development deployment
 
-1. Install Docker Compose v2 and verify the SSD mount.
-2. Clone a reviewed commit.
-3. Create host directories for `DATA_DIR/db` and `DATA_DIR/logs`.
-4. Ensure the API container runtime user (UID 10001) can write the mounted API directories.
-5. Copy `.env.example` to `.env` and replace the JWT placeholder.
-6. Build/run the explicit owner bootstrap inside the API container so the configured `/var/lib/nexus/data` path and mounted host database are used:
-
-   ```sh
-   docker compose --env-file .env run --rm nexus-api python -m app.cli.bootstrap_owner --username owner
-   ```
-7. Validate configuration:
+1. Verify the external SSD mount and create `${DATA_DIR}/db` and `${DATA_DIR}/logs`.
+2. Ensure UID 10001 can write the API and worker database/log mounts.
+3. Copy `.env.example` to `.env` and replace the JWT placeholder.
+4. Validate configuration:
 
    ```sh
    python scripts/validate_env.py --env-file .env
+   docker compose --env-file .env config --quiet
    ```
 
-8. Validate and start:
+5. Apply the explicit migration and bootstrap the first owner:
 
    ```sh
-   docker compose --env-file .env config --quiet
+   docker compose --env-file .env run --rm nexus-api python -m alembic upgrade head
+   docker compose --env-file .env run --rm nexus-api python -m app.cli.bootstrap_owner --username owner
+   ```
+
+6. Build and start:
+
+   ```sh
    docker compose --env-file .env up --build -d
    docker compose --env-file .env ps
    ```
 
-9. Check `http://127.0.0.1:8000/api/v1/health/live`, `/api/v1/health/ready`, and `http://127.0.0.1:3000`.
-10. Stop with `docker compose --env-file .env down`.
+7. Check `/api/v1/health/live`, `/api/v1/health/ready`, and `http://127.0.0.1:3000`.
+8. Stop with `docker compose --env-file .env down`.
 
-Do not expose ports 3000 or 8000 directly to the internet. No TLS, remote access, or production reverse proxy exists yet; the current authentication boundary is intended for the local development topology.
+Ports remain loopback-only. Do not expose this development topology directly to the internet.
 
-## Recovery and operations
+## Reminder worker behavior
 
-Compose uses `restart: unless-stopped` and bounded healthchecks. Liveness confirms the API process responds; readiness confirms storage plus the migrated identity database. A passing liveness check does not mean future feature modules are ready.
+The worker polls due reminders in bounded batches. It claims pending or expired processing leases, creates one deduplicated in-app notification per reminder, marks successful reminders delivered, and cancels reminders whose tasks are completed, archived, or deleted. Worker restart is safe because notification deduplication is persisted.
 
-The external SSD is primary runtime storage, not a backup. Read-only telemetry reports the configured data volume but does not perform host actions. Assistant conversations and bounded model-run metadata use the same SQLite volume; provider calls are outbound-only, optional, and disabled by default. Encrypted rotating backups, restore verification, systemd startup, resource limits, storage alerts, and upgrade/rollback automation are future deployment work.
+## Raspberry Pi validation gate
 
-## Production gate
+On the Pi or another Docker-enabled ARM64 environment, validate:
 
-Do not call the system production-ready until the following exist and are tested:
+```sh
+docker compose --env-file .env config --quiet
+docker compose --env-file .env build --no-cache nexus-api nexus-web nexus-worker
+docker compose --env-file .env up -d
 
-- Backup-before-migration policy and tested restore process.
-- Reverse-proxy TLS and approved remote-access boundary.
-- Systemd startup after network and SSD readiness.
-- Encrypted backups with a successful restore drill.
-- ARM64 image validation, resource limits, logging, and monitoring.
-- Safe authorization/audit controls for any host actions.
+docker compose --env-file .env ps
+curl http://127.0.0.1:8000/api/v1/health/live
+curl http://127.0.0.1:8000/api/v1/health/ready
+docker compose --env-file .env down
+```
 
-See [`DEVELOPMENT.md`](DEVELOPMENT.md), [`ENVIRONMENT.md`](ENVIRONMENT.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), and [`ROADMAP.md`](ROADMAP.md).
+Also test a due reminder, worker restart, notification deduplication, and healthcheck timing under representative Pi load. Docker is unavailable in the current environment, so these checks remain external validation rather than a local claim.
+
+## Recovery and production gate
+
+The SSD is primary runtime storage, not a backup. Before production use, add encrypted rotating backups, restore drills, backup-before-migration policy, reverse-proxy TLS, systemd startup, resource limits, logging/monitoring, and rollback automation.

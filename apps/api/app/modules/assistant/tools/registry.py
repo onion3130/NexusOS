@@ -1,47 +1,126 @@
-"""Allowlisted assistant tool registry."""
+"""Allowlisted assistant tools with explicit task mutation confirmation."""
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session as OrmSession
+
+from app.db.models import Task
 from app.modules.assistant.schemas import ProposedToolCall, ToolDefinition, ToolValidationError
 from app.modules.system.service import SystemService
+from app.modules.tasks.schemas import TaskCreate, TaskUpdate
+from app.modules.tasks.service import complete_task, create_task, delete_task, get_task, list_tasks, update_task
 
 
 @dataclass(frozen=True)
 class RegisteredTool:
-    """A fixed tool definition, permission, and read-only executor."""
+    """A fixed tool definition, permission, executor, and risk policy."""
 
     definition: ToolDefinition
     required_permission: str
-    execute: Callable[[], dict[str, Any]]
+    requires_confirmation: bool
+    execute: Callable[[ProposedToolCall], dict[str, Any]]
 
 
 class ToolRegistry:
     """Resolve only server-defined tools; never evaluate model-provided code."""
 
-    def __init__(self, system_service: SystemService) -> None:
-        self._tools = {
+    def __init__(self, system_service: SystemService, db: OrmSession | None = None, user_id: str | None = None) -> None:
+        self._tools: dict[str, RegisteredTool] = {
             "system.get_overview": RegisteredTool(
-                definition=ToolDefinition(
-                    key="system.get_overview",
-                    description="Read the current Raspberry Pi system telemetry.",
-                    parameters={"type": "object", "properties": {}, "additionalProperties": False},
-                ),
-                required_permission="system.read_overview",
-                execute=lambda: system_service.collect().model_dump(mode="json"),
+                definition=ToolDefinition(key="system.get_overview", description="Read the current Raspberry Pi system telemetry.", parameters={"type": "object", "properties": {}, "additionalProperties": False}),
+                required_permission="system.read_overview", requires_confirmation=False,
+                execute=lambda _call: system_service.collect().model_dump(mode="json"),
             )
         }
+        if db is not None and user_id is not None:
+            self._register_task_tools(db, user_id)
+
+    def _register_task_tools(self, db: OrmSession, user_id: str) -> None:
+        """Register task tools against the current authenticated user context."""
+        self._tools.update({
+            "tasks.list": RegisteredTool(
+                definition=ToolDefinition(key="tasks.list", description="List the user's open tasks with optional filters.", parameters={"type": "object", "properties": {"status": {"type": "string"}, "priority": {"type": "string"}, "limit": {"type": "integer", "maximum": 50}}, "additionalProperties": False}),
+                required_permission="tasks.read", requires_confirmation=False,
+                execute=lambda call: {"tasks": [task.id for task in list_tasks(db, user_id, status=call.arguments.get("status") if isinstance(call.arguments.get("status"), str) else None, priority=call.arguments.get("priority") if isinstance(call.arguments.get("priority"), str) else None, limit=int(call.arguments.get("limit", 20)))]},
+            ),
+            "tasks.create": RegisteredTool(
+                definition=ToolDefinition(key="tasks.create", description="Create a task after the user confirms the proposed details.", parameters={"type": "object", "properties": {"title": {"type": "string"}, "description": {"type": "string"}, "due_at": {"type": "string"}, "priority": {"type": "string"}, "category": {"type": "string"}, "tags": {"type": "array"}}, "required": ["title"], "additionalProperties": False}),
+                required_permission="tasks.write", requires_confirmation=True,
+                execute=lambda call: {"task_id": create_task(db, user_id, TaskCreate.model_validate(call.arguments), f"assistant:{call.provider_id}").id},
+            ),
+            "tasks.update": RegisteredTool(
+                definition=ToolDefinition(key="tasks.update", description="Update an owned task after the user confirms the proposed changes.", parameters={"type": "object", "properties": {"task_id": {"type": "string"}, "title": {"type": "string"}, "description": {"type": "string"}, "due_at": {"type": "string"}, "priority": {"type": "string"}, "status": {"type": "string"}, "category": {"type": "string"}, "tags": {"type": "array"}}, "required": ["task_id"], "additionalProperties": False}),
+                required_permission="tasks.write", requires_confirmation=True,
+                execute=lambda call: _update_task(db, user_id, call),
+            ),
+            "tasks.complete": RegisteredTool(
+                definition=ToolDefinition(key="tasks.complete", description="Complete an owned task after the user confirms.", parameters={"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}),
+                required_permission="tasks.write", requires_confirmation=True,
+                execute=lambda call: _complete_task(db, user_id, call),
+            ),
+            "tasks.delete": RegisteredTool(
+                definition=ToolDefinition(key="tasks.delete", description="Soft-delete an owned task after explicit confirmation.", parameters={"type": "object", "properties": {"task_id": {"type": "string"}}, "required": ["task_id"], "additionalProperties": False}),
+                required_permission="tasks.delete", requires_confirmation=True,
+                execute=lambda call: _delete_task(db, user_id, call),
+            ),
+        })
 
     def definitions(self, permissions: set[str]) -> list[ToolDefinition]:
         """Return only definitions the authenticated user may execute."""
         return [tool.definition for tool in self._tools.values() if tool.required_permission in permissions]
 
+    def requires_confirmation(self, tool_key: str) -> bool:
+        """Return whether a valid tool call must wait for explicit approval."""
+        tool = self._tools.get(tool_key)
+        return tool.requires_confirmation if tool else True
+
     def execute(self, proposed: ProposedToolCall, permissions: set[str]) -> dict[str, Any]:
-        """Validate permission/input and execute the fixed no-argument adapter."""
+        """Validate permission/input and execute one fixed adapter."""
         tool = self._tools.get(proposed.tool_key)
-        if tool is None or proposed.arguments or tool.required_permission not in permissions:
+        if tool is None or tool.required_permission not in permissions:
             raise ToolValidationError()
-        return tool.execute()
+        if proposed.tool_key == "system.get_overview" and proposed.arguments:
+            raise ToolValidationError()
+        if not isinstance(proposed.arguments, dict) or len(proposed.arguments) > 32:
+            raise ToolValidationError()
+        try:
+            return tool.execute(proposed)
+        except (ValueError, TypeError, KeyError) as exc:
+            raise ToolValidationError() from exc
+
+
+def _task_id(call: ProposedToolCall) -> str:
+    task_id = call.arguments.get("task_id")
+    if not isinstance(task_id, str) or not task_id:
+        raise ToolValidationError()
+    return task_id
+
+
+def _update_task(db: OrmSession, user_id: str, call: ProposedToolCall) -> dict[str, Any]:
+    task_id = _task_id(call)
+    values = dict(call.arguments)
+    values.pop("task_id", None)
+    task = update_task(db, user_id, task_id, TaskUpdate.model_validate(values), f"assistant:{call.provider_id}")
+    if task is None:
+        raise ToolValidationError()
+    return {"task_id": task.id, "status": task.status}
+
+
+def _complete_task(db: OrmSession, user_id: str, call: ProposedToolCall) -> dict[str, Any]:
+    task, next_task = complete_task(db, user_id, _task_id(call), f"assistant:{call.provider_id}")
+    if task is None:
+        raise ToolValidationError()
+    return {"task_id": task.id, "next_task_id": next_task.id if next_task else None}
+
+
+def _delete_task(db: OrmSession, user_id: str, call: ProposedToolCall) -> dict[str, Any]:
+    task = delete_task(db, user_id, _task_id(call), f"assistant:{call.provider_id}")
+    if task is None:
+        raise ToolValidationError()
+    return {"task_id": task.id, "deleted": True}

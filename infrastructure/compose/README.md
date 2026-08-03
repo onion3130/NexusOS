@@ -1,27 +1,34 @@
-# Compose profile skeleton
+# Compose profile guidance
 
-The root `docker-compose.yml` is the current source of truth for the Milestone 1 development stack. API and web images now build from `infrastructure/docker/`; this directory reserves future profile splits without pretending deferred services exist.
+The root `docker-compose.yml` is the current source of truth for the Milestone 6 development stack.
+
+## Current services
+
+- `nexus-api`: FastAPI API, loopback port 8000.
+- `nexus-web`: Next.js shell, loopback port 3000.
+- `nexus-worker`: dedicated ARM64 reminder worker, no published port, shared SQLite SSD mount.
+- `nexus-proxy`: deferred placeholder.
+- `nexus-ai`: opt-in deferred placeholder.
 
 ## Planned profiles
 
 | Profile | Purpose | Introduced |
 |---|---|---|
-| default | Local ARM64 foundation and core services | Phase 0 / current scaffold |
-| `dev` | Hot-reload API/web development dependencies | Milestone 1 |
+| default | Local ARM64 foundation, API, web, and task worker | Milestone 6 |
+| `dev` | Hot-reload API/web development | Future |
 | `pi` | Raspberry Pi deployment with SSD mounts and recovery policies | Deployment milestone |
-| `postgres` | PostgreSQL compatibility and migration validation | Persistence milestone |
-| `ai` | Explicitly enabled external/local model boundary | Assistant milestone |
+| `postgres` | PostgreSQL compatibility validation | Persistence milestone |
+| `ai` | Explicit external/local model boundary | Assistant milestone |
 
-Each future profile must document image provenance, ARM64 support, healthchecks, resource limits, volumes, networks, secrets, and rollback behavior. Do not add a placeholder Dockerfile solely to make a profile appear runnable.
+Each future profile must document image provenance, ARM64 support, healthchecks, resource limits, volumes, networks, secrets, and rollback behavior.
 
 ## Validation
 
-From the repository root, when Docker is installed:
-
 ```sh
 docker compose --env-file .env config --quiet
-docker compose --env-file .env up -d
+docker compose --env-file .env up --build -d
+docker compose --env-file .env ps
 docker compose --env-file .env down
 ```
 
-The current default stack exposes the implemented web shell on `127.0.0.1:3000` and the API health endpoints on `127.0.0.1:8000`. The proxy, worker, and AI profile remain placeholders and validate topology/process behavior only.
+The current environment may not have Docker installed. Validate on a Docker-enabled host or the target Raspberry Pi before deployment.

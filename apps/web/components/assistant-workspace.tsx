@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { createConversation, listConversations, readConversation, sendMessage, type Conversation, type ConversationSummary } from "../lib/assistant";
+import { approveToolCall, createConversation, listConversations, readConversation, rejectToolCall, sendMessage, type Conversation, type ConversationSummary } from "../lib/assistant";
+import { AssistantActionConfirmation } from "./assistant-action-confirmation";
 
 function ConversationList({ items, selected, onSelect, onCreate }: { items: ConversationSummary[]; selected: string | null; onSelect: (id: string) => void; onCreate: () => void }) {
   return (
@@ -19,6 +20,7 @@ export function AssistantWorkspace() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ id: string; tool: string; arguments: Record<string, unknown> } | null>(null);
 
   const loadConversations = useCallback(async () => {
     setLoading(true);
@@ -49,6 +51,16 @@ export function AssistantWorkspace() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : "Unable to create conversation"); }
   }
 
+  async function approvePending() {
+    if (!pendingAction) return;
+    try { await approveToolCall(pendingAction.id); setPendingAction(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "Approval unavailable"); }
+  }
+
+  async function rejectPending() {
+    if (!pendingAction) return;
+    try { await rejectToolCall(pendingAction.id); setPendingAction(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "Rejection unavailable"); }
+  }
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const content = draft.trim();
@@ -58,6 +70,8 @@ export function AssistantWorkspace() {
     setDraft("");
     try {
       const result = await sendMessage(conversation.id, content);
+      const proposal = result.tool_calls.find((call) => call.requires_confirmation && call.status === "proposed");
+      setPendingAction(proposal ? { id: proposal.id, tool: proposal.tool_key, arguments: proposal.arguments } : null);
       setConversation((current) => current ? { ...current, message_count: current.message_count + 2, updated_at: result.assistant_message.created_at, messages: [...current.messages, result.user_message, result.assistant_message] } : current);
       setConversations((items) => items.map((item) => item.id === conversation.id ? { ...item, message_count: item.message_count + 2, updated_at: result.assistant_message.created_at } : item));
     } catch (reason) {
@@ -73,6 +87,7 @@ export function AssistantWorkspace() {
       <div className="assistant-panel">
         {loading ? <div className="assistant-state" role="status">Loading conversations…</div> : conversation ? <><div aria-live="polite" className="message-list">{conversation.messages.length === 0 ? <div className="assistant-state"><strong>Start a conversation</strong><span>Ask about your NexusOS system or anything you are building.</span></div> : conversation.messages.map((message) => <article className={`assistant-message ${message.role}`} key={message.id}><span className="message-role">{message.role === "user" ? "You" : "Nexus"}</span><p>{message.content}</p></article>)}</div><form className="assistant-composer" onSubmit={submit}><textarea aria-label="Message assistant" maxLength={4000} onChange={(event) => setDraft(event.target.value)} placeholder="Ask NexusOS…" value={draft} /><div><span>{draft.length}/4000 · Provider stays server-side</span><button className="primary-button" disabled={!draft.trim() || sending} type="submit">{sending ? "Thinking…" : "Send"}</button></div></form></> : <div className="assistant-state"><strong>No conversation selected</strong><button className="text-button" onClick={() => void newConversation()} type="button">Create one</button></div>}
         {error && <div className="inline-state error-state" role="alert"><strong>Assistant unavailable.</strong><span>{error === "ai_provider_disabled" ? "Configure an AI provider on the server to send messages." : error}</span><button className="text-button" onClick={() => void loadConversations()} type="button">Retry</button></div>}
+        {pendingAction && <AssistantActionConfirmation arguments={pendingAction.arguments} onApprove={() => void approvePending()} onReject={() => void rejectPending()} tool={pendingAction.tool} />}
       </div>
     </div>
   </section>;

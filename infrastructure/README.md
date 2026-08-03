@@ -1,13 +1,16 @@
 # Infrastructure skeleton
 
-This directory contains deployment design and configuration boundaries for NexusOS. Milestone 1 adds only the API/web Dockerfiles; host-action code, reverse-proxy configuration, and production credentials remain deferred.
+This directory contains deployment design and configuration boundaries for NexusOS.
 
 ## Current state
 
-- The root [`docker-compose.yml`](../docker-compose.yml) is the executable ARM64 development stack; API and web are real Milestone 1 services, while deferred services remain placeholders.
-- `compose/README.md` documents the planned profile split.
-- `systemd/README.md` documents the planned Raspberry Pi startup unit.
-- `healthchecks/README.md` documents the healthcheck contract; executable healthchecks begin with Milestone 1.
+- The root [`docker-compose.yml`](../docker-compose.yml) is the executable ARM64 development stack.
+- API, web, and the Milestone 6 reminder worker are real non-root services.
+- The proxy remains a placeholder for future TLS/routing.
+- The optional AI service remains a placeholder boundary.
+- `compose/README.md` documents future profile splits.
+- `systemd/README.md` documents the deferred Raspberry Pi startup unit.
+- `healthchecks/README.md` documents the liveness/readiness and worker health contracts.
 
 ## Rules
 
@@ -17,3 +20,4 @@ This directory contains deployment design and configuration boundaries for Nexus
 - Secrets are supplied through local environment files or Docker secrets, never committed files.
 - ARM64 images must be verified before a Pi deployment tag.
 - Runtime data belongs on the external SSD and is never part of a build context.
+- The worker must use bounded batches and never expose a host port.

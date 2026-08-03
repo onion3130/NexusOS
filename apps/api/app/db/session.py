@@ -7,6 +7,8 @@ from functools import lru_cache
 from pathlib import Path
 
 from sqlalchemy import Engine, create_engine, event, inspect, text
+
+CURRENT_MIGRATION_HEAD = "0003_tasks_notifications"
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import sessionmaker
@@ -73,7 +75,8 @@ def database_status(settings: Settings) -> tuple[bool, str | None]:
         with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
             tables = inspect(connection).get_table_names()
-        if "alembic_version" not in tables or "users" not in tables:
+            revision = connection.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).scalar() if "alembic_version" in tables else None
+        if "alembic_version" not in tables or "users" not in tables or revision != CURRENT_MIGRATION_HEAD:
             return False, "migration_required"
         return True, None
     except (SQLAlchemyError, OSError):

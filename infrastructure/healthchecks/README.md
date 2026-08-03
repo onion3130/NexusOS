@@ -5,8 +5,8 @@ Healthchecks are part of the deployment contract, not a substitute for applicati
 ## Current endpoints
 
 - `GET /api/v1/health/live`: process liveness; no database dependency.
-- `GET /api/v1/health/ready`: Milestone 1 storage readiness; database and migration checks are deferred.
+- `GET /api/v1/health/ready`: storage plus current Alembic migration-head readiness.
 
-Readiness failures must identify a safe dependency code without exposing credentials, connection strings, stack traces, or internal network details. Compose healthchecks should distinguish liveness from readiness and use bounded timeouts/retries.
+Readiness failures use safe dependency codes and never expose credentials, connection strings, stack traces, or internal network details. The current readiness head is `0003_tasks_notifications`.
 
-Milestone 1 Compose uses the API liveness endpoint for the API container healthcheck. The web, proxy, worker, and opt-in AI placeholders use bounded process/service checks until their real implementations exist.
+The API and web Compose healthchecks use bounded timeouts. The real worker uses a bounded process healthcheck and no published port. Worker correctness is validated through reminder/notification tests and restart smoke tests rather than an HTTP endpoint.

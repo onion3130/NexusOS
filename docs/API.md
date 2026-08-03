@@ -1,183 +1,115 @@
 # NexusOS API
 
-**Current milestone:** Milestone 5 — assistant gateway
-**Status:** Health, identity/session, read-only system, and bounded assistant conversation endpoints below are implemented. Other API sections are planned contracts.
+**Current milestone:** Milestone 6 — tasks, reminders, and notifications
+**Status:** Health, identity/session, read-only system, assistant conversations, task management, reminders, notifications, and assistant approval routes are implemented. Notes, files, host actions, and streaming remain planned.
 **Base path:** `/api/v1`
-**Last updated:** 2026-08-02
+**Last updated:** 2026-08-03
 
-This document is an agent handoff. Do not call or implement a planned endpoint as if it already exists. The FastAPI route files and tests are authoritative for current behavior.
+All browser-authenticated mutations require the readable CSRF cookie value in the `X-CSRF-Token` header. Bearer-authenticated clients may use the same routes without cookie CSRF. Mutation routes accept an `Idempotency-Key`; clients must reuse the key when retrying the same operation. Reusing a key with a different payload returns `422`. All feature resources are user-owned and unauthorized resources return `404`.
 
 ## Implemented API
 
-### `GET /api/v1/health/live`
+### Health, identity, system, and assistant
 
-Public process liveness endpoint. It performs no storage or database check.
+The existing health, identity, system, and conversation routes remain as documented in the previous milestone. The assistant gateway is server-configured, provider credentials remain server-side, and `AI_PROVIDER=disabled` remains safe.
 
-Response `200`:
+### Productivity routes
 
-```json
-{
-  "status": "ok",
-  "service": "nexus-api",
-  "version": "0.1.0"
-}
-```
+#### `GET /api/v1/tasks`
 
-### `GET /api/v1/health/ready`
+Lists current-user tasks. Supports `status_filter`, `priority`, `category`, `tag`, `include_completed`, `limit`, and `cursor`. Results exclude soft-deleted tasks and are bounded to 100 items.
 
-Public development readiness endpoint. It checks the configured `DATA_DIR`:
+#### `POST /api/v1/tasks`
 
-1. The directory exists.
-2. Disk usage can be read.
-3. The API user can create and delete a temporary file.
-4. The configured SQLite database is reachable and includes the identity migration head.
+Creates a task with title, description, UTC due date, priority, category, tags, constrained recurrence, and reminders. Relative reminders require a due date. Titles, tags, reminders, and recurrence inputs are bounded and validated.
 
-It never performs migrations, authenticates a caller, or contacts an AI provider.
+#### `GET /api/v1/tasks/{id}`
 
-Ready response `200`:
+Returns one owned task with category, tags, recurrence, and reminder information.
 
-```json
-{
-  "status": "ready",
-  "checks": {
-    "storage": {
-      "status": "ok",
-      "free_bytes": 123456789
-    },
-    "database": {
-      "status": "ok"
-    }
-  },
-  "checked_at": "2026-08-02T18:30:00+00:00"
-}
-```
+#### `PATCH /api/v1/tasks/{id}`
 
-Missing or unavailable storage returns `503` with `status: "not_ready"` and a safe reason such as `data_dir_missing` or `storage_unavailable`. Paths, credentials, and stack traces are not returned.
+Updates owned task fields. Completing a task must use the explicit completion action. Due-date changes recalculate relative pending reminders.
 
-## Implemented identity API
+#### `POST /api/v1/tasks/{id}/complete`
 
-### `POST /api/v1/auth/login`
+Completes one task occurrence and cancels its pending reminders. For a recurring task, one future occurrence is generated atomically.
 
-Creates an authenticated session from an owner account. Sets access, refresh, and readable CSRF cookies. Invalid credentials return a generic `401`; repeated failures receive bounded `429` backoff.
+#### `DELETE /api/v1/tasks/{id}`
 
-### `POST /api/v1/auth/refresh`
+Soft-deletes an owned task, cancels reminders, and preserves audit/history data.
 
-Requires the refresh cookie and matching CSRF cookie/header. Rotates refresh and CSRF secrets and issues a new access token.
+#### `GET/POST /api/v1/tasks/{id}/reminders`
 
-### `POST /api/v1/auth/logout`
+Lists or adds absolute/relative reminders for an owned task.
 
-Requires the authenticated access cookie and matching CSRF header. Revokes the current session and clears auth cookies.
+#### `PATCH/DELETE /api/v1/reminders/{id}`
 
-### `GET /api/v1/auth/me`
+Updates or cancels an owned reminder.
 
-Returns the authenticated user, roles, and permissions without secret material.
+#### `GET/POST/DELETE /api/v1/task-categories`
 
-### `GET /api/v1/auth/sessions`
+Lists, creates, and removes user-owned categories. Existing task references are cleared by the database foreign-key policy.
 
-Lists the authenticated user's session metadata without token values.
+#### `GET/POST/DELETE /api/v1/tags`
 
-### `DELETE /api/v1/auth/sessions/{id}`
+Lists, creates, and removes user-owned tags.
 
-Requires CSRF for cookie authentication and revokes an owned session.
+### Notifications
 
-## Implemented system API
+#### `GET /api/v1/notifications`
 
-### `GET /api/v1/system/overview`
+Returns persistent in-app notifications and the unread count. Supports `unread_only` and bounded `limit` filters.
 
-Authenticated read-only Raspberry Pi telemetry. Returns CPU, memory, configured storage-volume usage, thermal reading, uptime, network counters, and an explicit unavailable service/container status boundary. The route reads fixed host-provided sources only; it does not execute commands, accept paths, mount Docker, or mutate the host.
+#### `POST /api/v1/notifications/{id}/read`
 
-A `200` response may have `status: "degraded"` when one or more sources are unavailable. Safe source reasons include `cpu_unavailable`, `memory_unavailable`, `storage_unavailable`, `temperature_unavailable`, `uptime_unavailable`, `network_unavailable`, and `service_status_unavailable`.
+Marks one owned notification as read.
 
-## Implemented assistant API
+#### `POST /api/v1/notifications/read-all`
 
-### `POST /api/v1/conversations`
+Marks all current-user notifications as read.
 
-Create an authenticated conversation owned by the current user. The optional title is bounded to 120 characters.
+The dedicated worker converts due reminders into notifications using a deterministic reminder deduplication key. It runs separately from the API in Compose.
 
-### `GET /api/v1/conversations`
+### Assistant task actions
 
-List up to 100 conversations owned by the current user, newest first.
+The assistant registry supports the following task tools:
 
-### `GET /api/v1/conversations/{id}`
+- `tasks.list` — read-only task lookup
+- `tasks.create` — confirmation-gated creation
+- `tasks.update` — confirmation-gated update
+- `tasks.complete` — confirmation-gated completion
+- `tasks.delete` — confirmation-gated soft deletion
 
-Return one owned conversation and up to 200 ordered messages. Unauthorized ownership is represented as `404`.
+#### `POST /api/v1/ai/tool-calls/{id}/approve`
 
-### `POST /api/v1/conversations/{id}/messages`
+Approves and executes one owned, unexpired task mutation proposal after permission and input validation.
 
-Persist a bounded user message, call the configured server-side gateway outside the SQLite transaction, and persist normalized model/tool metadata and the assistant response. With `AI_PROVIDER=disabled`, the user message and a safe disabled model-run record are retained while the endpoint returns `503` with `ai_provider_disabled`.
+#### `POST /api/v1/ai/tool-calls/{id}/reject`
 
-The only registered tool is `system.get_overview`; it requires `system.read_overview`, accepts no arguments, and never executes commands, accesses Docker, or accepts filesystem paths. Provider targets are server-side and protected by literal/runtime SSRF checks with validated-IP connections; response bodies are bounded and provider keys/upstream payloads never reach the browser.
+Rejects one owned task mutation proposal without executing it.
 
-Streaming, jobs, approvals, tasks, notes, files, and host-action endpoints remain planned rather than live.
+Task mutation proposals expire after a bounded period and all approvals, rejections, and task changes are audited.
 
 ## Current API behavior
 
 - Authentication supports HttpOnly access/refresh cookies and explicit bearer access tokens.
-- Cookie-authenticated mutations require `X-CSRF-Token` matching the readable CSRF cookie.
-- Database migrations are explicit; application startup never mutates schema.
-- There is no error-envelope middleware or request-ID middleware yet.
-- The only feature route is the authenticated read-only system overview; domain feature routes remain unimplemented.
-- FastAPI's development OpenAPI endpoints may be available locally; production exposure is not configured.
-
-## Planned API conventions
-
-Future endpoints will remain under `/api/v1` and should use:
-
-- JSON request/response bodies.
-- Opaque UUID resource IDs.
-- ISO 8601 UTC timestamps.
-- Cursor pagination with bounded limits.
-- `401` for missing identity, `403` for insufficient permission, `404` without leaking unauthorized existence, `409` for conflicts, `422` for validation, and `503` for unavailable dependencies.
-- A safe error shape:
-
-```json
-{
-  "error": {
-    "code": "stable_machine_code",
-    "message": "Safe human-readable message.",
-    "request_id": "request-id",
-    "details": {}
-  }
-}
-```
-
-These conventions are design targets until implemented and tested.
+- Cookie-authenticated mutations require CSRF validation.
+- CORS allows `PATCH` in addition to existing methods.
+- Database migrations are explicit; startup never mutates schema.
+- Readiness verifies the current Alembic head `0003_tasks_notifications`.
+- Notifications are persistent in-app records only.
+- No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, or provider URLs from a client.
 
 ## Planned API groups
 
-The following are not live routes. They are the intended order after identity and persistence exist:
-
-### Identity
-
-The identity routes are implemented above. Future identity work must extend the existing authentication boundary rather than create a parallel one.
-
-### Assistant and jobs
-
-The conversation and message routes are implemented above. The following remain planned:
-
 - `GET /api/v1/conversations/{id}/stream`
 - `GET /api/v1/jobs/{id}`
-- `POST /api/v1/ai/tool-calls/{id}/approve`
-
-### Productivity
-
-- `GET/POST /api/v1/tasks`
-- `GET/PATCH/DELETE /api/v1/tasks/{id}`
-- `GET/POST /api/v1/reminders`
-- `GET /api/v1/notifications`
 - `GET/POST /api/v1/notes`
-
-### System and integrations
-
-- `GET /api/v1/system/overview`
-- `GET /api/v1/system/services`
-- `GET /api/v1/system/logs`
-- `POST /api/v1/system/actions/{action}`
 - `GET /api/v1/files/recent`
 - `GET /api/v1/projects`
 - `GET /api/v1/git/repositories`
 - `GET /api/v1/docker/containers`
+- `POST /api/v1/system/actions/{action}`
 
-Every planned write action requires authentication, authorization, typed input, confirmation when risky, idempotency where appropriate, and an audit event. No future route may accept arbitrary shell commands, Docker arguments, absolute filesystem paths, or provider URLs from the client.
-
-See [`DATABASE.md`](DATABASE.md), [`AI_SYSTEM.md`](AI_SYSTEM.md), and [`ROADMAP.md`](ROADMAP.md) before implementing a new route.
+Every future write action requires authentication, authorization, typed input, confirmation when risky, idempotency where appropriate, and an audit event.
