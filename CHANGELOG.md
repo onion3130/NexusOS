@@ -2,75 +2,55 @@
 
 All notable NexusOS changes are recorded here. Version `1.0.0` is a private, local-first Raspberry Pi release; internet-facing production deployment remains outside this release.
 
+## [Unreleased]
+
+No changes yet.
+
 ## [1.0.0] — 2026-08-03
 
-### Release hardening
+NexusOS v1.0.0 establishes a private, local-first personal AI operating system for Raspberry Pi 5 with an authenticated dashboard, productivity modules, bounded assistant tools, read-only telemetry, and safe maintenance workflows.
 
-- Synchronized the complete Milestone 8 implementation, migration, frontend, tests, and documentation for reproducible release builds.
+### Features
+
+- Added owned conversation and message persistence through reversible Alembic migration `0002_assistant`.
+- Added a provider-neutral assistant gateway with disabled, OpenAI-compatible, and NVIDIA NIM-compatible server-side providers.
+- Added the allowlisted read-only `system.get_overview` assistant tool.
+- Added read-only Raspberry Pi telemetry for CPU, memory, storage, temperature, uptime, and network status.
+- Added user-owned tasks with due dates, priorities, statuses, categories, tags, and soft deletion.
+- Added constrained daily, weekly, and monthly recurring task series.
+- Added absolute and due-date-relative reminders with persistent in-app notifications.
+- Added a dedicated ARM64-compatible SQLite worker with leases and notification deduplication.
+- Added user-owned notes, archive/restore, content versioning, SQLite FTS5 search, and source-aware retrieval chunks.
+- Added confirmation-gated assistant task actions for create, update, complete, and delete operations.
+- Added confirmation-gated safe maintenance actions for SQLite backup creation, backup verification, and database integrity checks.
+- Added the responsive dashboard, Assistant, Tasks, Notes, Search, Notifications, and Maintenance workspaces.
+
+### Security and reliability
+
+- Added session authentication with Argon2id password hashing, refresh rotation, revocation, and CSRF protection.
+- Added server-side permissions, ownership checks, bounded payload validation, audit events, and idempotency controls.
+- Added explicit confirmation workflows for assistant mutations and all host actions.
+- Excluded arbitrary shell commands, Docker socket access, reboot, shutdown, package management, systemd control, restore requests, and dynamic filesystem paths.
 - Added bounded host-action lease recovery, three-attempt retry limits, terminal failure auditing, and job-keyed backup retry idempotency.
-- Enforced SQLite source and backup paths beneath the configured data volume and retained trusted backup digests during tamper detection.
+- Enforced SQLite source and backup paths beneath the configured data volume.
+- Added SHA-256 metadata, SQLite integrity checks, tamper detection, and recovery for incomplete backup artifacts.
 - Added worker claim indexes through migration `0006_v1_hardening`.
 - Pinned Docker web dependency installation to the committed lockfile with `npm ci`.
 - Aligned API, web, and health version metadata at `1.0.0`.
 
-Known limitations: this release is intended for private/local-first use. Reverse-proxy TLS, encrypted off-host replication, restore drills, retention cleanup, and systemd orchestration remain follow-up deployment work.
+### Validation
 
-## [Unreleased]
+- Backend test suite: 46 tests passed.
+- Python compilation: passed.
+- Alembic upgrade, downgrade, and re-upgrade lifecycle: passed.
+- Documentation link validation: 59 internal links passed.
+- Frontend TypeScript typecheck: passed.
+- Frontend production build: passed.
+- Static ARM64, non-root, loopback, private-network, and no-Docker-socket checks: passed.
 
-### Milestone 8 — 2026-08-03
+### Known limitations
 
-- Added reversible Alembic migration `0005_host_actions` for expiring host-action proposals and verified backup metadata.
-- Added a server-owned allowlist for SQLite backup creation, backup verification, and database integrity checks.
-- Added explicit CSRF/permission/idempotency-gated proposal, confirm, reject, job, backup, and audit APIs.
-- Added a non-root bounded worker with fixed SQLite adapters; arbitrary shell, Docker, reboot, shutdown, package, systemd, restore, and dynamic filesystem operations remain excluded.
-- Added SHA-256 and SQLite integrity metadata for NexusOS-created backups.
-- Added confirmation-first Maintenance workspace and audit/backup history.
-- Added confirmation-gated assistant `maintenance.request_backup` proposal tool.
-- Added comprehensive proposal, expiry, CSRF, ownership, worker, backup, migration, and audit tests.
+This release is intended for private, local-first use. Docker and Raspberry Pi runtime validation must be completed on a Docker-enabled ARM64 host. Reverse-proxy TLS, encrypted off-host replication, restore drills, retention cleanup, systemd orchestration, production monitoring, semantic retrieval, embeddings, autonomous memory, and external notification channels remain follow-up work.
 
-Known limitations: restore, encrypted/off-host replication, retention cleanup, backup-before-migration automation, and target Raspberry Pi/Docker runtime validation remain future work.
-
-### Milestone 7 — 2026-08-03
-
-- Added reversible Alembic migration `0004_notes_search` for canonical notes, shared tags, FTS5 search projection, and retrieval chunks.
-- Added user-owned note CRUD, archive/restore, soft deletion, content versioning, synchronous lexical indexing, and bounded source-aware retrieval.
-- Added authenticated note/search/chunk routes with CSRF, permissions, ownership, audit, and payload-bound idempotency controls.
-- Added read-only assistant `notes.search` and `notes.read` tools; embeddings, autonomous memory, and model-written notes remain deferred.
-- Added responsive Notes and Search workspaces plus command-palette search integration.
-- Added backend notes, FTS5, migration, ownership, chunk, and retrieval tests.
-
-Known limitations: retrieval is lexical only; embeddings/vector search, autonomous memory extraction, external ingestion, rich Markdown rendering, and target Raspberry Pi runtime validation remain future work.
-
-### Milestone 6 — 2026-08-03
-
-- Added reversible task persistence migration `0003_tasks_notifications`.
-- Added user-owned tasks with due dates, priorities, statuses, categories, tags, and soft deletion.
-- Added constrained daily, weekly, and monthly recurring task series.
-- Added absolute and due-date-relative reminders.
-- Added a dedicated ARM64-compatible SQLite reminder worker with leases and notification deduplication.
-- Added persistent in-app notifications with unread/read APIs and frontend polling.
-- Added authenticated task, category, tag, reminder, and notification routes with permission, ownership, CSRF, validation, and audit controls.
-- Added responsive task workspace with filtering, creation, completion, deletion, recurrence, and reminder controls.
-- Added assistant task lookup plus confirmation-gated create, update, complete, delete, approve, and reject actions.
-- Added backend migration, task, recurrence, worker, CSRF, ownership, and assistant policy tests.
-- Updated all architecture, API, database, AI, security, setup, deployment, environment, and roadmap documentation.
-
-Known limitations: notification delivery is in-app only; the current recurrence UI exposes daily, weekly, and monthly creation controls but only one weekday for weekly rules; standardized error envelopes, backups, and target-Pi runtime validation remain future hardening. Idempotency payload mismatches are rejected with `422`.
-
-### Milestone 5 — 2026-08-02
-
-- Added owned conversation/message persistence through reversible Alembic migration `0002_assistant`.
-- Added authenticated conversation list/create/read and bounded message endpoints.
-- Added a provider-neutral gateway with disabled, OpenAI-compatible, and NVIDIA NIM-compatible server-side selection, strict timeouts, safe normalized errors, and no browser credentials.
-- Added the allowlisted read-only `system.get_overview` tool with sanitized tool-call metadata.
-- Added the responsive assistant workspace, conversation list, bounded composer, disabled-provider state, and retry/error states.
-- Kept streaming, jobs, RAG, memory, host actions, and arbitrary commands out of scope.
-
-### Milestone 4 — 2026-08-02
-
-- Added an authenticated, read-only Raspberry Pi system overview for CPU, memory, storage, temperature, uptime, and network status.
-- Added fixed procfs/sysfs/filesystem adapters with bounded unavailable states and no subprocess, arbitrary path, Docker socket, or host-control access.
-- Added dashboard polling with loading, stale, degraded, retry, and unavailable states.
-
-[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.0.0
+[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.0.0...HEAD

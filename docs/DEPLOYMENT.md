@@ -1,7 +1,7 @@
 # NexusOS deployment
 
 **Current milestone:** v1.0 release hardening complete
-**Status:** v1.0 release candidate with a real API, web shell, reminder/maintenance worker, notes, SQLite FTS5 search, confirmation-gated backups, bounded worker recovery, and audit visibility. Reverse-proxy TLS, off-host encrypted replication, and restore drills remain operational follow-up work.
+**Status:** v1.0.0 private/local-first release with a real API, web shell, reminder/maintenance worker, notes, SQLite FTS5 search, confirmation-gated backups, bounded worker recovery, and audit visibility. Reverse-proxy TLS, off-host encrypted replication, and restore drills remain operational follow-up work.
 **Last updated:** 2026-08-03
 
 ## Target hardware
