@@ -36,6 +36,10 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
   const [activeView, setActiveView] = useState<"overview" | "assistant" | "tasks" | "notes" | "search" | "maintenance">("overview");
   const [noteToOpen, setNoteToOpen] = useState<string | null>(null);
 
+  function viewKey(label: string): typeof activeView {
+    return label.toLowerCase() as typeof activeView;
+  }
+
   useEffect(() => {
     function handleShortcut(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -59,6 +63,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
   return (
     <main className="shell">
       <a className="skip-link" href="#main-content">Skip to main content</a>
+      {mobileNavOpen && <button aria-label="Close navigation" className="mobile-nav-backdrop" onClick={() => setMobileNavOpen(false)} type="button" />}
       <aside aria-label="Workspace navigation" className={`sidebar${mobileNavOpen ? " mobile-open" : ""}`} id="mobile-navigation">
         <div className="brand">
           <div className="brand-mark">N</div>
@@ -66,11 +71,13 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         </div>
         <nav aria-label="Primary navigation" className="nav-list">
           <p className="eyebrow">Workspace</p>
-          {navigation.map((item) => item.available ? (              <button aria-current={(item.label === "Overview" && activeView === "overview") || (item.label === "Assistant" && activeView === "assistant") || (item.label === "Tasks" && activeView === "tasks") || (item.label === "Notes" && activeView === "notes") || (item.label === "Search" && activeView === "search") || (item.label === "Maintenance" && activeView === "maintenance") ? "page" : undefined} className={`nav-item${((item.label === "Overview" && activeView === "overview") || (item.label === "Assistant" && activeView === "assistant") || (item.label === "Tasks" && activeView === "tasks") || (item.label === "Notes" && activeView === "notes") || (item.label === "Search" && activeView === "search") || (item.label === "Maintenance" && activeView === "maintenance")) ? " active" : ""}`} key={item.label} onClick={() => { setActiveView(item.label === "Assistant" ? "assistant" : item.label === "Tasks" ? "tasks" : item.label === "Notes" ? "notes" : item.label === "Search" ? "search" : item.label === "Maintenance" ? "maintenance" : "overview"); setMobileNavOpen(false); }} type="button">
-
-              <span aria-hidden="true" className="nav-icon">{item.icon}</span>{item.label}{((item.label === "Overview" && activeView === "overview") || (item.label === "Assistant" && activeView === "assistant") || (item.label === "Tasks" && activeView === "tasks") || (item.label === "Notes" && activeView === "notes") || (item.label === "Search" && activeView === "search") || (item.label === "Maintenance" && activeView === "maintenance")) && <span className="active-dot" />}
-            </button>
-          ) : (
+          {navigation.map((item) => item.available ? (() => {
+            const itemView = viewKey(item.label);
+            const active = itemView === activeView;
+            return <button aria-current={active ? "page" : undefined} className={`nav-item${active ? " active" : ""}`} key={item.label} onClick={() => { setActiveView(itemView); setMobileNavOpen(false); }} type="button">
+              <span aria-hidden="true" className="nav-icon">{item.icon}</span>{item.label}{active && <span className="active-dot" />}
+            </button>;
+          })() : (
             <button aria-disabled="true" className="nav-item nav-item-locked" key={item.label} type="button">
               <span aria-hidden="true" className="nav-icon">{item.icon}</span>{item.label}<span aria-hidden="true" className="nav-lock">⌁</span>
             </button>
