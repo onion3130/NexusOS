@@ -1,6 +1,6 @@
 # Compose profile skeleton
 
-The root `docker-compose.yml` is the current source of truth for the Phase 0 no-op scaffold. This directory reserves the profile split for implementation milestones without pretending that application images already exist.
+The root `docker-compose.yml` is the current source of truth for the Milestone 1 development stack. API and web images now build from `infrastructure/docker/`; this directory reserves future profile splits without pretending deferred services exist.
 
 ## Planned profiles
 

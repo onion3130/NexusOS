@@ -1,9 +1,7 @@
-# NexusOS Milestone 1 foundation scaffold
+# NexusOS Milestone 1 development stack
 #
-# These services are intentionally no-op ARM64 placeholders. They prove the
-# network, persistence, naming, and restart topology without generating the
-# application prematurely. Replace each placeholder image/command with the
-# real service in its approved implementation milestone.
+# API and web are now real foundation services. Worker, proxy, and AI remain
+# deferred placeholders until their approved milestones. Configure .env first.
 
 services:
   nexus-proxy:
@@ -26,48 +24,50 @@ services:
       retries: 3
 
   nexus-api:
-    image: alpine:3.20
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
     platform: linux/arm64
-    user: "1000:1000"
-    read_only: true
-    tmpfs:
-      - /tmp
-    command: ["sh", "-c", "trap : TERM INT; sleep infinity & wait"]
+    env_file:
+      - .env
     environment:
-      NEXUS_ENV: ${NEXUS_ENV:-development}
-      TZ: ${TZ:-UTC}
-      DB_TYPE: ${DB_TYPE:-sqlite}
+      DATA_DIR: /var/lib/nexus/data
       DATABASE_URL: ${DATABASE_URL:-sqlite:////var/lib/nexus/data/nexus.db}
-      AI_PROVIDER: ${AI_PROVIDER:-disabled}
     volumes:
       - "${DATA_DIR:-./data}/db:/var/lib/nexus/data"
       - "${DATA_DIR:-./data}/logs:/var/log/nexus"
     networks:
       - nexus-private
+    ports:
+      - "127.0.0.1:8000:8000"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "kill -0 1"]
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/api/v1/health/live', timeout=3)"]
       interval: 30s
       timeout: 5s
+      start_period: 10s
       retries: 3
 
   nexus-web:
-    image: alpine:3.20
+    build:
+      context: .
+      dockerfile: infrastructure/docker/web.Dockerfile
     platform: linux/arm64
-    user: "1000:1000"
-    read_only: true
-    tmpfs:
-      - /tmp
-    command: ["sh", "-c", "trap : TERM INT; sleep infinity & wait"]
     environment:
-      TZ: ${TZ:-UTC}
+      NODE_ENV: development
     networks:
       - nexus-private
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      nexus-api:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "kill -0 1"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r => { if (!r.ok) process.exit(1) }).catch(() => process.exit(1))"]
       interval: 30s
       timeout: 5s
+      start_period: 15s
       retries: 3
 
   nexus-worker:
@@ -123,5 +123,4 @@ networks:
     name: nexus-private
     driver: bridge
 
-# The bind-mounted DATA_DIR is intentionally external to the image. On the
-# Pi, set DATA_DIR to a directory on the SSD and back it up independently.
+# DATA_DIR is the host-side runtime root. On the Pi, point it to the SSD.

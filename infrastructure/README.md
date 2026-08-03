@@ -1,10 +1,10 @@
 # Infrastructure skeleton
 
-This directory contains deployment design and configuration boundaries for NexusOS. It intentionally contains no application images, Dockerfiles, host-action code, or production credentials until the owner approves the Phase 1 architecture.
+This directory contains deployment design and configuration boundaries for NexusOS. Milestone 1 adds only the API/web Dockerfiles; host-action code, reverse-proxy configuration, and production credentials remain deferred.
 
 ## Current state
 
-- The root [`docker-compose.yml`](../docker-compose.yml) is the executable ARM64 no-op foundation scaffold.
+- The root [`docker-compose.yml`](../docker-compose.yml) is the executable ARM64 development stack; API and web are real Milestone 1 services, while deferred services remain placeholders.
 - `compose/README.md` documents the planned profile split.
 - `systemd/README.md` documents the planned Raspberry Pi startup unit.
 - `healthchecks/README.md` documents the healthcheck contract; executable healthchecks begin with Milestone 1.

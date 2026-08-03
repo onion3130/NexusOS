@@ -1,8 +1,8 @@
 # NexusOS Architecture
 
-**Status:** Phase 1 architecture complete — awaiting owner approval before implementation
-**Last updated:** 2026-08-02  
-**Scope:** Architecture, boundaries, contracts, operations, and milestones only. No application code is specified for generation in this document.
+**Status:** Phase 1 architecture complete; Milestone 1 foundation implemented; Milestone 2 awaits owner approval
+**Last updated:** 2026-08-02
+**Scope:** Architecture, boundaries, contracts, operations, and milestones. Only the approved Milestone 1 foundation has been implemented.
 
 ## 1. Mission and architectural goals
 
@@ -62,6 +62,15 @@ Browser / mobile browser
 
                     external integrations are outbound-only and opt-in
 ```
+
+### Milestone 1 implemented boundaries
+
+- `apps/api` contains a minimal FastAPI process with environment-only startup validation.
+- `/api/v1/health/live` reports process liveness without dependency checks.
+- `/api/v1/health/ready` reports the configured storage boundary; database checks are deferred.
+- `apps/web` contains a static Next.js shell with no authentication or feature data access.
+- API and web Dockerfiles use ARM64-compatible bases and non-root runtime users.
+- Compose binds development ports to loopback only and keeps deferred services private.
 
 ### Runtime boundaries
 
@@ -131,6 +140,7 @@ nexusos/
 │   │   ├── compose.dev.yml
 │   │   └── compose.pi.yml
 │   ├── caddy/                       # or another approved reverse proxy
+│   ├── docker/                      # Milestone 1 API/web images
 │   ├── systemd/
 │   └── healthchecks/
 ├── scripts/
@@ -616,9 +626,11 @@ Each milestone is intentionally small and should produce something usable. Durat
 
 ### Milestone 1 — ARM64 foundation (3–5 hours)
 
+**Status:** Implemented.
+
 **Deliverable:** minimal Compose development stack, configuration contract, API liveness/readiness endpoints, web placeholder shell, healthcheck scripts, and local setup documentation.
 
-**Success criteria:** one command starts the stack; API and web health checks pass; no secrets are required for local boot; images build for ARM64.
+**Success criteria:** one command starts the stack; API and web health checks pass; no secrets are required for local boot beyond the local signing secret; images build for ARM64.
 
 ### Milestone 2 — Identity and persistence (4–6 hours)
 
@@ -682,7 +694,8 @@ Each milestone is intentionally small and should produce something usable. Durat
 
 ## 16. Documentation status
 
-Present in this Phase 0/Phase 1 milestone:
+Present in this Phase 0/Phase 1 and Milestone 1 foundation:
+
 
 - `README.md`
 - `CHANGELOG.md`
@@ -701,13 +714,13 @@ Present in this Phase 0/Phase 1 milestone:
 - `docs/adr/0002-sqlite-first.md`
 - `docs/adr/0003-local-ai-gateway.md`
 
-Infrastructure skeleton documentation is present under `infrastructure/`. Application source, Dockerfiles, package manifests, migrations, and executable health endpoints remain intentionally deferred until owner approval.
+Infrastructure skeleton documentation and Milestone 1 Dockerfiles are present under `infrastructure/`. Database migrations, authentication, and feature modules remain intentionally deferred until the next approved milestone.
 
 Documentation must be updated in the same commit as the feature or milestone it describes.
 
 ## 17. Open decisions requiring owner approval
 
-These decisions should be answered before or during Milestone 1:
+These decisions should be answered before or during the next milestone that depends on them:
 
 1. **Network exposure:** LAN-only initially, or remote access through a VPN/tunnel?
 2. **Cooling:** is the Raspberry Pi actively cooled for sustained workloads?
@@ -730,4 +743,4 @@ These decisions should be answered before or during Milestone 1:
 - Make read-only features precede system write actions.
 - Treat the external SSD as primary runtime storage, never as the only backup.
 - Keep the Pi deployment LAN-private by default.
-- Do not generate Milestone 1 code until this architecture is approved by the owner.
+- Do not generate the next milestone's feature code until its implementation plan is approved by the owner.

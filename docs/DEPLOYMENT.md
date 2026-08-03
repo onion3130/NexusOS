@@ -1,6 +1,6 @@
 # NexusOS deployment guide
 
-**Status:** Design only — deployment automation begins after application milestones.
+**Status:** Milestone 1 development deployment implemented; production hardening remains deferred.
 
 ## Target topology
 
@@ -8,27 +8,29 @@
 - Docker Engine and Compose v2
 - External SSD mounted for `DATA_DIR`
 - Private Compose network for web, API, worker, database, and adapters
-- Reverse proxy as the only normally published service
+- API and web images built from reviewed ARM64-compatible Dockerfiles
+- Reverse proxy remains a deferred placeholder; development binds API/web to loopback ports only
 - Optional external AI provider; no NVIDIA NIM container is assumed on the Pi
 
-## Deployment sequence
+## Milestone 1 deployment
 
 1. Prepare and verify the SSD mount and filesystem permissions.
-2. Clone a reviewed tag into a dedicated service directory.
-3. Copy `.env.example` to `.env` and supply secrets through a protected local mechanism.
-4. Run the environment validator and `docker compose config`.
-5. Pull/build only reviewed ARM64 images.
-6. Start with the approved Compose profile and inspect readiness.
-7. Run a smoke check and record the deployment version.
-8. Verify backup age and restore status.
+2. Clone a reviewed commit into a dedicated service directory.
+3. Create the SSD-backed data directories and grant them to the API runtime UID 10001.
+4. Copy `.env.example` to `.env` and supply a non-placeholder JWT secret.
+5. Run `python scripts/validate_env.py --env-file .env`.
+6. Run `docker compose --env-file .env config --quiet`.
+7. Build/start the foundation: `docker compose --env-file .env up --build -d`.
+8. Verify `http://127.0.0.1:8000/api/v1/health/live`, readiness, and the web shell on port 3000.
+9. Record the deployed commit and inspect `docker compose ps` health states.
 
 ## Recovery
 
 - Compose uses healthchecks and `restart: unless-stopped` for long-running services.
 - Readiness failures must not be hidden by a passing process-level liveness check.
-- Rollback uses the previous reviewed image/tag and documented database migration procedure.
+- Rollback uses the previous reviewed commit/image and documented database migration procedure.
 - Reboot and shutdown actions are disabled until owner approval, confirmation UX, audit logging, and recovery procedures exist.
 
 ## Current limitation
 
-The repository currently contains only no-op placeholders and architecture documents. There are no deployable web/API images, reverse-proxy configuration, systemd unit, migrations, or backup scripts yet. Do not use the current scaffold as a production service.
+Milestone 1 does not provide authentication, database persistence, reverse-proxy TLS, systemd startup, migrations, backups, AI calls, or feature modules. Do not expose the development ports publicly. Production deployment begins only after those controls are implemented and reviewed.

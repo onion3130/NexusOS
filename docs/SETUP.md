@@ -1,14 +1,14 @@
 # NexusOS development setup
 
-**Status:** Phase 0 foundation — no application runtime yet.
+**Status:** Milestone 1 implemented — API health foundation and web shell are available; authentication, persistence, and feature modules remain deferred.
 
 ## Prerequisites
 
 - Git
-- Docker Engine and Docker Compose v2 for the scaffold
-- Python 3.11+ for `scripts/validate_env.py` (Python 3.12+ is planned for the FastAPI runtime)
-- Node.js/npm are not required until the Next.js milestone
-- Raspberry Pi deployments additionally require Raspberry Pi OS Lite 64-bit, Docker, and an external SSD
+- Python 3.11+ locally; the API image uses Python 3.12+
+- Node.js 20+ and npm for local web development
+- Docker Engine and Docker Compose v2 for the full ARM64 stack
+- Raspberry Pi deployments additionally require Raspberry Pi OS Lite 64-bit and an external SSD
 
 ## Local configuration
 
@@ -27,31 +27,66 @@ python scripts/validate_env.py --env-file .env       # Windows
 python3 scripts/validate_env.py --env-file .env     # macOS/Linux
 ```
 
-For production-like configuration, set `NEXUS_ENV=production`, use a non-placeholder secret, and set `SESSION_COOKIE_SECURE=true`. Provider credentials are required only when their provider is enabled.
+The API itself reads process environment variables only. Docker Compose supplies `.env`; local API runs should export the variables or use a shell environment loader. The API fails startup with a value-free configuration error when required variables are missing or invalid.
 
-## Current scaffold
+## Run the API locally
 
-When Docker is installed:
+Install the API package and test extras from `apps/api`:
+
+```sh
+cd apps/api
+python -m venv .venv
+. .venv/bin/activate                 # macOS/Linux
+# Windows PowerShell: .venv\\Scripts\\Activate.ps1
+python -m pip install -e '.[test]'
+cd ../..
+python -m uvicorn app.main:app --app-dir apps/api --reload --port 8000
+```
+
+In another shell, check:
+
+```sh
+curl http://127.0.0.1:8000/api/v1/health/live
+curl http://127.0.0.1:8000/api/v1/health/ready
+```
+
+The readiness endpoint checks the configured `DATA_DIR` boundary, including a temporary write/delete probe as the API user. On Linux/Pi bind mounts, ensure the host data directories are writable by the API container UID 10001. Database checks are deferred to Milestone 2.
+
+## Run the web shell locally
+
+```sh
+cd apps/web
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`. The shell is intentionally static in Milestone 1 and does not authenticate or call feature APIs.
+
+## Run the full development stack
+
+From the repository root, after `.env` is configured:
 
 ```sh
 docker compose --env-file .env config --quiet
-docker compose --env-file .env up -d
+docker compose --env-file .env up --build -d
 docker compose --env-file .env ps
+```
+
+Open `http://localhost:3000` for the shell and `http://localhost:8000/api/v1/health/live` for the API liveness check. Stop the stack with:
+
+```sh
 docker compose --env-file .env down
 ```
 
-The current services are no-op ARM64 placeholders. They validate private networking, restart policies, healthchecks, non-root execution, read-only filesystems, and external data mounts. They do not provide a web interface or API endpoint.
+The API and web services build from ARM64-compatible Dockerfiles and run as non-root users. The proxy, worker, and AI services remain deferred placeholders.
 
 ## Validation before a change is committed
 
 ```sh
-git diff --check
-python -m py_compile scripts/validate_env.py
-git status --short
+python -m py_compile apps/api/app/main.py apps/api/app/core/config.py apps/api/app/api/routes/health.py
+cd apps/api && pytest
+cd ../web && npm run typecheck && npm run build
+cd ../.. && git diff --check
 ```
 
-Once application packages exist, CI must add frontend typechecking/builds, backend tests, API contract tests, migration tests, Compose validation, ARM64 image builds, and secret scanning.
-
-## Public-repository rules
-
-Never commit `.env`, databases, runtime data, logs, backups, model files, credentials, private keys, or personal data. Use a private local `.env`, a deployment secret manager, or Docker secrets. Review `docs/SECURITY.md` before adding an integration.
+Docker-enabled environments should also run `docker compose --env-file .env config --quiet` and an ARM64 image build. Never commit `.env`, databases, runtime data, logs, backups, model files, credentials, private keys, or personal data.

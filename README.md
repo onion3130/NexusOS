@@ -4,7 +4,7 @@ NexusOS is a local-first personal AI operating system for a Raspberry Pi 5. It i
 
 ## Current status
 
-**Phase 1 architecture complete — implementation awaits owner approval; no application code generated yet.**
+**Milestone 1 implemented — API/web foundation complete; authentication, persistence, and feature modules are deferred.**
 
 The system is being built incrementally. Each milestone should produce a usable, tested slice of the product and should take roughly 2–6 hours.
 
@@ -49,46 +49,70 @@ It covers:
 
 The repository is safe to publish publicly: `.env` files, databases, runtime data, logs, build output, and editor settings are ignored. `.env.example` contains placeholders only and is the committed configuration contract.
 
-Set up local configuration without putting secrets in Git:
+From the repository root:
 
 ```sh
 cp .env.example .env
-# Generate a secret locally, for example:
-python3 -c "import secrets; print(secrets.token_urlsafe(48))"
-# Put the generated value in JWT_SECRET inside .env.
-# Windows
-python scripts/validate_env.py --env-file .env
-# macOS/Linux
-python3 scripts/validate_env.py --env-file .env
-docker compose --env-file .env config
-docker compose --env-file .env up -d
+# Generate a secret locally, then put it in JWT_SECRET inside .env.
+python scripts/validate_env.py --env-file .env       # Windows
+python3 scripts/validate_env.py --env-file .env     # macOS/Linux
 ```
 
-`NEXUS_ENV=production` requires a non-placeholder `JWT_SECRET` of at least 32 characters and `SESSION_COOKIE_SECURE=true`. Select an AI provider only after setting its corresponding local credential (`NVIDIA_API_KEY`, `OPENAI_API_KEY`, or `AI_API_KEY`). The validator reports missing or unsafe variable names without printing secret values.
+`NEXUS_ENV=production` requires a non-placeholder `JWT_SECRET` of at least 32 characters and `SESSION_COOKIE_SECURE=true`. Keep `AI_PROVIDER=disabled` until a provider credential is intentionally configured. The API reports missing or unsafe settings without printing secret values.
 
-The current repository has no FastAPI or Next.js runtime yet. `scripts/validate_env.py` is therefore the dependency-free executable configuration contract for this scaffold; the first application milestone must reuse the same environment names and fail startup with equivalent safe errors.
+## Milestone 1 development
 
-The repository foundation is:
+Install and run the API locally:
+
+```sh
+cd apps/api
+python -m venv .venv
+. .venv/bin/activate                 # macOS/Linux
+# Windows PowerShell: .venv\\Scripts\\Activate.ps1
+python -m pip install -e '.[test]'
+cd ../..
+python -m uvicorn app.main:app --app-dir apps/api --reload --port 8000
+```
+
+In another shell, run the web shell:
+
+```sh
+cd apps/web
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`. API checks are available at `http://127.0.0.1:8000/api/v1/health/live` and `/api/v1/health/ready`.
+
+Or run the ARM64-aware Docker development stack:
+
+```sh
+docker compose --env-file .env config --quiet
+docker compose --env-file .env up --build -d
+```
+
+The web shell is on `http://127.0.0.1:3000`; the API is on `http://127.0.0.1:8000`. Both ports bind to loopback only. Stop with `docker compose --env-file .env down`.
+
+Milestone 1 does not implement authentication, database persistence, AI calls, tool calling, tasks, notes, calendar, files, finance, media, plugins, reverse-proxy TLS, backups, or Raspberry Pi write actions.
+
+## Repository foundation
 
 ```text
 nexusos/
-├── .env                 # local only; never commit
-├── .env.example         # safe template; commit this
-├── .gitignore           # protects secrets and runtime data
-├── docker-compose.yml   # ARM64 placeholder topology
-├── scripts/
-│   └── validate_env.py  # safe configuration validation
-├── README.md
-├── docs/
+├── .env / .env.example       # local secrets / public template
+├── apps/
+│   ├── api/                  # FastAPI health foundation and tests
+│   └── web/                  # Next.js static shell
+├── infrastructure/
+│   └── docker/               # non-root API/web images
+├── scripts/validate_env.py   # safe configuration validation
+├── docker-compose.yml        # ARM64 development stack
+├── docs/                     # architecture, contracts, setup, security
 └── ...
 ```
 
-`docker compose --env-file .env up -d` currently starts the ARM64 no-op foundation containers (`nexus-proxy`, `nexus-api`, `nexus-web`, and `nexus-worker`). They validate the private network, restart policy, healthcheck, and external data mounts. They are placeholders only: no web UI or API endpoint is available until the application implementation milestone replaces them with real images. The optional `nexus-ai` placeholder requires `docker compose --env-file .env --profile ai-scaffold up`. Stop the scaffold with `docker compose --env-file .env down`.
-
-There is no automated test suite, application build, or real web/API startup available yet; those will be added with the first implementation milestone.
-
-On the Raspberry Pi, set `DATA_DIR` in `.env` to a directory on the external SSD before starting the stack. Do not commit `.env`, `data/`, database files, logs, backups, or model files.
+Never commit `.env`, databases, runtime data, logs, backups, model files, credentials, private keys, or personal data.
 
 ## Approval boundary
 
-Phase 0 and Phase 1 are complete as documentation and infrastructure design. No feature code has been generated. After owner approval, the next requested milestone will replace the placeholders with the minimal ARM64 development and deployment foundation: repository conventions, configuration contracts, Docker Compose scaffolding, health endpoints, and validation scripts. It will not implement the dashboard or AI assistant yet.
+Milestone 1 is complete within its approved scope. The next implementation milestone requires a new plan and approval before coding authentication or persistence.
