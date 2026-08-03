@@ -10,7 +10,7 @@ The system is being built incrementally. Each milestone should produce a usable,
 
 ## Architecture
 
-The complete architecture and milestone plan are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The implementation-independent API contracts are in [`docs/API.md`](docs/API.md). Setup, environment, deployment, and security guidance are in [`docs/SETUP.md`](docs/SETUP.md), [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md), [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), and [`docs/SECURITY.md`](docs/SECURITY.md).
+The complete architecture and milestone plan are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The current API contract is in [`docs/API.md`](docs/API.md). Persistence and AI designs are in [`docs/DATABASE.md`](docs/DATABASE.md) and [`docs/AI_SYSTEM.md`](docs/AI_SYSTEM.md). Setup, development, environment, deployment, and security guidance are in [`docs/SETUP.md`](docs/SETUP.md), [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md), [`docs/ENVIRONMENT.md`](docs/ENVIRONMENT.md), [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), and [`docs/SECURITY.md`](docs/SECURITY.md). These documents are the project handoff for future coding agents; previous conversations are not required.
 
 It covers:
 

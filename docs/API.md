@@ -1,10 +1,11 @@
 # NexusOS API Contract
 
-**Status:** Proposed — implementation begins after architecture approval  
-**Version:** `/api/v1`  
-**Transport:** JSON over HTTPS; authenticated assistant streaming uses Server-Sent Events (SSE)
+**Status:** Milestone 1 health endpoints implemented; all other resource contracts are planned
+**Last updated:** 2026-08-02
+**Version:** `/api/v1`
+**Transport:** JSON over HTTPS; future authenticated assistant streaming uses Server-Sent Events (SSE)
 
-This document defines the contract that implementations must follow. FastAPI OpenAPI output is the executable source of truth once Milestone 1 begins; changes to this document and the implementation must land together.
+This document is the API handoff for future coding agents. Implemented behavior is listed separately from planned contracts. FastAPI route definitions and tests are the executable source of truth for implemented behavior; changes to this document and the implementation must land together.
 
 ## 1. Common rules
 
@@ -117,7 +118,35 @@ Rules:
 - Filters are endpoint-specific and documented in OpenAPI.
 - Search endpoints return a `source` or `resource_type` field when results span domains.
 
-## 4. Health and authentication
+## 4. Implemented Milestone 1 health API
+
+Milestone 1 currently exposes only the following routes. They are public because the development stack binds them to loopback; production exposure and authentication remain deferred.
+
+### `GET /api/v1/health/live`
+
+**Implemented.** Returns `200` without requiring the storage directory or database:
+
+```json
+{ "status": "ok", "service": "nexus-api", "version": "0.1.0" }
+```
+
+### `GET /api/v1/health/ready`
+
+**Implemented.** Uses the configured `DATA_DIR` and returns `200` only when the directory exists, disk usage can be read, and the API process can create/delete a temporary file. Database checks are intentionally not performed until Milestone 2.
+
+Ready response:
+
+```json
+{
+  "status": "ready",
+  "checks": { "storage": { "status": "ok", "free_bytes": 123456789 } },
+  "checked_at": "2026-08-02T18:30:00+00:00"
+}
+```
+
+Not-ready responses use HTTP `503` and a safe reason such as `data_dir_missing` or `storage_unavailable`. The endpoint does not return filesystem paths or secrets.
+
+## 5. Planned health and authentication
 
 ### `GET /health/live`
 

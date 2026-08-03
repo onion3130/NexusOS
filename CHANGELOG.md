@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Documentation
+
+- Added self-contained database, AI system, and development handoff guides for future coding agents.
+- Updated README, architecture, API, deployment, and changelog status to distinguish implemented Milestone 1 behavior from deferred designs.
+
 ### Planned
 
 - Add identity, persistence, and secure session boundaries as Milestone 2.

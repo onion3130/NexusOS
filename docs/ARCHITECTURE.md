@@ -100,6 +100,9 @@ nexusos/
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── API.md
+│   ├── DATABASE.md
+│   ├── AI_SYSTEM.md
+│   ├── DEVELOPMENT.md
 │   ├── SETUP.md
 │   ├── DEPLOYMENT.md
 │   ├── SECURITY.md
@@ -706,6 +709,9 @@ Present in this Phase 0/Phase 1 and Milestone 1 foundation:
 - `docker-compose.yml`
 - `docs/ARCHITECTURE.md`
 - `docs/API.md`
+- `docs/DATABASE.md`
+- `docs/AI_SYSTEM.md`
+- `docs/DEVELOPMENT.md`
 - `docs/SETUP.md`
 - `docs/DEPLOYMENT.md`
 - `docs/SECURITY.md`
@@ -714,7 +720,7 @@ Present in this Phase 0/Phase 1 and Milestone 1 foundation:
 - `docs/adr/0002-sqlite-first.md`
 - `docs/adr/0003-local-ai-gateway.md`
 
-Infrastructure skeleton documentation and Milestone 1 Dockerfiles are present under `infrastructure/`. Database migrations, authentication, and feature modules remain intentionally deferred until the next approved milestone.
+Infrastructure skeleton documentation and Milestone 1 Dockerfiles are present under `infrastructure/`. Database migrations, authentication, and feature modules remain intentionally deferred until the next approved milestone. The database, AI system, and development handoff documents now live under `docs/` and must be updated with future milestones.
 
 Documentation must be updated in the same commit as the feature or milestone it describes.
 

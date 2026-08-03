@@ -1,6 +1,7 @@
 # NexusOS deployment guide
 
 **Status:** Milestone 1 development deployment implemented; production hardening remains deferred.
+**Last updated:** 2026-08-02
 
 ## Target topology
 
@@ -30,6 +31,10 @@
 - Readiness failures must not be hidden by a passing process-level liveness check.
 - Rollback uses the previous reviewed commit/image and documented database migration procedure.
 - Reboot and shutdown actions are disabled until owner approval, confirmation UX, audit logging, and recovery procedures exist.
+
+## Documentation handoff
+
+For development and configuration contracts, see [`DEVELOPMENT.md`](DEVELOPMENT.md), [`ENVIRONMENT.md`](ENVIRONMENT.md), and [`DATABASE.md`](DATABASE.md). AI provider deployment boundaries are documented in [`AI_SYSTEM.md`](AI_SYSTEM.md). The architecture and API documents distinguish planned topology from the services that actually run today.
 
 ## Current limitation
 
