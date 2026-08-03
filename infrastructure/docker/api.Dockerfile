@@ -9,7 +9,9 @@ RUN groupadd --system --gid 10001 nexus \
 
 WORKDIR /app
 COPY apps/api/pyproject.toml ./
+COPY apps/api/alembic.ini ./alembic.ini
 COPY apps/api/app ./app
+COPY apps/api/migrations ./migrations
 
 RUN pip install . \
     && mkdir -p /var/lib/nexus/data \

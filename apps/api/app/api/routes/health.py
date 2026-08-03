@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 
 from app import __version__
 from app.core.config import Settings, get_settings
+from app.db.session import database_status
 
 router = APIRouter(prefix="/api/v1/health", tags=["health"])
 
@@ -23,40 +24,36 @@ def live() -> dict[str, str]:
 
 @router.get("/ready", summary="Dependency readiness", response_model=None)
 def ready(settings: Settings = Depends(get_settings)) -> JSONResponse | dict:
-    """Report readiness of the configured storage boundary.
+    """Report storage and database readiness without mutating the schema.
 
-    Database checks are intentionally deferred until the persistence milestone.
-    The response shape remains compatible with the architecture contract.
+    Migrations are intentionally explicit and are not run by this endpoint.
     """
     data_dir = settings.data_dir
     checked_at = datetime.now(UTC).isoformat()
+    storage_check: dict[str, object]
 
     if not data_dir.is_dir():
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "status": "not_ready",
-                "checks": {"storage": {"status": "not_ready", "reason": "data_dir_missing"}},
-                "checked_at": checked_at,
-            },
-        )
+        storage_check = {"status": "not_ready", "reason": "data_dir_missing"}
+    else:
+        try:
+            free_bytes = shutil.disk_usage(data_dir).free
+            with tempfile.NamedTemporaryFile(dir=data_dir, prefix=".nexus-ready-", delete=True):
+                pass
+            storage_check = {"status": "ok", "free_bytes": free_bytes}
+        except OSError:
+            storage_check = {"status": "not_ready", "reason": "storage_unavailable"}
 
-    try:
-        free_bytes = shutil.disk_usage(data_dir).free
-        with tempfile.NamedTemporaryFile(dir=data_dir, prefix=".nexus-ready-", delete=True):
-            pass
-    except OSError:
-        return JSONResponse(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={
-                "status": "not_ready",
-                "checks": {"storage": {"status": "not_ready", "reason": "storage_unavailable"}},
-                "checked_at": checked_at,
-            },
-        )
+    database_ok, database_reason = database_status(settings)
+    database_check: dict[str, object] = {"status": "ok" if database_ok else "not_ready"}
+    if database_reason:
+        database_check["reason"] = database_reason
 
-    return {
-        "status": "ready",
-        "checks": {"storage": {"status": "ok", "free_bytes": free_bytes}},
+    is_ready = storage_check["status"] == "ok" and database_ok
+    body = {
+        "status": "ready" if is_ready else "not_ready",
+        "checks": {"storage": storage_check, "database": database_check},
         "checked_at": checked_at,
     }
+    if not is_ready:
+        return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=body)
+    return body

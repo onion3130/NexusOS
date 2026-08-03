@@ -1,6 +1,6 @@
 # NexusOS AI system
 
-**Current milestone:** Milestone 1
+**Current milestone:** Milestone 2 — identity and persistence
 **Status:** Design only. No model provider, AI route, conversation storage, memory system, RAG pipeline, or tool registry is implemented.
 **Last updated:** 2026-08-02
 
@@ -74,7 +74,7 @@ Retrieval must check access before returning content and include source referenc
 
 ## Implementation order
 
-1. Milestone 2: identity and persistence primitives.
+1. Milestone 2: identity and persistence primitives — implemented.
 2. Milestone 5: conversation persistence, gateway, provider configuration, streaming job boundary, and read-only tools.
 3. Milestone 6: task/reminder assistant actions with policy checks.
 4. Milestone 7: source-aware retrieval and optional semantic memory.

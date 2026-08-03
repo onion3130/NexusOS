@@ -1,16 +1,16 @@
 # NexusOS database
 
-**Current milestone:** Milestone 1
-**Current status:** No database is implemented. There are zero tables, zero ORM models, zero Alembic revisions, and no database connection at runtime.
+**Current milestone:** Milestone 2
+**Current status:** Identity persistence is implemented. The first Alembic revision creates users, roles, permissions, sessions, join tables, and audit events. Domain feature tables remain deferred.
 **Last updated:** 2026-08-02
 
 This document distinguishes the current configuration contract from the planned persistence design.
 
 ## Current database state
 
-The API validates `DB_TYPE=sqlite` and `DATABASE_URL` as required environment values, but it never opens a connection. `/api/v1/health/ready` checks storage directory existence, disk usage, and temporary-file write/delete capability only. It does not check SQLite or PostgreSQL.
+The API validates `DB_TYPE=sqlite` and `DATABASE_URL`, opens SQLite through SQLAlchemy after migrations are applied, and reports migration/database status through `/api/v1/health/ready`. Startup does not run migrations automatically.
 
-The current `.env.example` database values are placeholders for the next milestone:
+The current `.env.example` database values define the Milestone 2 SQLite contract:
 
 ```text
 DB_TYPE=sqlite
@@ -18,6 +18,14 @@ DATABASE_URL=sqlite:////var/lib/nexus/data/nexus.db
 ```
 
 Compose mounts the host `${DATA_DIR}/db` directory at `/var/lib/nexus/data`. Runtime database files are ignored by Git.
+
+## Implemented persistence boundary
+
+- `apps/api/app/db/base.py` defines the declarative base.
+- `apps/api/app/db/models.py` defines the identity/audit models.
+- `apps/api/app/db/session.py` creates the engine and request-scoped sessions.
+- `apps/api/migrations/versions/0001_identity.py` is the first reversible schema revision.
+- `python -m app.cli.bootstrap_owner --username owner` runs migrations and creates the first owner interactively.
 
 ## Planned decisions
 
@@ -40,9 +48,9 @@ DATA_DIR/
 └── cache/              disposable provider/index cache
 ```
 
-## Planned initial schema
+## Current identity schema and planned feature schema
 
-These are design entities, not current tables. Milestone 2 should introduce them incrementally:
+The identity tables below are current. Remaining domain entities are design-only and will be introduced incrementally:
 
 | Entity | Owner | Purpose |
 |---|---|---|
@@ -75,7 +83,8 @@ Every schema change must include:
 
 Back up before production migrations. Irreversible transformations require explicit owner approval and a documented recovery path.
 
-## Milestone 2 acceptance criteria
+## Milestone 2 acceptance criteria — complete
+
 
 - The API creates a configured engine without leaking connection strings or credentials.
 - A fresh SQLite database upgrades to the migration head.

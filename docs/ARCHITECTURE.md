@@ -1,7 +1,7 @@
 # NexusOS architecture
 
-**Current milestone:** Milestone 1 — foundation implemented
-**Status:** Current runtime is a FastAPI health service plus a static Next.js shell. Database, authentication, AI, and product modules are design-only.
+**Current milestone:** Milestone 2 — identity and persistence implemented
+**Status:** Current runtime is a FastAPI health/identity service plus an authenticated Next.js shell. AI and product modules remain design-only.
 **Last updated:** 2026-08-02
 
 This is the architectural source of truth for a new coding agent. A design described here is not implemented unless the current-state sections and tests say so.
@@ -24,8 +24,10 @@ Core principles:
 ### Runtime components
 
 - `apps/api`: FastAPI application with environment-backed settings and a startup lifespan check.
-- `apps/api/app/api/routes/health.py`: the only route module currently registered.
-- `apps/web`: Next.js 15 static dashboard shell; it does not call the API yet.
+- `apps/api/app/api/routes/health.py` and `auth.py`: health and identity route modules.
+- `apps/api/app/db`: SQLAlchemy engine, models, and request-scoped sessions.
+- `apps/api/migrations`: explicit Alembic migration history.
+- `apps/web`: Next.js 15 shell with login/current-user/logout boundary.
 - `infrastructure/docker/api.Dockerfile`: non-root API image.
 - `infrastructure/docker/web.Dockerfile`: non-root Next.js image.
 - `docker-compose.yml`: ARM64 development topology with real API/web services and placeholder proxy/worker/AI services.
@@ -48,7 +50,7 @@ Docker Compose -> private bridge network
                  └── nexus-ai (opt-in placeholder profile)
 ```
 
-Compose publishes only `127.0.0.1:3000` and `127.0.0.1:8000` in the development stack. The API does not open `DATABASE_URL`, call an AI provider, authenticate users, or execute host actions.
+Compose publishes only `127.0.0.1:3000` and `127.0.0.1:8000` in the development stack. The API opens the configured SQLite database only after explicit migration, authenticates users, and manages sessions. It does not call an AI provider or execute host actions.
 
 ## 3. Planned target architecture
 
@@ -123,9 +125,8 @@ AI and UI requests may select only server-defined tools/actions. No arbitrary sh
 
 Not implemented today:
 
-- Database engine, ORM, migrations, repositories, and persistence tests.
-- User accounts, password hashing, JWT/session cookies, roles, and permissions.
-- Authenticated dashboard data access.
+- Domain-specific database tables, repositories, and feature persistence beyond identity.
+- Authenticated dashboard data modules beyond the current shell.
 - AI provider calls, conversation storage, memory, RAG, tool registry, and streaming.
 - Tasks, notes, calendar, files, projects, Git, Docker inventory, finance, and media integrations.
 - Pi telemetry adapters and write actions.
@@ -143,7 +144,7 @@ The architecture still matches the Nexus requirements at the current stage: loca
 - API and web are separate runtime services on a private Compose network.
 - Host ports are loopback-only in the development stack.
 - API/web images use non-root users; placeholder services use read-only filesystems and temporary filesystems where appropriate.
-- The API accepts configuration through environment variables and does not connect to a database or AI provider yet.
+- The API accepts configuration through environment variables, connects only to the configured SQLite identity database after explicit migration, and does not contact an AI provider.
 - The web image's `output: "standalone"` setting matches its runner-stage copy.
 - No arbitrary subprocess, shell execution, Docker socket mount, or privileged container was found in the current implementation.
 

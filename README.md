@@ -4,38 +4,58 @@ NexusOS is a local-first personal AI operating system intended to run on a Raspb
 
 ## Current milestone
 
-**Milestone 1 — foundation implemented.**
+**Milestone 2 — identity and persistence implemented.**
 
 The repository currently contains:
 
 - A FastAPI API with environment-backed startup validation.
-- Implemented liveness and storage-readiness endpoints.
-- A responsive static Next.js dashboard shell.
+- Implemented liveness, storage/database-readiness, and identity endpoints.
+- SQLite persistence with an explicit Alembic migration.
+- Argon2id password hashing, tracked sessions, JWT access tokens, CSRF protection, and login backoff.
+- A responsive Next.js dashboard shell with a login/authentication boundary.
 - ARM64-aware, non-root API and web Dockerfiles.
 - A Docker Compose development topology with loopback-only ports.
 - Public-repository protections, environment templates, tests, and operational documentation.
 
-Authentication, database persistence, AI calls, tool calling, tasks, notes, system telemetry, backups, and other product modules are not implemented yet. The authoritative next-step plan is [`docs/ROADMAP.md`](docs/ROADMAP.md).
+AI calls, tool calling, tasks, notes, system telemetry, backups, and other product modules are not implemented yet. The authoritative next-step plan is [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Milestone 2 implementation status — 2026-08-02
+
+Milestone 2 identity and persistence is implemented within its approved scope. Database migrations are explicit and must be run through the owner-bootstrap command or Alembic; application startup never mutates the schema.
+
+Implemented identity routes:
+
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `POST /api/v1/auth/logout`
+- `GET /api/v1/auth/me`
+- `GET /api/v1/auth/sessions`
+- `DELETE /api/v1/auth/sessions/{id}`
+
+Authentication uses Argon2id password hashes, short-lived HS256 access JWTs, hashed/rotated refresh tokens, HttpOnly cookies, a readable CSRF cookie plus required header, generic invalid-login responses, and bounded in-process login backoff.
 
 ## Project checkpoint — 2026-08-02
 
-The foundation checkpoint is complete. Phase 0 repository setup and architecture work are complete, and Milestone 1 is implemented and pushed. No new product feature was started during this checkpoint.
+The foundation checkpoint is complete. Phase 0 repository setup, Milestone 1 foundation, and approved Milestone 2 identity/persistence work are implemented. No later product feature was started during this checkpoint.
 
 ### What has been built
 
 - Public GitHub foundation: `.gitignore`, placeholder-only `.env.example`, license, changelog, and security guidance.
 - FastAPI runtime in `apps/api` with process-environment configuration validation.
-- `GET /api/v1/health/live` and storage-only `GET /api/v1/health/ready`.
-- Three backend health/configuration tests.
-- Static Next.js 15/React 19 shell in `apps/web`, including standalone output configuration.
+- `GET /api/v1/health/live` and storage/database `GET /api/v1/health/ready`.
+- Identity and session routes under `/api/v1/auth`.
+- SQLAlchemy identity models and Alembic migration `0001_identity`.
+- Backend migration, identity, health, and security tests.
+- Next.js 15/React 19 shell in `apps/web`, including standalone output and login/session boundary.
 - Non-root ARM64-targeted API/web Dockerfiles and loopback-only Compose development services.
 - Self-contained architecture, API, database, AI, deployment, development, setup, environment, security, and roadmap documentation.
 
 ### Current structure and important files
 
 ```text
-apps/api/app/                 FastAPI entrypoint, settings, health route
-apps/api/tests/               Health/configuration tests
+apps/api/app/                 FastAPI entrypoint, settings, health/auth routes, identity module
+apps/api/migrations/           Explicit Alembic identity migrations
+apps/api/tests/               Health, migration, identity, and security tests
 apps/web/app/                 Static Next.js dashboard shell
 infrastructure/docker/        API and web images
 infrastructure/healthchecks/  Health contract and current endpoint notes
@@ -47,11 +67,11 @@ docs/                         Handoff, contracts, architecture, and roadmap
 
 ### Working now
 
-The API starts when required environment variables are valid, liveness works without storage, readiness detects missing/unwritable storage, the web production build succeeds, and the frontend/backend checks pass. Docker is configured for `linux/arm64`, non-root runtime users, private networking, restart policies, and loopback host bindings.
+The API starts when required environment variables are valid, explicit migrations create the identity schema, liveness works without storage, readiness detects missing/unwritable storage or unmigrated databases, login/session flows work, the web production build succeeds, and the frontend/backend checks pass. Docker is configured for `linux/arm64`, non-root runtime users, private networking, restart policies, and loopback host bindings.
 
 ### Incomplete
 
-There is no authentication, database connection/schema/migration, AI provider call, tool registry, job worker, feature API, Pi telemetry adapter, host action, reverse-proxy TLS, systemd service, encrypted backup, or public/LAN access mode. These are roadmap work, not hidden implementation.
+There is no AI provider call, tool registry, job worker, feature API, Pi telemetry adapter, host action, reverse-proxy TLS, systemd service, encrypted backup, or public/LAN access mode. The current identity/database implementation is intentionally limited to the first owner/session schema. These are roadmap work, not hidden implementation.
 
 ### Checkpoint findings and technical debt
 
@@ -67,9 +87,9 @@ There is no authentication, database connection/schema/migration, AI provider ca
 Read these files before changing code:
 
 1. [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — current boundaries and design decisions.
-2. [`docs/API.md`](docs/API.md) — implemented health API and clearly marked future contracts.
-3. [`docs/DATABASE.md`](docs/DATABASE.md) — current zero-database state and persistence blueprint.
-4. [`docs/AI_SYSTEM.md`](docs/AI_SYSTEM.md) — current disabled state and future AI safety boundary.
+2. [`docs/API.md`](docs/API.md) — implemented health/identity API and clearly marked future contracts.
+3. [`docs/DATABASE.md`](docs/DATABASE.md) — current identity schema and persistence boundary.
+4. [`docs/AI_SYSTEM.md`](docs/AI_SYSTEM.md) — current disabled AI state and future safety boundary.
 5. [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — local commands and change workflow.
 6. [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — current Compose deployment and limitations.
 7. [`docs/ROADMAP.md`](docs/ROADMAP.md) — milestone order and acceptance criteria.
@@ -104,7 +124,7 @@ set +a
 
 On PowerShell, set the variables in the current session or use Docker Compose, which is the recommended local path. Use a randomly generated `JWT_SECRET` of at least 32 characters. Keep `AI_PROVIDER=disabled` while AI is not intentionally configured. `.env`, databases, runtime data, logs, build output, credentials, and personal data are ignored and must never be committed.
 
-The API reads process environment variables only. Missing or invalid required settings produce a safe startup error naming variable names without printing values.
+The API reads process environment variables only. Missing or invalid required settings produce a safe startup error naming variable names without printing values. The template database URL targets the Docker mount at `/var/lib/nexus/data`; for a host-only Uvicorn run, override it with `DATABASE_URL=sqlite:///./data/nexus.db` while keeping `DATA_DIR=./data`.
 
 ## Run locally
 
@@ -116,6 +136,8 @@ python -m venv .venv
 . .venv/bin/activate                 # macOS/Linux
 # Windows PowerShell: .venv\\Scripts\\Activate.ps1
 python -m pip install -e '.[test]'
+# Host-only development uses a repository-relative SQLite file:
+# export DATABASE_URL=sqlite:///./data/nexus.db
 cd ../..
 python -m uvicorn app.main:app --app-dir apps/api --reload --port 8000
 ```
@@ -130,7 +152,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. The web shell is static in Milestone 1 and does not authenticate or call feature APIs.
+Open `http://localhost:3000`. The web shell authenticates against the identity API, refreshes tracked sessions, and does not call domain feature APIs yet.
 
 ### Health API
 
@@ -139,7 +161,7 @@ curl http://127.0.0.1:8000/api/v1/health/live
 curl http://127.0.0.1:8000/api/v1/health/ready
 ```
 
-`/live` checks only that the process responds. `/ready` checks that `DATA_DIR` exists, disk usage can be read, and the API user can create/delete a temporary file. Database checks are deferred.
+`/live` checks only that the process responds. `/ready` checks storage plus whether the configured identity migration has been applied. It never mutates the schema; run the explicit owner-bootstrap/Alembic command first.
 
 ## Run with Docker Compose
 
@@ -182,4 +204,4 @@ nexusos/
 
 ## Remaining work
 
-The next approved milestone is identity and persistence. Later work includes the authenticated dashboard, system read-only telemetry, AI gateway, tasks, notes/search, safe host actions, files/projects, and production deployment hardening. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the ordered plan.
+The next approved milestone is the authenticated dashboard shell/design system. Later work includes the authenticated dashboard, system read-only telemetry, AI gateway, tasks, notes/search, safe host actions, files/projects, and production deployment hardening. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the ordered plan.

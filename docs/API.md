@@ -1,7 +1,7 @@
 # NexusOS API
 
-**Current milestone:** Milestone 1
-**Status:** Only the health endpoints below are implemented. All other API sections are planned contracts.
+**Current milestone:** Milestone 2
+**Status:** Health and identity/session endpoints below are implemented. Other API sections are planned contracts.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-02
 
@@ -30,8 +30,9 @@ Public development readiness endpoint. It checks the configured `DATA_DIR`:
 1. The directory exists.
 2. Disk usage can be read.
 3. The API user can create and delete a temporary file.
+4. The configured SQLite database is reachable and includes the identity migration head.
 
-It does not open `DATABASE_URL`, perform migrations, authenticate a caller, or contact an AI provider.
+It never performs migrations, authenticates a caller, or contacts an AI provider.
 
 Ready response `200`:
 
@@ -42,6 +43,9 @@ Ready response `200`:
     "storage": {
       "status": "ok",
       "free_bytes": 123456789
+    },
+    "database": {
+      "status": "ok"
     }
   },
   "checked_at": "2026-08-02T18:30:00+00:00"
@@ -50,13 +54,39 @@ Ready response `200`:
 
 Missing or unavailable storage returns `503` with `status: "not_ready"` and a safe reason such as `data_dir_missing` or `storage_unavailable`. Paths, credentials, and stack traces are not returned.
 
+## Implemented identity API
+
+### `POST /api/v1/auth/login`
+
+Creates an authenticated session from an owner account. Sets access, refresh, and readable CSRF cookies. Invalid credentials return a generic `401`; repeated failures receive bounded `429` backoff.
+
+### `POST /api/v1/auth/refresh`
+
+Requires the refresh cookie and matching CSRF cookie/header. Rotates refresh and CSRF secrets and issues a new access token.
+
+### `POST /api/v1/auth/logout`
+
+Requires the authenticated access cookie and matching CSRF header. Revokes the current session and clears auth cookies.
+
+### `GET /api/v1/auth/me`
+
+Returns the authenticated user, roles, and permissions without secret material.
+
+### `GET /api/v1/auth/sessions`
+
+Lists the authenticated user's session metadata without token values.
+
+### `DELETE /api/v1/auth/sessions/{id}`
+
+Requires CSRF for cookie authentication and revokes an owned session.
+
 ## Current API behavior
 
-- There is no authentication middleware.
-- There is no database dependency.
-- There is no error-envelope middleware yet.
-- There is no request-ID middleware yet.
-- There are no feature routes beyond health.
+- Authentication supports HttpOnly access/refresh cookies and explicit bearer access tokens.
+- Cookie-authenticated mutations require `X-CSRF-Token` matching the readable CSRF cookie.
+- Database migrations are explicit; application startup never mutates schema.
+- There is no error-envelope middleware or request-ID middleware yet.
+- There are no feature routes beyond health and identity.
 - FastAPI's development OpenAPI endpoints may be available locally; production exposure is not configured.
 
 ## Planned API conventions
@@ -89,11 +119,7 @@ The following are not live routes. They are the intended order after identity an
 
 ### Identity
 
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/logout`
-- `GET /api/v1/auth/me`
-- `GET /api/v1/auth/sessions`
-- `DELETE /api/v1/auth/sessions/{id}`
+The identity routes are implemented above. Future identity work must extend the existing authentication boundary rather than create a parallel one.
 
 ### Assistant and jobs
 
