@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { CommandPalette } from "./command-palette";
 import { ThemeToggle } from "./theme-toggle";
 import { useTheme } from "./theme-provider";
+import { AssistantWorkspace } from "./assistant-workspace";
 import { SystemOverview } from "./system-overview";
 import { LockedState, StatusCard } from "./ui/status-card";
 import type { User } from "../lib/auth";
 
 const navigation = [
   { label: "Overview", icon: "◈", available: true },
-  { label: "Assistant", icon: "✦", available: false },
+  { label: "Assistant", icon: "✦", available: true },
   { label: "Tasks", icon: "□", available: false },
   { label: "Notes", icon: "▤", available: false },
 ];
@@ -25,6 +26,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
   const { toggleTheme } = useTheme();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [activeView, setActiveView] = useState<"overview" | "assistant">("overview");
 
   useEffect(() => {
     function handleShortcut(event: KeyboardEvent) {
@@ -57,9 +59,9 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         <nav aria-label="Primary navigation" className="nav-list">
           <p className="eyebrow">Workspace</p>
           {navigation.map((item) => item.available ? (
-            <a aria-current="page" className="nav-item active" href="#main-content" key={item.label} onClick={() => setMobileNavOpen(false)}>
-              <span aria-hidden="true" className="nav-icon">{item.icon}</span>{item.label}<span className="active-dot" />
-            </a>
+            <button aria-current={(item.label === "Overview" && activeView === "overview") || (item.label === "Assistant" && activeView === "assistant") ? "page" : undefined} className={`nav-item${((item.label === "Overview" && activeView === "overview") || (item.label === "Assistant" && activeView === "assistant")) ? " active" : ""}`} key={item.label} onClick={() => { setActiveView(item.label === "Assistant" ? "assistant" : "overview"); setMobileNavOpen(false); }} type="button">
+              <span aria-hidden="true" className="nav-icon">{item.icon}</span>{item.label}{((item.label === "Overview" && activeView === "overview") || (item.label === "Assistant" && activeView === "assistant")) && <span className="active-dot" />}
+            </button>
           ) : (
             <button aria-disabled="true" className="nav-item nav-item-locked" key={item.label} type="button">
               <span aria-hidden="true" className="nav-icon">{item.icon}</span>{item.label}<span aria-hidden="true" className="nav-lock">⌁</span>
@@ -76,7 +78,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         <header className="topbar">
           <div className="mobile-topbar-row">
             <button aria-controls="mobile-navigation" aria-expanded={mobileNavOpen} aria-label="Toggle navigation" className="menu-button" onClick={() => setMobileNavOpen((open) => !open)} type="button">☰</button>
-            <div><p className="breadcrumb">Workspace / Overview</p><h1>Good morning, {user.username}.</h1></div>
+            <div><p className="breadcrumb">Workspace / {activeView === "assistant" ? "Assistant" : "Overview"}</p><h1>{activeView === "assistant" ? "Your assistant workspace." : `Good morning, ${user.username}.`}</h1></div>
           </div>
           <div className="topbar-actions">
             <button aria-label="Open command palette" className="shortcut-button" onClick={() => setPaletteOpen(true)} type="button"><span>⌘ K</span><span className="shortcut-label">Commands</span></button>
@@ -85,6 +87,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
           </div>
         </header>
 
+        {activeView === "assistant" ? <AssistantWorkspace /> : <>
         <div className="hero-card">
           <div className="hero-copy">
             <span className="status-pill"><span /> Milestone 4 telemetry online</span>
@@ -104,15 +107,15 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
 
         <section aria-labelledby="next-heading" className="section-block">
           <div className="section-heading"><div><p className="eyebrow">Workspace status</p><h2 id="next-heading">Build your personal workspace</h2></div><span className="updated">No feature data loaded</span></div>
-          <StatusCard action={<span className="lock-label">Roadmap gated</span>} description="Tasks, notes, and conversations remain intentionally locked until their approved milestones." eyebrow="Next up" icon="✦" title="Your foundation is ready" />
+          <StatusCard action={<span className="lock-label">Milestone 5 live</span>} description="The assistant gateway is available with owned conversations, bounded provider calls, and read-only system tools." eyebrow="Now available" icon="✦" title="Your assistant is ready" />
         </section>
 
         <section aria-label="Unavailable workspace modules" className="locked-grid">
-          <LockedState description="Assistant gateway arrives in Milestone 5." title="Assistant" />
           <LockedState description="Tasks and reminders arrive in Milestone 6." title="Tasks" />
           <LockedState description="Notes and scoped search arrive in Milestone 7." title="Notes" />
         </section>
 
+        </>}
         <footer>Local-first. Private by default. <span>NexusOS 0.1.0</span></footer>
       </section>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} onLogout={signOut} onToggleTheme={() => { toggleTheme(); setPaletteOpen(false); }} />}

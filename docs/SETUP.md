@@ -1,6 +1,6 @@
 # NexusOS development setup
 
-**Status:** Milestone 4 implemented — API health, identity persistence, session authentication, modular authenticated web shell, and read-only Pi telemetry are available; domain feature modules remain deferred.
+**Status:** Milestone 5 implemented — API health, identity/assistant persistence, session authentication, modular authenticated web shell, read-only Pi telemetry, and the bounded assistant gateway are available; later domain modules remain deferred.
 
 ## Prerequisites
 
@@ -61,7 +61,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. The shell authenticates against the identity API and does not call domain feature APIs yet.
+Open `http://localhost:3000`. The shell authenticates against the identity API and provides the Assistant workspace. Keep `AI_PROVIDER=disabled` to exercise the safe unavailable state, or configure a server-side compatible provider before sending messages.
 
 ## Run the full development stack
 
@@ -79,7 +79,7 @@ Open `http://localhost:3000` for the shell and `http://localhost:8000/api/v1/hea
 docker compose --env-file .env down
 ```
 
-The API and web services build from ARM64-compatible Dockerfiles and run as non-root users. The web image proxies same-origin `/api/v1` requests to `nexus-api` on the private Compose network; local `npm run dev` defaults to `127.0.0.1:8000`. The proxy, worker, and AI services remain deferred placeholders.
+The API and web services build from ARM64-compatible Dockerfiles and run as non-root users. The web image proxies same-origin `/api/v1` requests to `nexus-api` on the private Compose network; local `npm run dev` defaults to `127.0.0.1:8000`. The proxy and worker remain deferred placeholders. The API itself contains the bounded provider gateway; no local model container is required, and provider credentials never reach the browser.
 
 ## Validation before a change is committed
 

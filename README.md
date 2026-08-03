@@ -4,7 +4,7 @@ NexusOS is a local-first personal AI operating system intended to run on a Raspb
 
 ## Current milestone
 
-**Milestone 4 — read-only Raspberry Pi system module implemented.**
+**Milestone 5 — assistant gateway implemented.**
 
 The repository currently contains:
 
@@ -14,11 +14,24 @@ The repository currently contains:
 - Argon2id password hashing, tracked sessions, JWT access tokens, CSRF protection, and login backoff.
 - A responsive Next.js dashboard shell with modular navigation, theme switching, command palette, accessible states, and a login/authentication boundary.
 - Authenticated read-only Raspberry Pi telemetry for CPU, memory, storage, temperature, uptime, and network status.
+- Authenticated assistant conversations with bounded provider-neutral gateway calls and the read-only `system.get_overview` tool.
 - ARM64-aware, non-root API and web Dockerfiles.
 - A Docker Compose development topology with loopback-only ports.
 - Public-repository protections, environment templates, tests, and operational documentation.
 
-AI calls, tool calling, tasks, notes, backups, service actions, and other product modules are not implemented yet. The authoritative next-step plan is [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Tasks, notes, backups, service actions, streaming jobs, RAG, memory, and other product modules are not implemented yet. AI calls are available only through the server-configured Milestone 5 gateway; `AI_PROVIDER=disabled` remains the safe default. The authoritative next-step plan is [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Milestone 5 implementation status — 2026-08-02
+
+Milestone 5 is implemented within its approved scope. The API persists user-owned conversations and messages, routes bounded requests through a server-selected provider gateway, records normalized model/tool metadata, and exposes only the read-only `system.get_overview` tool. Provider credentials remain server-side and AI is disabled by default.
+
+Implemented assistant boundary:
+
+- `POST/GET /api/v1/conversations`
+- `GET /api/v1/conversations/{id}`
+- `POST /api/v1/conversations/{id}/messages`
+- Reversible Alembic migration `0002_assistant`
+- Responsive authenticated assistant workspace with disabled-provider and retry states
 
 ## Milestone 4 implementation status — 2026-08-02
 
@@ -59,7 +72,7 @@ Authentication uses Argon2id password hashes, short-lived HS256 access JWTs, has
 
 ## Project checkpoint — 2026-08-02
 
-Phase 0, Milestone 1 foundation, Milestone 2 identity/persistence, Milestone 3 shell/design-system, and approved Milestone 4 read-only telemetry work are implemented. No later product feature was started during this milestone.
+Phase 0, Milestone 1 foundation, Milestone 2 identity/persistence, Milestone 3 shell/design-system, Milestone 4 read-only telemetry, and approved Milestone 5 assistant gateway work are implemented. No later product feature was started during this milestone.
 
 ### What has been built
 
@@ -67,8 +80,8 @@ Phase 0, Milestone 1 foundation, Milestone 2 identity/persistence, Milestone 3 s
 - FastAPI runtime in `apps/api` with process-environment configuration validation.
 - `GET /api/v1/health/live` and storage/database `GET /api/v1/health/ready`.
 - Identity and session routes under `/api/v1/auth`.
-- SQLAlchemy identity models and Alembic migration `0001_identity`.
-- Backend migration, identity, health, and security tests.
+- SQLAlchemy identity/assistant models and Alembic migrations `0001_identity` and `0002_assistant`.
+- Backend migration, identity, health, security, gateway, tool, and assistant API tests.
 - Next.js 15/React 19 shell in `apps/web`, including standalone output and login/session boundary.
 - Non-root ARM64-targeted API/web Dockerfiles and loopback-only Compose development services.
 - Self-contained architecture, API, database, AI, deployment, development, setup, environment, security, and roadmap documentation.
@@ -94,7 +107,7 @@ The API starts when required environment variables are valid, explicit migration
 
 ### Incomplete
 
-There is no AI provider call, tool registry, job worker, domain feature API, host action, reverse-proxy TLS, systemd service, encrypted backup, or public/LAN access mode. The current identity/database implementation is intentionally limited to the first owner/session schema. These are roadmap work, not hidden implementation.
+There is no background job worker, streaming endpoint, RAG/semantic memory, task/note domain API, host action, reverse-proxy TLS, systemd service, encrypted backup, or public/LAN access mode. Provider calls are bounded and available only when explicitly enabled in server configuration. The current identity/database implementation is intentionally limited to the first owner/session schema. These are roadmap work, not hidden implementation.
 
 ### Checkpoint findings and technical debt
 
@@ -175,7 +188,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. The web shell authenticates against the identity API, refreshes tracked sessions, and does not call domain feature APIs yet.
+Open `http://localhost:3000`. The web shell authenticates against the identity API, refreshes tracked sessions, and provides the Milestone 5 assistant workspace. Tasks, notes, and other domain feature APIs remain deferred.
 
 ### Health API
 
@@ -227,4 +240,4 @@ nexusos/
 
 ## Remaining work
 
-The next approved milestone is the assistant gateway. Later work includes tasks, notes/search, safe host actions, files/projects, and production deployment hardening. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the ordered plan.
+The next planned milestone is tasks and reminders. Later work includes notes/search, safe host actions, files/projects, and production deployment hardening. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the ordered plan.

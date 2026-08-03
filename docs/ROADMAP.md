@@ -1,20 +1,20 @@
 # NexusOS roadmap
 
-**Current milestone:** Milestone 4 — read-only Raspberry Pi system module implemented
-**Next milestone:** Milestone 5 — assistant gateway
+**Current milestone:** Milestone 5 — assistant gateway implemented
+**Next milestone:** Milestone 6 — tasks and reminders
 **Last updated:** 2026-08-02
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
 
 ## Checkpoint status — 2026-08-02
 
-The project is paused after Milestone 4. The authenticated shell and read-only system telemetry work are complete within scope. Local validation and the API/web ARM64 image/runtime checks on the available Raspberry Pi 5 are green.
+The project is paused after Milestone 5. The authenticated shell, read-only system telemetry, and bounded assistant gateway are complete within scope. Local validation and the API/web ARM64 image/runtime checks on the available Raspberry Pi 5 are green.
 
 Current boundaries:
 
-- The live API includes health routes and the `/api/v1/auth` identity/session routes documented in `docs/API.md`.
-- The identity database schema is implemented through Alembic migration `0001_identity`; future domain tables remain design-only.
-- AI and feature documents still describe designs, not implemented services.
+- The live API includes health, identity/session, system overview, and assistant conversation routes documented in `docs/API.md`.
+- The identity and assistant database schema is implemented through Alembic migrations `0001_identity` and `0002_assistant`; later domain tables remain design-only.
+- The assistant gateway is live with server-side provider selection, but AI remains disabled by default and later memory/RAG/job designs remain deferred.
 - Compose is a loopback-only development topology, not a production or LAN deployment.
 - Any healthcheck timeout adjustment must be validated on the target Pi rather than guessed.
 
@@ -27,7 +27,7 @@ Current boundaries:
 | 2. Identity and persistence | Complete | Owner bootstrap, SQLite/Alembic, sessions, auth boundary |
 | 3. Dashboard shell and design system | Complete | Authenticated navigation, shared UI primitives, accessible states |
 | 4. System read-only module | Complete | Authenticated Pi telemetry with safe unavailable service/container boundary |
-| 5. Assistant gateway | Planned | Conversations, provider gateway, streaming jobs, read-only tools |
+| 5. Assistant gateway | Complete | Conversations, bounded provider gateway, read-only system tool, assistant UI |
 | 6. Tasks and reminders | Planned | Homework/tasks, reminders, notifications, assistant task actions |
 | 7. Notes and scoped search | Planned | Notes, tags, search, source-aware retrieval |
 | 8. Safe host actions | Planned | Confirmation UI, audit events, allowlisted operations, backups |
@@ -94,9 +94,9 @@ Acceptance criteria met:
 - Deterministic adapter/authentication tests pass.
 - ARM64 Docker and runtime validation remains compatible with the verified Pi deployment boundary.
 
-## Milestone 5 — assistant gateway
+## Milestone 5 complete — assistant gateway
 
-Persist conversations, add the provider-neutral `ModelGateway`, normalized errors, streaming/job boundaries, provider health, and read-only typed tools. AI provider selection remains server-controlled.
+Implemented owned conversation/message persistence, reversible migration `0002_assistant`, bounded synchronous provider calls, normalized provider errors, server-side provider selection, the read-only `system.get_overview` tool, and the authenticated assistant workspace. Streaming, background jobs, provider health dashboards, memory, RAG, and write tools remain deferred.
 
 ## Milestones 6–9 — useful modules
 

@@ -26,6 +26,7 @@ OWNER_PERMISSIONS = (
     ("identity.read_self", "Read the current user profile"),
     ("identity.manage_sessions", "Manage the current user's sessions"),
     ("admin.manage_users", "Manage local user accounts"),
+    ("system.read_overview", "Read Raspberry Pi system telemetry"),
 )
 
 

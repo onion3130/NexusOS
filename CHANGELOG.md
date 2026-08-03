@@ -4,6 +4,15 @@ All notable NexusOS changes are recorded here. The repository is currently pre-r
 
 ## [Unreleased]
 
+### Milestone 5 — 2026-08-02
+
+- Added owned conversation/message persistence through reversible Alembic migration `0002_assistant`.
+- Added authenticated conversation list/create/read and bounded message endpoints.
+- Added a provider-neutral gateway with disabled, OpenAI-compatible, and NVIDIA NIM-compatible server-side selection, strict timeouts, safe normalized errors, and no browser credentials.
+- Added the allowlisted read-only `system.get_overview` tool with sanitized tool-call metadata.
+- Added the responsive assistant workspace, conversation list, bounded composer, disabled-provider state, and retry/error states.
+- Kept streaming, jobs, RAG, memory, write tools, host actions, and arbitrary commands out of scope.
+
 ### Milestone 4 — 2026-08-02
 
 - Added an authenticated, read-only Raspberry Pi system overview for CPU, memory, storage, temperature, uptime, and network status.
@@ -30,7 +39,7 @@ All notable NexusOS changes are recorded here. The repository is currently pre-r
 
 ### Documentation
 
-- Updated the project handoff to identify Milestones 2–4 as implemented and distinguish live identity/database/shell/telemetry behavior from deferred product modules.
+- Updated the project handoff to identify Milestones 2–5 as implemented and distinguish live identity/database/shell/telemetry/assistant behavior from deferred product modules.
 - Refreshed the project handoff so a new coding agent can continue without previous conversation history.
 - Added `docs/ROADMAP.md` as the source of truth for milestone order and acceptance criteria.
 - Reconciled README, architecture, database, API, AI, deployment, setup, and development documentation with the actual Milestone 3 implementation.
@@ -38,7 +47,7 @@ All notable NexusOS changes are recorded here. The repository is currently pre-r
 
 ### Planned
 
-- Milestone 5: assistant gateway and read-only AI tool boundary.
+- Milestone 6: tasks, reminders, notifications, and assistant task actions.
 
 ## [0.1.0] — 2026-08-02
 

@@ -1,7 +1,7 @@
 # NexusOS API
 
-**Current milestone:** Milestone 4 — read-only Raspberry Pi system module
-**Status:** Health and identity/session endpoints below are implemented. Other API sections are planned contracts.
+**Current milestone:** Milestone 5 — assistant gateway
+**Status:** Health, identity/session, read-only system, and bounded assistant conversation endpoints below are implemented. Other API sections are planned contracts.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-02
 
@@ -88,6 +88,28 @@ Authenticated read-only Raspberry Pi telemetry. Returns CPU, memory, configured 
 
 A `200` response may have `status: "degraded"` when one or more sources are unavailable. Safe source reasons include `cpu_unavailable`, `memory_unavailable`, `storage_unavailable`, `temperature_unavailable`, `uptime_unavailable`, `network_unavailable`, and `service_status_unavailable`.
 
+## Implemented assistant API
+
+### `POST /api/v1/conversations`
+
+Create an authenticated conversation owned by the current user. The optional title is bounded to 120 characters.
+
+### `GET /api/v1/conversations`
+
+List up to 100 conversations owned by the current user, newest first.
+
+### `GET /api/v1/conversations/{id}`
+
+Return one owned conversation and up to 200 ordered messages. Unauthorized ownership is represented as `404`.
+
+### `POST /api/v1/conversations/{id}/messages`
+
+Persist a bounded user message, call the configured server-side gateway outside the SQLite transaction, and persist normalized model/tool metadata and the assistant response. With `AI_PROVIDER=disabled`, the user message and a safe disabled model-run record are retained while the endpoint returns `503` with `ai_provider_disabled`.
+
+The only registered tool is `system.get_overview`; it requires `system.read_overview`, accepts no arguments, and never executes commands, accesses Docker, or accepts filesystem paths. Provider targets are server-side and protected by literal/runtime SSRF checks with validated-IP connections; response bodies are bounded and provider keys/upstream payloads never reach the browser.
+
+Streaming, jobs, approvals, tasks, notes, files, and host-action endpoints remain planned rather than live.
+
 ## Current API behavior
 
 - Authentication supports HttpOnly access/refresh cookies and explicit bearer access tokens.
@@ -131,9 +153,8 @@ The identity routes are implemented above. Future identity work must extend the 
 
 ### Assistant and jobs
 
-- `GET/POST /api/v1/conversations`
-- `GET /api/v1/conversations/{id}`
-- `POST /api/v1/conversations/{id}/messages`
+The conversation and message routes are implemented above. The following remain planned:
+
 - `GET /api/v1/conversations/{id}/stream`
 - `GET /api/v1/jobs/{id}`
 - `POST /api/v1/ai/tool-calls/{id}/approve`

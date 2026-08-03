@@ -1,7 +1,7 @@
 # NexusOS architecture
 
-**Current milestone:** Milestone 4 — read-only Raspberry Pi system module implemented
-**Status:** Current runtime is a FastAPI health/identity service plus an authenticated, modular Next.js shell. AI and product modules remain design-only.
+**Current milestone:** Milestone 5 — assistant gateway implemented
+**Status:** Current runtime is a FastAPI health/identity/system/assistant service plus an authenticated modular Next.js shell. Tasks, memory, RAG, and host-action modules remain design-only.
 **Last updated:** 2026-08-02
 
 This is the architectural source of truth for a new coding agent. A design described here is not implemented unless the current-state sections and tests say so.
@@ -23,8 +23,9 @@ Core principles:
 
 ### Runtime components
 
-- `apps/api`: FastAPI application with environment-backed settings, identity, and read-only system telemetry.
-- `apps/api/app/api/routes/health.py`, `auth.py`, and `system.py`: health, identity, and read-only system route modules.
+- `apps/api`: FastAPI application with environment-backed settings, identity, read-only system telemetry, and assistant gateway.
+- `apps/api/app/api/routes/health.py`, `auth.py`, `system.py`, and `assistant.py`: health, identity, system, and assistant route modules.
+- `apps/api/app/modules/assistant`: owned conversation service, provider gateway, and typed read-only tool registry.
 - `apps/api/app/db`: SQLAlchemy engine, models, and request-scoped sessions.
 - `apps/api/app/modules/system`: fixed-source telemetry adapters and safe aggregation service.
 - `apps/api/migrations`: explicit Alembic migration history.
@@ -42,7 +43,8 @@ Browser -> authenticated Next.js shell -> same-origin `/api/v1` rewrite -> FastA
 Health client -> FastAPI
                  ├── /api/v1/health/live
                  ├── /api/v1/health/ready -> DATA_DIR/database probe
-                 └── /api/v1/system/overview -> fixed procfs/sysfs/storage reads
+                 ├── /api/v1/system/overview -> fixed procfs/sysfs/storage reads
+                 └── /api/v1/conversations -> owned messages -> bounded ModelGateway -> read-only tool registry
 
 Docker Compose -> private bridge network
                  ├── nexus-api  (real)
@@ -52,7 +54,7 @@ Docker Compose -> private bridge network
                  └── nexus-ai (opt-in placeholder profile)
 ```
 
-Compose publishes only `127.0.0.1:3000` and `127.0.0.1:8000` in the development stack. The API opens the configured SQLite database only after explicit migration, authenticates users, and manages sessions. It does not call an AI provider or execute host actions.
+Compose publishes only `127.0.0.1:3000` and `127.0.0.1:8000` in the development stack. The API opens the configured SQLite database only after explicit migration, authenticates users, manages sessions, and handles bounded assistant requests. Provider calls are server-configured and optional; the API does not execute host actions.
 
 ## 3. Planned target architecture
 
@@ -129,7 +131,7 @@ Not implemented today:
 
 - Domain-specific database tables, repositories, and feature persistence beyond identity.
 - Authenticated dashboard data modules beyond the current shell/design system.
-- AI provider calls, conversation storage, memory, RAG, tool registry, and streaming.
+- Streaming/jobs, memory, RAG, provider health dashboards, and additional assistant tools.
 - Tasks, notes, calendar, files, projects, Git, Docker inventory, finance, and media integrations.
 - Pi write actions and service/container control; read-only telemetry is implemented.
 - Production reverse proxy, systemd service, encrypted backups, restore drills, limits, and monitoring.
@@ -146,7 +148,7 @@ The architecture still matches the Nexus requirements at the current stage: loca
 - API and web are separate runtime services on a private Compose network.
 - Host ports are loopback-only in the development stack.
 - API/web images use non-root users; placeholder services use read-only filesystems and temporary filesystems where appropriate.
-- The API accepts configuration through environment variables, connects only to the configured SQLite identity database after explicit migration, and does not contact an AI provider.
+- The API accepts configuration through environment variables, connects only to the configured SQLite database after explicit migrations, and contacts an AI provider only when a server-side provider is explicitly enabled.
 - The web image's `output: "standalone"` setting matches its runner-stage copy.
 - No arbitrary subprocess, shell execution, Docker socket mount, or privileged container was found in the current implementation.
 

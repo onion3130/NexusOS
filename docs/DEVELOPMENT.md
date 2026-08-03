@@ -1,14 +1,14 @@
 # NexusOS development
 
-**Current milestone:** Milestone 4 read-only system module
-**Status:** SQLite identity persistence, session authentication, modular responsive frontend shell, and authenticated read-only Pi telemetry are implemented; domain feature development remains deferred.
+**Current milestone:** Milestone 5 assistant gateway
+**Status:** SQLite identity/assistant persistence, session authentication, modular responsive frontend shell, authenticated read-only Pi telemetry, and the bounded assistant gateway are implemented; tasks, notes, memory, RAG, and host actions remain deferred.
 **Last updated:** 2026-08-02
 
 A new AI coding agent should read this file, [`README.md`](../README.md), and [`ROADMAP.md`](ROADMAP.md) before changing code. The repository is the project context.
 
 ## Project checkpoint — 2026-08-02
 
-The checkpoint reviewed the current implementation without starting a later feature. Phase 0, Milestone 1, Milestone 2 identity/persistence, and Milestone 3 shell/design-system scope are complete.
+The checkpoint reviewed the current implementation without starting a later feature. Phase 0, Milestone 1, Milestone 2 identity/persistence, Milestone 3 shell/design-system, Milestone 4 telemetry, and Milestone 5 assistant-gateway scope are complete.
  The working tree was validated for API behavior, frontend build health, environment safety, Docker boundaries, Raspberry Pi compatibility assumptions, and architecture drift.
 
 ### Files created/modified across the foundation
@@ -30,6 +30,8 @@ Docker validation has been run on the available Raspberry Pi 5 for the current A
 - `apps/api/app/core/config.py`: process-environment settings and safe validation errors.
 - `apps/api/app/api/routes/health.py`: liveness and storage/database readiness routes.
 - `apps/api/app/api/routes/system.py` and `app/modules/system/`: authenticated read-only telemetry boundary and adapters.
+- `apps/api/app/api/routes/assistant.py` and `app/modules/assistant/`: authenticated conversations, provider gateway, and read-only tool registry.
+- `apps/api/migrations/versions/0002_assistant.py`: assistant persistence migration.
 - `apps/api/app/api/routes/auth.py`: login, refresh, logout, current-user, and session routes.
 - `apps/api/app/db/` and `apps/api/migrations/`: identity persistence and migration history.
 - `apps/api/tests/`: health, migration, identity, CSRF, and security tests.
@@ -42,7 +44,7 @@ Docker validation has been run on the available Raspberry Pi 5 for the current A
 
 ## Deferred files and modules
 
-There is currently no domain feature persistence beyond identity, no `app/domain`, `app/ai`, or `app/workers`, and no task/note/assistant feature API. The read-only system telemetry module is implemented under `app/modules/system`; create additional feature modules only as part of an approved milestone.
+There is currently no domain feature persistence beyond identity and assistant conversations, no `app/domain`, `app/workers`, task/note API, memory/RAG subsystem, streaming endpoint, or host-action module. The read-only system telemetry and assistant modules are implemented under `app/modules/system` and `app/modules/assistant`; create additional feature modules only as part of an approved milestone.
 
 ## Environment setup
 
@@ -91,7 +93,7 @@ npm run build
 npm run dev
 ```
 
-The current web shell calls the identity and system APIs through the same-origin Next.js rewrite, presents login when unauthenticated, refreshes access sessions, sends CSRF-protected logout, and polls read-only telemetry every 30 seconds. It supports theme persistence, responsive navigation, command shortcuts, loading/error/degraded states, and locked future modules. It does not call domain feature APIs or host actions.
+The current web shell calls the identity, system, and assistant APIs through the same-origin Next.js rewrite, presents login when unauthenticated, refreshes access sessions, sends CSRF-protected logout, and polls read-only telemetry every 30 seconds. It supports theme persistence, responsive navigation, command shortcuts, conversation loading, bounded message submission, disabled-provider/error states, and locked future modules. It does not call task, note, memory, or host-action APIs.
 
 ## Compose commands
 

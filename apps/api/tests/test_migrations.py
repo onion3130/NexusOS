@@ -1,4 +1,4 @@
-"""Alembic migration tests for Milestone 2."""
+"""Alembic migration tests for the NexusOS schema history."""
 
 from __future__ import annotations
 
@@ -19,14 +19,14 @@ def _config(database_url: str) -> Config:
     return config
 
 
-def test_identity_migration_upgrade_downgrade_upgrade(tmp_path) -> None:
-    """The first migration is reversible and recreatable."""
+def test_schema_upgrade_downgrade_upgrade(tmp_path) -> None:
+    """The full migration history is reversible and recreatable."""
     database_url = f"sqlite:///{tmp_path / 'migration.db'}"
     config = _config(database_url)
 
     command.upgrade(config, "head")
     engine = create_engine(database_url)
-    assert {"users", "roles", "permissions", "sessions", "audit_events"}.issubset(inspect(engine).get_table_names())
+    assert {"users", "roles", "permissions", "sessions", "audit_events", "conversations", "messages", "model_runs", "tool_calls"}.issubset(inspect(engine).get_table_names())
 
     command.downgrade(config, "base")
     assert inspect(engine).get_table_names() == ["alembic_version"]

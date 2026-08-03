@@ -1,7 +1,7 @@
 # NexusOS AI system
 
-**Current milestone:** Milestone 4 — read-only Raspberry Pi system module
-**Status:** Design only. No model provider, AI route, conversation storage, memory system, RAG pipeline, or tool registry is implemented.
+**Current milestone:** Milestone 5 — assistant gateway
+**Status:** The bounded assistant gateway, conversation storage, provider normalization, and read-only `system.get_overview` tool are implemented. Streaming, jobs, memory, RAG, and write tools remain design-only.
 **Last updated:** 2026-08-02
 
 ## Current behavior
@@ -12,7 +12,7 @@ The API accepts AI configuration fields so the public environment contract can b
 - `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL` are reserved configuration fields.
 - `NVIDIA_API_KEY` and `OPENAI_API_KEY` are placeholder-only provider credentials.
 
-The API does not call an upstream model, store prompts, stream responses, make tool calls, or expose AI endpoints. The web shell only displays that AI is disabled.
+The API persists authenticated conversations, calls a server-configured provider only when enabled, normalizes compatible responses, and exposes the read-only `system.get_overview` tool through a strict registry. The web assistant workspace displays disabled-provider and failure states. `AI_PROVIDER=disabled` remains the safe default.
 
 NVIDIA NIM is an external provider option, not a default Raspberry Pi service. A Pi 5 is not assumed to have an NVIDIA GPU. Local inference remains optional and must have an explicit resource budget.
 
@@ -69,14 +69,16 @@ Retrieval must check access before returning content and include source referenc
 - Retries are bounded and side effects are idempotent where possible.
 - Logs record provider/model/latency metadata only when safe; never keys, authorization headers, or unbounded sensitive prompts.
 - AI output is untrusted input and must be validated/escaped by downstream consumers.
-- Optional providers are outbound-only and must be protected against SSRF.
+- Optional providers are outbound-only and protected against SSRF: configuration rejects local/reserved literal targets, every request resolves public addresses and connects to the validated IP while preserving TLS SNI, redirects are disabled, proxy environment variables are ignored, and response bodies are capped.
+- The tool registry advertises only tools allowed by the authenticated user's permission set and rechecks that permission before execution.
 - Destructive operations require explicit user confirmation and an audit record.
 
 ## Implementation order
 
 1. Milestone 2: identity and persistence primitives — implemented.
-2. Milestone 5: conversation persistence, gateway, provider configuration, streaming job boundary, and read-only tools.
+2. Milestone 5: conversation persistence, bounded gateway, provider configuration, and read-only system tool — implemented.
 3. Milestone 6: task/reminder assistant actions with policy checks.
+4. Later milestone: streaming/jobs, source-aware retrieval, memory, and additional tools.
 4. Milestone 7: source-aware retrieval and optional semantic memory.
 5. Milestone 8: audited host actions.
 

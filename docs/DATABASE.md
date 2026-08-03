@@ -1,7 +1,7 @@
 # NexusOS database
 
-**Current milestone:** Milestone 4 — read-only Raspberry Pi system module
-**Current status:** Identity persistence is implemented. The first Alembic revision creates users, roles, permissions, sessions, join tables, and audit events. Domain feature tables remain deferred.
+**Current milestone:** Milestone 5 — assistant gateway
+**Current status:** Identity and assistant persistence are implemented. Alembic revisions `0001_identity` and `0002_assistant` create the current identity, conversation, message, model-run, tool-call, and audit tables. Later domain feature tables remain deferred.
 **Last updated:** 2026-08-02
 
 This document distinguishes the current configuration contract from the planned persistence design.
@@ -22,9 +22,10 @@ Compose mounts the host `${DATA_DIR}/db` directory at `/var/lib/nexus/data`. Run
 ## Implemented persistence boundary
 
 - `apps/api/app/db/base.py` defines the declarative base.
-- `apps/api/app/db/models.py` defines the identity/audit models.
+- `apps/api/app/db/models.py` defines the identity, assistant, and audit models.
 - `apps/api/app/db/session.py` creates the engine and request-scoped sessions.
-- `apps/api/migrations/versions/0001_identity.py` is the first reversible schema revision.
+- `apps/api/migrations/versions/0001_identity.py` creates identity/audit tables.
+- `apps/api/migrations/versions/0002_assistant.py` creates conversations, messages, model runs, and tool calls.
 - `python -m app.cli.bootstrap_owner --username owner` runs migrations and creates the first owner interactively.
 
 ## Planned decisions
@@ -50,7 +51,7 @@ DATA_DIR/
 
 ## Current identity schema and planned feature schema
 
-The identity tables below are current. Remaining domain entities are design-only and will be introduced incrementally:
+The identity and assistant tables below are current. Remaining domain entities are design-only and will be introduced incrementally:
 
 | Entity | Owner | Purpose |
 |---|---|---|
@@ -82,6 +83,14 @@ Every schema change must include:
 6. A backup and recovery note for data transformations.
 
 Back up before production migrations. Irreversible transformations require explicit owner approval and a documented recovery path.
+
+## Milestone 5 persistence boundary — complete
+
+- Conversations and messages are owned by a local user.
+- Provider calls occur after the user-message transaction commits.
+- Provider credentials and raw upstream payloads are not persisted.
+- Model runs and tool calls retain bounded normalized metadata and safe error codes.
+- Migration upgrade/downgrade/re-upgrade coverage includes the assistant schema.
 
 ## Milestone 2 acceptance criteria — complete
 
