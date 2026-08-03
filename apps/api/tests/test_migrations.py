@@ -26,7 +26,7 @@ def test_schema_upgrade_downgrade_upgrade(tmp_path) -> None:
 
     command.upgrade(config, "head")
     engine = create_engine(database_url)
-    assert {"users", "roles", "permissions", "sessions", "audit_events", "conversations", "messages", "model_runs", "tool_calls", "task_categories", "tags", "task_series", "tasks", "task_tags", "reminders", "notifications", "jobs"}.issubset(inspect(engine).get_table_names())
+    assert {"users", "roles", "permissions", "sessions", "audit_events", "conversations", "messages", "model_runs", "tool_calls", "task_categories", "tags", "task_series", "tasks", "task_tags", "reminders", "notifications", "jobs", "notes", "note_tags", "note_search_documents", "note_chunks", "notes_fts"}.issubset(inspect(engine).get_table_names())
 
     command.downgrade(config, "base")
     assert inspect(engine).get_table_names() == ["alembic_version"]

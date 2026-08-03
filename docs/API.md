@@ -1,7 +1,7 @@
 # NexusOS API
 
-**Current milestone:** Milestone 6 — tasks, reminders, and notifications
-**Status:** Health, identity/session, read-only system, assistant conversations, task management, reminders, notifications, and assistant approval routes are implemented. Notes, files, host actions, and streaming remain planned.
+**Current milestone:** Milestone 7 — notes, search, and retrieval foundations
+**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes, lexical search, and source-aware note retrieval are implemented. Embeddings, files, host actions, and streaming remain planned.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-03
 
@@ -55,6 +55,44 @@ Lists, creates, and removes user-owned categories. Existing task references are 
 
 Lists, creates, and removes user-owned tags.
 
+### Notes and search
+
+#### `GET /api/v1/notes`
+
+Lists owned notes with `status_filter=active|archived|all`, optional tag, bounded limit, and cursor filters.
+
+#### `POST /api/v1/notes`
+
+Creates a user-owned note with title, plain-text/Markdown-compatible content, tags, and active/archived status. Search projection and deterministic retrieval chunks are generated atomically.
+
+#### `GET /api/v1/notes/{id}`
+
+Returns one owned live note with content version and tags.
+
+#### `PATCH /api/v1/notes/{id}`
+
+Updates title, content, tags, or status. Source changes increment `content_version` and regenerate derived search/chunk data.
+
+#### `POST /api/v1/notes/{id}/archive` / `POST /api/v1/notes/{id}/restore`
+
+Perform explicit archive/restore transitions.
+
+#### `DELETE /api/v1/notes/{id}`
+
+Soft-deletes an owned note and removes it from normal search visibility.
+
+#### `GET /api/v1/search`
+
+Performs bounded SQLite FTS5 lexical search over owned note titles, content, and tags. Results include source type, source ID, chunk ID, excerpt, score, tags, and source version. Archived notes are excluded unless `include_archived=true`.
+
+#### `GET /api/v1/notes/{id}/chunks`
+
+Returns current-version deterministic retrieval chunks for one owned note.
+
+#### `GET /api/v1/search/retrieve`
+
+Returns bounded source-aware lexical retrieval results for future assistant/RAG context assembly.
+
 ### Notifications
 
 #### `GET /api/v1/notifications`
@@ -73,7 +111,10 @@ The dedicated worker converts due reminders into notifications using a determini
 
 ### Assistant task actions
 
-The assistant registry supports the following task tools:
+The assistant registry supports the following read-only note tools and task tools:
+
+- `notes.search` — bounded search over the user's owned notes
+- `notes.read` — bounded read of one owned note as untrusted source material
 
 - `tasks.list` — read-only task lookup
 - `tasks.create` — confirmation-gated creation
@@ -97,7 +138,7 @@ Task mutation proposals expire after a bounded period and all approvals, rejecti
 - Cookie-authenticated mutations require CSRF validation.
 - CORS allows `PATCH` in addition to existing methods.
 - Database migrations are explicit; startup never mutates schema.
-- Readiness verifies the current Alembic head `0003_tasks_notifications`.
+- Readiness verifies the current Alembic head `0004_notes_search` and the notes FTS5 table.
 - Notifications are persistent in-app records only.
 - No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, or provider URLs from a client.
 
@@ -105,7 +146,6 @@ Task mutation proposals expire after a bounded period and all approvals, rejecti
 
 - `GET /api/v1/conversations/{id}/stream`
 - `GET /api/v1/jobs/{id}`
-- `GET/POST /api/v1/notes`
 - `GET /api/v1/files/recent`
 - `GET /api/v1/projects`
 - `GET /api/v1/git/repositories`

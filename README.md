@@ -23,6 +23,8 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 - 🤖 **AI assistant** — provider-neutral, bounded, and configured server-side
 - ✅ **Task management** — due dates, priorities, categories, tags, recurring schedules, and reminders
+- 📝 **Private notes** — versioned source notes with tags, archive, and soft deletion
+- ⌕ **Scoped search** — local SQLite FTS5 search with source-aware excerpts and retrieval chunks
 - 🔔 **Notifications** — persistent in-app alerts with a dedicated reminder worker
 - 📈 **System telemetry** — read-only Raspberry Pi health and resource overview
 - 🔐 **Security boundaries** — user-owned data, sessions, CSRF protection, permissions, and audit events
@@ -41,9 +43,9 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 | Item | Status |
 | --- | --- |
-| **Current milestone** | Milestone 6 — Tasks, reminders, and notifications ✅ |
+| **Current milestone** | Milestone 7 — Notes, search, and retrieval foundations ✅ |
 | **Current version** | `0.1.0` — pre-release foundation |
-| **Next milestone** | Milestone 7 — Notes and scoped search |
+| **Next milestone** | Milestone 8 — Safe host actions |
 
 NexusOS is functional within its current milestone, but it is not yet a production-hardened public service. See the [roadmap](docs/ROADMAP.md) for scope, limitations, and upcoming work.
 

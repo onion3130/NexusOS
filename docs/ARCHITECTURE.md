@@ -1,7 +1,7 @@
 # NexusOS architecture
 
-**Current milestone:** Milestone 6 — tasks, reminders, and notifications implemented
-**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks service, a dedicated SQLite reminder worker, and an authenticated modular Next.js shell.
+**Current milestone:** Milestone 7 — notes, search, and retrieval foundations implemented
+**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes service, a dedicated SQLite reminder worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-03
 
 NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an external SSD. The browser, API, persistence, worker, provider, and future host-action boundaries remain separate.
@@ -10,9 +10,10 @@ NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an exte
 
 - `apps/api`: FastAPI application with identity, read-only telemetry, assistant gateway, tasks, reminders, and notifications.
 - `apps/api/app/modules/tasks`: task service, schemas, recurrence calculator, and reminder dispatcher.
+- `apps/api/app/modules/notes`: canonical notes, SQLite FTS5 search, deterministic chunks, and source-aware retrieval.
 - `apps/api/app/worker.py`: dedicated bounded SQLite reminder worker.
 - `apps/api/app/db`: SQLAlchemy engine/session and all persisted models.
-- `apps/api/migrations`: explicit Alembic migration history through `0003_tasks_notifications`.
+- `apps/api/migrations`: explicit Alembic migration history through `0004_notes_search`.
 - `apps/web`: authenticated Next.js shell with overview, assistant, tasks, and notification center.
 - `docker-compose.yml`: ARM64 development topology with API, web, and real worker services; proxy and optional AI remain placeholders.
 
@@ -25,7 +26,8 @@ FastAPI
   ├── identity/session boundary
   ├── read-only system telemetry
   ├── bounded assistant gateway -> typed tool registry
-  └── tasks service -> tasks/categories/tags/reminders/notifications
+  ├── tasks service -> tasks/categories/tags/reminders/notifications
+  └── notes service -> notes/tags/search projection/retrieval chunks
 
 Dedicated worker -> SQLite reminder claims -> persistent in-app notifications
 
@@ -75,14 +77,18 @@ Development ports bind to loopback. No TLS, LAN exposure, public access, or host
 
 No arbitrary shell command, Docker argument, filesystem path, SQL, or provider URL is accepted from model output or browser input. User-owned mutations are validated, permissioned, CSRF-protected for cookies, and audited.
 
+## Notes and retrieval architecture
+
+Notes are canonical user-authored sources. A derived search projection feeds SQLite FTS5, while deterministic versioned chunks provide provenance for future RAG. Search and retrieval always join through owned canonical notes. Assistant note tools are read-only and return bounded, explicitly source-labeled content; retrieved text is untrusted context and cannot grant tool permissions.
+
 ## Deferred scope
 
 Not implemented today:
 
 - Streaming assistant responses
 - Email, SMS, push, or calendar notification channels
-- Notes and scoped search
-- Semantic memory and RAG
+- Embeddings, vector search, and semantic memory extraction
+- External document ingestion and file sources
 - Host actions and service/container control
 - Files, projects, Git, Docker views
 - Production reverse proxy, systemd, encrypted backups, restore drills, limits, and monitoring

@@ -15,7 +15,7 @@ This directory contains the detailed design, setup, development, deployment, sec
 - [Architecture](ARCHITECTURE.md) — runtime boundaries and design decisions
 - [API](API.md) — implemented and planned API routes
 - [Database](DATABASE.md) — persistence model and migrations
-- [AI system](AI_SYSTEM.md) — provider and assistant tool boundaries
+- [AI system](AI_SYSTEM.md) — provider, assistant tools, and retrieval boundaries
 
 ## Operations and security
 

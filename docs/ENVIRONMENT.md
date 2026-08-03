@@ -23,6 +23,8 @@
 | `TASK_WORKER_INTERVAL_SECONDS` | optional | `30` | no | Worker polling interval, 5–3600 |
 | `TASK_WORKER_BATCH_SIZE` | optional | `50` | no | Reminder batch size, 1–200 |
 
+Milestone 7 uses bounded in-process FTS5 indexing and retrieval chunking; no new service, secret, or environment variable is required.
+
 ## Rules
 
 - Never log environment values or return them from the API.

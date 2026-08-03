@@ -1,6 +1,6 @@
 # NexusOS development setup
 
-**Status:** Milestone 6 implemented — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, and the SQLite worker are available. Notes and later domain modules remain deferred.
+**Status:** Milestone 7 implemented — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, user-owned notes, SQLite FTS5 search, and source-aware retrieval chunks are available. Embeddings and autonomous memory remain deferred.
 
 ## Prerequisites
 
@@ -47,7 +47,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`, sign in, and select Tasks. The notification center is available in the authenticated top bar. Assistant task writes require a configured provider and explicit confirmation; the assistant remains safely unavailable when AI is disabled.
+Open `http://localhost:3000`, sign in, and select Notes or Search. The notification center is available in the authenticated top bar. Assistant task writes require a configured provider and explicit confirmation; note search/read tools are read-only and the assistant remains safely unavailable when AI is disabled.
 
 ## Full Compose stack
 

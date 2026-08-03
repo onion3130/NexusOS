@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sqlalchemy import Engine, create_engine, event, inspect, text
 
-CURRENT_MIGRATION_HEAD = "0003_tasks_notifications"
+CURRENT_MIGRATION_HEAD = "0004_notes_search"
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import sessionmaker
@@ -76,8 +76,11 @@ def database_status(settings: Settings) -> tuple[bool, str | None]:
             connection.execute(text("SELECT 1"))
             tables = inspect(connection).get_table_names()
             revision = connection.execute(text("SELECT version_num FROM alembic_version LIMIT 1")).scalar() if "alembic_version" in tables else None
+            fts_ready = connection.execute(text("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'notes_fts' LIMIT 1")).scalar() if revision == CURRENT_MIGRATION_HEAD else 1
         if "alembic_version" not in tables or "users" not in tables or revision != CURRENT_MIGRATION_HEAD:
             return False, "migration_required"
+        if not fts_ready:
+            return False, "search_unavailable"
         return True, None
     except (SQLAlchemyError, OSError):
         return False, "database_unavailable"

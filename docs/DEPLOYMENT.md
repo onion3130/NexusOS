@@ -1,7 +1,7 @@
 # NexusOS deployment
 
-**Current milestone:** Milestone 6 tasks, reminders, and notifications
-**Status:** Local/ARM64 development deployment with a real API, web shell, and reminder worker. Production hardening is not complete.
+**Current milestone:** Milestone 7 notes, search, and retrieval foundations
+**Status:** Local/ARM64 development deployment with a real API, web shell, reminder worker, notes, and SQLite FTS5 search. Production hardening is not complete.
 **Last updated:** 2026-08-03
 
 ## Target hardware
@@ -73,7 +73,7 @@ curl http://127.0.0.1:8000/api/v1/health/ready
 docker compose --env-file .env down
 ```
 
-Also test a due reminder, worker restart, notification deduplication, and healthcheck timing under representative Pi load. Docker is unavailable in the current environment, so these checks remain external validation rather than a local claim.
+Also test a due reminder, worker restart, notification deduplication, note creation/update/search, FTS5 rebuild behavior, and healthcheck timing under representative Pi load. Docker is unavailable in the current environment, so these checks remain external validation rather than a local claim. Confirm the target Python runtime includes SQLite FTS5.
 
 ## Recovery and production gate
 

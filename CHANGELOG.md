@@ -4,6 +4,17 @@ All notable NexusOS changes are recorded here. The repository is pre-release; ve
 
 ## [Unreleased]
 
+### Milestone 7 — 2026-08-03
+
+- Added reversible Alembic migration `0004_notes_search` for canonical notes, shared tags, FTS5 search projection, and retrieval chunks.
+- Added user-owned note CRUD, archive/restore, soft deletion, content versioning, synchronous lexical indexing, and bounded source-aware retrieval.
+- Added authenticated note/search/chunk routes with CSRF, permissions, ownership, audit, and payload-bound idempotency controls.
+- Added read-only assistant `notes.search` and `notes.read` tools; embeddings, autonomous memory, and model-written notes remain deferred.
+- Added responsive Notes and Search workspaces plus command-palette search integration.
+- Added backend notes, FTS5, migration, ownership, chunk, and retrieval tests.
+
+Known limitations: retrieval is lexical only; embeddings/vector search, autonomous memory extraction, external ingestion, rich Markdown rendering, and target Raspberry Pi runtime validation remain future work.
+
 ### Milestone 6 — 2026-08-03
 
 - Added reversible task persistence migration `0003_tasks_notifications`.

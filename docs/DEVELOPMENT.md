@@ -1,6 +1,6 @@
 # NexusOS development
 
-**Current milestone:** Milestone 6 — tasks, reminders, and notifications
+**Current milestone:** Milestone 7 — notes, search, and retrieval foundations
 **Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, and in-app notifications are implemented. Notes, memory, RAG, and host actions remain deferred.
 **Last updated:** 2026-08-03
 
@@ -16,6 +16,8 @@ Backend:
 - `app/db/models.py`: task, series, reminder, notification, job, and approval persistence.
 - `migrations/versions/0003_tasks_notifications.py`: reversible schema migration.
 - `tests/test_tasks.py`: CRUD, CSRF, recurrence, worker, and assistant policy coverage.
+- `tests/test_notes.py`, `test_search.py`, `test_retrieval.py`: notes, FTS5 search, ownership, chunks, and retrieval coverage.
+- `migrations/versions/0004_notes_search.py`: notes, FTS5 projection, tags, and retrieval migration.
 
 Frontend:
 
@@ -44,7 +46,7 @@ python -m py_compile $(find app migrations tests -name '*.py' -print)
 python -m alembic heads
 ```
 
-The current expected migration head is `0003_tasks_notifications`.
+The current expected migration head is `0004_notes_search`. The readiness check also requires the SQLite FTS5 notes index.
 
 ## Frontend validation
 
@@ -74,7 +76,7 @@ cd apps/web
 npm run dev
 ```
 
-The task workspace is available from the authenticated Tasks navigation item. The notification center polls every 30 seconds. The assistant remains usable in disabled-provider mode for conversations; task mutations require a configured provider and explicit approval.
+The task workspace and Notes/Search workspaces are available from authenticated navigation. The notification center polls every 30 seconds. Notes use synchronous SQLite FTS5 projection updates and deterministic retrieval chunks. The assistant remains usable in disabled-provider mode for conversations; task mutations require a configured provider and explicit approval, while note tools are read-only.
 
 Run the reminder worker separately for local scheduler testing:
 

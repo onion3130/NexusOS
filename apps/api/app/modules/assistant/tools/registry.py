@@ -15,6 +15,8 @@ from app.modules.assistant.schemas import ProposedToolCall, ToolDefinition, Tool
 from app.modules.system.service import SystemService
 from app.modules.tasks.schemas import TaskCreate, TaskUpdate
 from app.modules.tasks.service import complete_task, create_task, delete_task, get_task, list_tasks, update_task
+from app.modules.notes.search import search_notes
+from app.modules.notes.service import get_note
 
 
 @dataclass(frozen=True)
@@ -44,6 +46,16 @@ class ToolRegistry:
     def _register_task_tools(self, db: OrmSession, user_id: str) -> None:
         """Register task tools against the current authenticated user context."""
         self._tools.update({
+            "notes.search": RegisteredTool(
+                definition=ToolDefinition(key="notes.search", description="Search the user's notes and return bounded source-aware excerpts.", parameters={"type": "object", "properties": {"query": {"type": "string", "maxLength": 200}, "tag": {"type": "string", "maxLength": 64}, "limit": {"type": "integer", "maximum": 10}}, "required": ["query"], "additionalProperties": False}),
+                required_permission="notes.read", requires_confirmation=False,
+                execute=lambda call: {"results": [item.model_dump(mode="json") for item in search_notes(db, user_id, str(call.arguments.get("query", "")), tag=call.arguments.get("tag") if isinstance(call.arguments.get("tag"), str) else None, limit=min(int(call.arguments.get("limit", 5)), 10))]},
+            ),
+            "notes.read": RegisteredTool(
+                definition=ToolDefinition(key="notes.read", description="Read one owned note as bounded, untrusted source material.", parameters={"type": "object", "properties": {"note_id": {"type": "string"}}, "required": ["note_id"], "additionalProperties": False}),
+                required_permission="notes.read", requires_confirmation=False,
+                execute=lambda call: _read_note(db, user_id, call),
+            ),
             "tasks.list": RegisteredTool(
                 definition=ToolDefinition(key="tasks.list", description="List the user's open tasks with optional filters.", parameters={"type": "object", "properties": {"status": {"type": "string"}, "priority": {"type": "string"}, "limit": {"type": "integer", "maximum": 50}}, "additionalProperties": False}),
                 required_permission="tasks.read", requires_confirmation=False,
@@ -93,6 +105,16 @@ class ToolRegistry:
             return tool.execute(proposed)
         except (ValueError, TypeError, KeyError) as exc:
             raise ToolValidationError() from exc
+
+
+def _read_note(db: OrmSession, user_id: str, call: ProposedToolCall) -> dict[str, Any]:
+    note_id = call.arguments.get("note_id")
+    if not isinstance(note_id, str) or not note_id:
+        raise ToolValidationError()
+    note = get_note(db, user_id, note_id)
+    if note is None:
+        raise ToolValidationError()
+    return {"source_type": "note", "source_id": note.id, "title": note.title, "content": note.content[:8000], "content_version": note.content_version, "updated_at": note.updated_at.isoformat(), "tags": [tag.name for tag in note.tags]}
 
 
 def _task_id(call: ProposedToolCall) -> str:

@@ -1,15 +1,24 @@
 # NexusOS security baseline
 
-**Status:** Milestone 6 task, reminder, notification, and assistant-action controls implemented; deployment hardening remains deferred.
+**Status:** Milestone 7 notes, search, retrieval, task, reminder, notification, and assistant-action controls implemented; semantic AI and deployment hardening remain deferred.
 **Last updated:** 2026-08-03
 
 ## Runtime boundaries
 
 - The browser never receives provider keys, database credentials, Docker socket access, or unrestricted host paths.
 - The API is the authorization boundary; frontend visibility is not authorization.
-- Task services filter every owned entity by the authenticated user.
+- Task and note services filter every owned entity by the authenticated user.
+- FTS5 results are joined back to canonical notes with user and deletion filters; derived chunks carry a direct user boundary.
 - The worker has no browser-facing port and performs only bounded database-backed reminder delivery.
 - No arbitrary shell text, SQL, Docker arguments, filesystem paths, or provider URLs are accepted from model output or the browser.
+
+## Notes, search, and retrieval controls
+
+- Notes require `notes.read` for reads/search, `notes.write` for create/update/archive/restore, and `notes.delete` for soft deletion.
+- Note mutations require CSRF for cookie-authenticated clients, payload-bound idempotency, ownership checks, and audit events.
+- Search queries are bounded, parameterized, and normalized; raw FTS5 syntax is not exposed.
+- Note content is rendered as text and is never trusted HTML.
+- Retrieved note content is untrusted source material and cannot change system instructions, permissions, or tool authorization.
 
 ## Task and assistant mutation controls
 
@@ -28,6 +37,7 @@
 - Persisted timestamps must include timezone offsets and are normalized to UTC.
 - Recurrence supports only the version-one daily, weekly, and monthly structure; arbitrary RRULE text is not accepted.
 - Notifications use deterministic deduplication keys to prevent worker restart duplicates.
+- Search projections and retrieval chunks are derived from canonical notes and are rebuildable rather than authoritative.
 - Task and notification content is rendered as text, not trusted HTML.
 - Secrets, tokens, provider keys, raw authorization headers, and raw upstream payloads are never persisted in task records or ordinary logs.
 

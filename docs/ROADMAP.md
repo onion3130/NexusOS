@@ -1,7 +1,7 @@
 # NexusOS roadmap
 
-**Current milestone:** Milestone 6 — tasks, reminders, and notifications implemented
-**Next milestone:** Milestone 7 — notes and scoped search
+**Current milestone:** Milestone 7 — notes, search, and retrieval foundations implemented
+**Next milestone:** Milestone 8 — safe host actions
 **Last updated:** 2026-08-03
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
@@ -21,7 +21,7 @@ Milestone 6 is implemented within its approved scope. NexusOS now has an authent
 | 4. System read-only module | Complete | Authenticated Pi telemetry with safe unavailable service/container boundary |
 | 5. Assistant gateway | Complete | Conversations, bounded provider gateway, read-only system tool, assistant UI |
 | 6. Tasks and reminders | Complete | Tasks, due dates, priorities, categories, tags, recurrence, reminders, notifications, worker, assistant actions |
-| 7. Notes and scoped search | Planned | Notes, tags, search, source-aware retrieval |
+| 7. Notes and scoped search | Complete | Notes, tags, SQLite FTS5 search, source-aware retrieval chunks, assistant read tools |
 | 8. Safe host actions | Planned | Confirmation UI, audit events, allowlisted operations, backups |
 | 9. Files, projects, Git, Docker views | Planned | Approved paths, repository/project metadata, safe read operations |
 | 10. Deployment hardening | Planned | Reverse proxy, systemd, SSD operations, backups, restore drill |
@@ -49,9 +49,26 @@ Known limitations:
 - Idempotency keys cover task, reminder, category, tag, notification, and assistant approval mutations; payload mismatches are rejected and standardized error envelopes remain later hardening work.
 - Docker and Raspberry Pi runtime validation require an environment with Docker and the target Pi; local source validation is green.
 
-## Milestones 7–9 — useful modules
+## Milestone 7 complete — notes, search, and retrieval foundations
 
-Add notes/search, safe host actions, then files/projects/Git/Docker views. Each write capability requires permissions, validation, confirmation where risky, audit events, and tests.
+Implemented:
+
+- User-owned notes with tags, active/archived states, content versions, and soft deletion.
+- SQLite FTS5-backed lexical search over note titles, content, and tags with bounded safe queries and source-aware excerpts.
+- Deterministic note retrieval chunks with source IDs, offsets, content hashes, and version provenance.
+- Authenticated notes/search/chunk routes with ownership, CSRF, permissions, audit, and idempotency boundaries.
+- Read-only assistant `notes.search` and `notes.read` tools; no autonomous memory or note writes.
+- Responsive Notes and Search workspaces with mobile-friendly editing, archive/delete controls, and command-palette search.
+
+Known limitations:
+
+- Retrieval is lexical only; embeddings, vector search, autonomous memory extraction, and external ingestion remain deferred.
+- FTS5 and target Raspberry Pi runtime validation require Docker-enabled ARM64 hardware.
+- Note content is intentionally rendered as text; rich Markdown/HTML rendering remains deferred.
+
+## Milestones 8–9 — useful modules
+
+Add safe host actions, then files/projects/Git/Docker views. Each write capability requires permissions, validation, confirmation where risky, audit events, and tests.
 
 ## Milestones 10–11 — production and expansion
 

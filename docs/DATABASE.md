@@ -1,7 +1,7 @@
 # NexusOS database
 
-**Current milestone:** Milestone 6 — tasks, reminders, and notifications
-**Current status:** Identity, assistant, and task productivity persistence are implemented through Alembic revisions `0001_identity`, `0002_assistant`, and `0003_tasks_notifications`.
+**Current milestone:** Milestone 7 — notes, search, and retrieval foundations
+**Current status:** Identity, assistant, task, notes, search projection, and retrieval persistence are implemented through Alembic revisions `0001_identity`, `0002_assistant`, `0003_tasks_notifications`, and `0004_notes_search`.
 **Last updated:** 2026-08-03
 
 ## Current database state
@@ -16,6 +16,18 @@ The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys
 - `0001_identity` creates identity and audit tables.
 - `0002_assistant` creates conversations, messages, model runs, and tool calls.
 - `0003_tasks_notifications` creates categories, tags, task series, tasks, task tags, reminders, notifications, jobs, and approval lifecycle columns, including recoverable assistant-processing leases.
+
+## Milestone 7 tables
+
+| Entity | Owner | Purpose |
+|---|---|---|
+| `notes` | user | Canonical user-authored note sources |
+| `note_tags` | note/tag ownership | Reuses Milestone 6 user-owned tags |
+| `note_search_documents` | derived note | Rebuildable title/content/tag search projection |
+| `notes_fts` | derived SQLite FTS5 | Bounded lexical search index |
+| `note_chunks` | user/note | Versioned source-aware retrieval chunks |
+
+`notes` is authoritative. Search projections and chunks are derived and can be rebuilt. FTS5 is lexical only; embeddings and vector storage are deferred.
 
 ## Milestone 6 tables
 
@@ -52,6 +64,10 @@ Back up before production migrations. The task migration is reversible, but prod
 ## Security and ownership
 
 Every user-owned table includes a user boundary directly or through an owned parent. Services and routes filter by the authenticated user; frontend visibility is never used as authorization. Secrets, tokens, and provider payloads are not persisted.
+
+## Notes and retrieval
+
+Note content changes increment `content_version`. Current chunks retain the source note ID, version, offsets, content hash, and chunk index. Search results are joined back to canonical notes with user ownership and deletion filters. Search input is normalized into a safe parameterized FTS5 query; raw FTS syntax is not exposed.
 
 ## Remaining database work
 

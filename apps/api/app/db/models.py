@@ -34,6 +34,12 @@ task_tags = Table(
     Column("tag_id", String(36), ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
 )
 
+note_tags = Table(
+    "note_tags", Base.metadata,
+    Column("note_id", String(36), ForeignKey("notes.id", ondelete="CASCADE"), primary_key=True),
+    Column("tag_id", String(36), ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
+)
+
 
 class User(Base):
     """A local NexusOS account."""
@@ -182,6 +188,7 @@ class Tag(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
     tasks: Mapped[list[Task]] = relationship(secondary=task_tags, back_populates="tags")
+    notes: Mapped[list[Note]] = relationship(secondary=note_tags, back_populates="tags")
     __table_args__ = (UniqueConstraint("user_id", "normalized_name", name="uq_tags_user_name"),)
 
 
@@ -274,6 +281,59 @@ class Job(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Note(Base):
+    """A user-authored note and canonical source for derived retrieval data."""
+
+    __tablename__ = "notes"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(160))
+    content: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default="active", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, index=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    content_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    tags: Mapped[list[Tag]] = relationship(secondary=note_tags, back_populates="notes")
+    search_document: Mapped[NoteSearchDocument | None] = relationship(back_populates="note", cascade="all, delete-orphan", uselist=False)
+    chunks: Mapped[list[NoteChunk]] = relationship(back_populates="note", cascade="all, delete-orphan")
+    __table_args__ = (UniqueConstraint("user_id", "updated_at", "id", name="uq_notes_user_updated_id"),)
+
+
+class NoteSearchDocument(Base):
+    """Derived searchable projection for one canonical note."""
+
+    __tablename__ = "note_search_documents"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    note_id: Mapped[str] = mapped_column(ForeignKey("notes.id", ondelete="CASCADE"), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(160))
+    content: Mapped[str] = mapped_column(Text)
+    tags_text: Mapped[str] = mapped_column(Text, default="")
+    indexed_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    note: Mapped[Note] = relationship(back_populates="search_document")
+
+
+class NoteChunk(Base):
+    """A deterministic, provenance-preserving retrieval chunk."""
+
+    __tablename__ = "note_chunks"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    note_id: Mapped[str] = mapped_column(ForeignKey("notes.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    chunk_index: Mapped[int] = mapped_column(Integer)
+    content: Mapped[str] = mapped_column(Text)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    start_offset: Mapped[int] = mapped_column(Integer)
+    end_offset: Mapped[int] = mapped_column(Integer)
+    source_version: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    note: Mapped[Note] = relationship(back_populates="chunks")
+    __table_args__ = (UniqueConstraint("note_id", "source_version", "chunk_index", name="uq_note_chunks_version_index"),)
 
 
 class AuditEvent(Base):
