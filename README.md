@@ -4,7 +4,7 @@ NexusOS is a local-first personal AI operating system intended to run on a Raspb
 
 ## Current milestone
 
-**Milestone 2 — identity and persistence implemented.**
+**Milestone 3 — authenticated dashboard shell and design system implemented.**
 
 The repository currently contains:
 
@@ -12,14 +12,25 @@ The repository currently contains:
 - Implemented liveness, storage/database-readiness, and identity endpoints.
 - SQLite persistence with an explicit Alembic migration.
 - Argon2id password hashing, tracked sessions, JWT access tokens, CSRF protection, and login backoff.
-- A responsive Next.js dashboard shell with a login/authentication boundary.
+- A responsive Next.js dashboard shell with modular navigation, theme switching, command palette, accessible states, and a login/authentication boundary.
 - ARM64-aware, non-root API and web Dockerfiles.
 - A Docker Compose development topology with loopback-only ports.
 - Public-repository protections, environment templates, tests, and operational documentation.
 
 AI calls, tool calling, tasks, notes, system telemetry, backups, and other product modules are not implemented yet. The authoritative next-step plan is [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
-## Milestone 2 implementation status — 2026-08-02
+## Milestone 3 implementation status — 2026-08-02
+
+Milestone 3 is implemented within its approved scope. The authenticated shell now has modular components, responsive navigation, persisted light/dark appearance, keyboard command search, loading/error/empty/locked states, and accessible focus behavior. No domain feature data or host actions were added.
+
+Implemented frontend boundaries:
+
+- Modular auth/session client in `apps/web/lib/auth.ts`
+- Theme context and toggle in `apps/web/components/theme-provider.tsx` and `theme-toggle.tsx`
+- Authenticated shell in `apps/web/components/dashboard-shell.tsx`
+- Keyboard command palette in `apps/web/components/command-palette.tsx`
+- Reusable auth/state/status components under `apps/web/components/`
+
 
 Milestone 2 identity and persistence is implemented within its approved scope. Database migrations are explicit and must be run through the owner-bootstrap command or Alembic; application startup never mutates the schema.
 
@@ -36,7 +47,7 @@ Authentication uses Argon2id password hashes, short-lived HS256 access JWTs, has
 
 ## Project checkpoint — 2026-08-02
 
-The foundation checkpoint is complete. Phase 0 repository setup, Milestone 1 foundation, and approved Milestone 2 identity/persistence work are implemented. No later product feature was started during this checkpoint.
+Phase 0, Milestone 1 foundation, Milestone 2 identity/persistence, and approved Milestone 3 shell/design-system work are implemented. No later product feature was started during this milestone.
 
 ### What has been built
 
@@ -56,7 +67,7 @@ The foundation checkpoint is complete. Phase 0 repository setup, Milestone 1 fou
 apps/api/app/                 FastAPI entrypoint, settings, health/auth routes, identity module
 apps/api/migrations/           Explicit Alembic identity migrations
 apps/api/tests/               Health, migration, identity, and security tests
-apps/web/app/                 Static Next.js dashboard shell
+apps/web/app/                 Next.js workspace composition and global styles
 infrastructure/docker/        API and web images
 infrastructure/healthchecks/  Health contract and current endpoint notes
 infrastructure/compose/       Future Compose profile guidance
@@ -77,7 +88,7 @@ There is no AI provider call, tool registry, job worker, feature API, Pi telemet
 
 - No hardcoded production secrets, arbitrary shell execution, privileged containers, or Docker socket mounts were found in the current implementation.
 - Next.js standalone output is configured and matches the web runner image.
-- Raspberry Pi 5 ARM64 compatibility is designed but still requires an actual `linux/arm64` image build and on-device resource/healthcheck test.
+- Raspberry Pi 5 ARM64 compatibility is verified for the API/web image builds, Compose configuration, non-root web container, and web runtime smoke test; sustained-load and healthcheck timing remain open.
 - Inline Python/Node healthchecks use short timeouts; validate or tune them on a loaded Pi before production deployment.
 - The development stack intentionally binds to loopback, so it is not a LAN-accessible Pi deployment yet.
 - Docker image reproducibility and production hardening remain future work; use the roadmap rather than treating the current Compose file as production infrastructure.
@@ -181,7 +192,7 @@ The API is available at `http://127.0.0.1:8000` and the web shell at `http://127
 ```text
 nexusos/
 ├── apps/api/                  FastAPI package, settings, routes, tests
-├── apps/web/                  Next.js static shell
+├── apps/web/                  Next.js authenticated dashboard shell
 ├── infrastructure/docker/     API and web images
 ├── infrastructure/            Deployment contracts and future profiles
 ├── scripts/validate_env.py    Safe environment template validator
@@ -204,4 +215,4 @@ nexusos/
 
 ## Remaining work
 
-The next approved milestone is the authenticated dashboard shell/design system. Later work includes the authenticated dashboard, system read-only telemetry, AI gateway, tasks, notes/search, safe host actions, files/projects, and production deployment hardening. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the ordered plan.
+The next approved milestone is the read-only Raspberry Pi system module. Later work includes the AI gateway, tasks, notes/search, safe host actions, files/projects, and production deployment hardening. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the ordered plan.

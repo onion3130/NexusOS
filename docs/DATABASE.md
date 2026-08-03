@@ -1,6 +1,6 @@
 # NexusOS database
 
-**Current milestone:** Milestone 2
+**Current milestone:** Milestone 3 — authenticated dashboard shell and design system
 **Current status:** Identity persistence is implemented. The first Alembic revision creates users, roles, permissions, sessions, join tables, and audit events. Domain feature tables remain deferred.
 **Last updated:** 2026-08-02
 

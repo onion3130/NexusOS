@@ -1,16 +1,16 @@
 # NexusOS roadmap
 
-**Current milestone:** Milestone 2 — identity and persistence implemented
-**Next milestone:** Milestone 3 — authenticated dashboard shell and design system
+**Current milestone:** Milestone 3 — authenticated dashboard shell and design system implemented
+**Next milestone:** Milestone 4 — read-only Raspberry Pi system module
 **Last updated:** 2026-08-02
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
 
 ## Checkpoint status — 2026-08-02
 
-The project is paused after Milestone 2. The checkpoint found no confirmed application bug requiring feature work. Available automated validation is green, while Docker/ARM64 image builds and on-device Raspberry Pi 5 behavior remain unverified on the current workstation.
+The project is paused after Milestone 3. The authenticated shell and design-system work is complete within scope. Local frontend validation is green, and the API/web ARM64 images, Compose configuration, and web runtime were verified on the available Raspberry Pi 5.
 
-Before Milestone 2 begins, preserve these boundaries:
+Current boundaries:
 
 - The live API includes health routes and the `/api/v1/auth` identity/session routes documented in `docs/API.md`.
 - The identity database schema is implemented through Alembic migration `0001_identity`; future domain tables remain design-only.
@@ -23,9 +23,9 @@ Before Milestone 2 begins, preserve these boundaries:
 | Milestone | Status | Outcome |
 |---|---|---|
 | 0. Architecture and public foundation | Complete | Repository rules, architecture, security baseline, and documentation |
-| 1. ARM64 application foundation | Complete | API health service, static web shell, Compose, validation, tests |
+| 1. ARM64 application foundation | Complete | API health service, foundation web shell, Compose, validation, tests |
 | 2. Identity and persistence | Complete | Owner bootstrap, SQLite/Alembic, sessions, auth boundary |
-| 3. Dashboard shell and design system | Next | Authenticated navigation, shared UI primitives, accessible states |
+| 3. Dashboard shell and design system | Complete | Authenticated navigation, shared UI primitives, accessible states |
 | 4. System read-only module | Planned | Pi telemetry and allowlisted service/container status |
 | 5. Assistant gateway | Planned | Conversations, provider gateway, streaming jobs, read-only tools |
 | 6. Tasks and reminders | Planned | Homework/tasks, reminders, notifications, assistant task actions |
@@ -43,7 +43,7 @@ Built and verified:
 - Safe rejection of missing, placeholder, short, or production-insecure configuration.
 - `GET /api/v1/health/live`.
 - `GET /api/v1/health/ready` with a storage write/delete probe.
-- Next.js static shell showing foundation status and deferred capabilities.
+- Next.js foundation shell showing status and deferred capabilities.
 - ARM64/non-root API and web Dockerfiles.
 - Compose services and loopback-only development ports.
 - Backend tests and frontend typecheck/build configuration.
@@ -69,9 +69,18 @@ Acceptance criteria met:
 - Errors and responses do not expose passwords, tokens, or secrets.
 - Documentation and API contracts identify implemented versus planned routes.
 
-## Milestone 3 — authenticated dashboard shell
+## Milestone 3 complete — authenticated dashboard shell
 
-Add the shared app shell, route protection, navigation, theme tokens, command-palette foundation, loading/empty/error/permission states, and accessibility checks. Do not add feature data modules yet.
+Implemented the shared app shell, responsive route-aware navigation, persisted theme tokens and toggle, keyboard command-palette foundation, loading/error/empty/permission states, focus management, and accessibility semantics. Feature data modules remain intentionally absent.
+
+Acceptance criteria met:
+
+- Authenticated users receive a responsive shell with mobile navigation and a skip link.
+- Light/dark appearance can be toggled and persists locally without adding a dependency.
+- Command palette opens with Cmd/Ctrl+K and supports search, arrows, Enter, Escape, focus trapping, and focus restoration.
+- Unfinished modules are visibly locked and do not call feature APIs.
+- Frontend typecheck, production build, and dependency audit pass.
+
 
 ## Milestone 4 — read-only system module
 

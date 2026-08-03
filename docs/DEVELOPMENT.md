@@ -1,14 +1,13 @@
 # NexusOS development
 
-**Current milestone:** Milestone 2 identity and persistence
-**Status:** SQLite identity persistence, session authentication, health readiness, and the minimal frontend auth boundary are implemented; domain feature development remains deferred.
+**Current milestone:** Milestone 3 dashboard shell and design system
+**Status:** SQLite identity persistence, session authentication, health readiness, and the modular responsive frontend shell are implemented; domain feature development remains deferred.
 **Last updated:** 2026-08-02
 
 A new AI coding agent should read this file, [`README.md`](../README.md), and [`ROADMAP.md`](ROADMAP.md) before changing code. The repository is the project context.
 
-## Project checkpoint — 2026-08-02
-
-The checkpoint reviewed the current implementation without starting a later feature. Phase 0, Milestone 1, and the approved Milestone 2 identity/persistence scope are complete. The working tree was validated for API behavior, frontend build health, environment safety, Docker boundaries, Raspberry Pi compatibility assumptions, and architecture drift.
+## Project checkpoint — 2026-08-02The checkpoint reviewed the current implementation without starting a later feature. Phase 0, Milestone 1, Milestone 2 identity/persistence, and Milestone 3 shell/design-system scope are complete.
+ The working tree was validated for API behavior, frontend build health, environment safety, Docker boundaries, Raspberry Pi compatibility assumptions, and architecture drift.
 
 ### Files created/modified across the foundation
 
@@ -19,9 +18,9 @@ The checkpoint reviewed the current implementation without starting a later feat
 
 ### Review result
 
-No confirmed application bug was found in the current scope. The authenticated Next.js shell uses standalone output as required by its Docker runner. The API has no shell execution, AI call, host action, privileged container, or Docker socket access; its SQLite identity database is accessed only after explicit migration. The remaining risks are unverified `linux/arm64`/Pi execution, healthcheck timing under load, and production deployment hardening.
+No confirmed application bug was found in the current scope. The authenticated Next.js shell uses standalone output as required by its Docker runner. The API has no shell execution, AI call, host action, privileged container, or Docker socket access; its SQLite identity database is accessed only after explicit migration. The API/web `linux/arm64` images, Compose configuration, non-root web container, and web runtime smoke test have been verified on the available Raspberry Pi 5. Remaining risks are sustained-load/healthcheck timing behavior and production deployment hardening.
 
-Docker validation must be run on a machine with Docker or on the Raspberry Pi. Do not call the stack production-ready until those checks, backups, TLS, authentication, persistence, and recovery controls exist.
+Docker validation has been run on the available Raspberry Pi 5 for the current API/web images and web smoke test. Do not call the stack production-ready until sustained-load checks, backups, TLS, authentication, persistence, and recovery controls exist.
 
 ## Implemented files
 
@@ -31,7 +30,9 @@ Docker validation must be run on a machine with Docker or on the Raspberry Pi. D
 - `apps/api/app/api/routes/auth.py`: login, refresh, logout, current-user, and session routes.
 - `apps/api/app/db/` and `apps/api/migrations/`: identity persistence and migration history.
 - `apps/api/tests/`: health, migration, identity, CSRF, and security tests.
-- `apps/web/app/page.tsx`: login and authenticated dashboard shell.
+- `apps/web/app/page.tsx`: authenticated workspace composition.
+- `apps/web/components/`: auth screens, dashboard shell, theme provider/toggle, command palette, and reusable status states.
+- `apps/web/lib/auth.ts`: browser session API boundary.
 - `infrastructure/docker/*.Dockerfile`: non-root API/web images.
 - `docker-compose.yml`: current ARM64 development topology.
 
@@ -86,7 +87,7 @@ npm run build
 npm run dev
 ```
 
-The current web shell calls the identity API, presents login when unauthenticated, refreshes access sessions, and sends CSRF-protected logout. It does not call domain feature APIs yet.
+The current web shell calls the identity API through the same-origin Next.js rewrite, presents login when unauthenticated, refreshes access sessions, and sends CSRF-protected logout. It supports theme persistence, responsive navigation, command shortcuts, loading/error states, and locked future modules. It does not call domain feature APIs yet.
 
 ## Compose commands
 

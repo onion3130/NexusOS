@@ -1,7 +1,7 @@
 # NexusOS architecture
 
-**Current milestone:** Milestone 2 — identity and persistence implemented
-**Status:** Current runtime is a FastAPI health/identity service plus an authenticated Next.js shell. AI and product modules remain design-only.
+**Current milestone:** Milestone 3 — authenticated dashboard shell and design system implemented
+**Status:** Current runtime is a FastAPI health/identity service plus an authenticated, modular Next.js shell. AI and product modules remain design-only.
 **Last updated:** 2026-08-02
 
 This is the architectural source of truth for a new coding agent. A design described here is not implemented unless the current-state sections and tests say so.
@@ -27,7 +27,7 @@ Core principles:
 - `apps/api/app/api/routes/health.py` and `auth.py`: health and identity route modules.
 - `apps/api/app/db`: SQLAlchemy engine, models, and request-scoped sessions.
 - `apps/api/migrations`: explicit Alembic migration history.
-- `apps/web`: Next.js 15 shell with login/current-user/logout boundary.
+- `apps/web`: Next.js 15 shell with login/current-user/logout boundary, modular navigation, theme context, command palette, and accessible state components.
 - `infrastructure/docker/api.Dockerfile`: non-root API image.
 - `infrastructure/docker/web.Dockerfile`: non-root Next.js image.
 - `docker-compose.yml`: ARM64 development topology with real API/web services and placeholder proxy/worker/AI services.
@@ -36,7 +36,7 @@ Core principles:
 ### Implemented boundary
 
 ```text
-Browser -> static Next.js shell
+Browser -> authenticated Next.js shell -> same-origin `/api/v1` rewrite -> FastAPI
 
 Health client -> FastAPI
                  ├── /api/v1/health/live
@@ -106,7 +106,7 @@ NVIDIA NIM and OpenAI-compatible services are external provider options. A Pi 5 
 
 ### Private by default
 
-Development ports bind to loopback. A future reverse proxy may provide LAN HTTPS, but public exposure, remote access, and TLS are not part of Milestone 1.
+Development ports bind to loopback. A future reverse proxy may provide LAN HTTPS, but public exposure, remote access, and TLS are not part of the current development milestone.
 
 ### Typed and auditable actions
 
@@ -126,7 +126,7 @@ AI and UI requests may select only server-defined tools/actions. No arbitrary sh
 Not implemented today:
 
 - Domain-specific database tables, repositories, and feature persistence beyond identity.
-- Authenticated dashboard data modules beyond the current shell.
+- Authenticated dashboard data modules beyond the current shell/design system.
 - AI provider calls, conversation storage, memory, RAG, tool registry, and streaming.
 - Tasks, notes, calendar, files, projects, Git, Docker inventory, finance, and media integrations.
 - Pi telemetry adapters and write actions.
@@ -148,11 +148,15 @@ The architecture still matches the Nexus requirements at the current stage: loca
 - The web image's `output: "standalone"` setting matches its runner-stage copy.
 - No arbitrary subprocess, shell execution, Docker socket mount, or privileged container was found in the current implementation.
 
+### Milestone 3 design boundary
+
+The dashboard shell is presentation and session orchestration only. It does not own domain data, permissions, host actions, or feature API calls. Navigation items for future modules are disabled/locked rather than fake links. Theme preference is a browser-local UI preference, not a server setting. The command palette exposes only fixed shell actions and never accepts arbitrary commands.
+
 ### Open technical debt
 
-- Build and runtime behavior still needs a real `linux/arm64` build and Raspberry Pi 5 test; this workstation cannot prove Pi compatibility.
+- ARM64 API/web image builds, Compose configuration, and a web runtime smoke test have passed on the available Raspberry Pi 5; sustained-load and healthcheck timing tests remain open.
 - Healthcheck interpreter startup and timeout behavior should be measured on a loaded Pi before production use.
-- Current Compose is a development topology: no reverse proxy, TLS, LAN access, resource limits, systemd startup, database, backups, or monitoring.
+- Current Compose is a development topology: no reverse proxy, TLS, LAN access, resource limits, systemd startup, backups, or monitoring.
 - Docker image dependency reproducibility and image digest pinning remain hardening work.
 
 These are documented risks and future gates, not reasons to start a later feature early.

@@ -1,6 +1,6 @@
 # NexusOS API
 
-**Current milestone:** Milestone 2
+**Current milestone:** Milestone 3 — authenticated dashboard shell and design system
 **Status:** Health and identity/session endpoints below are implemented. Other API sections are planned contracts.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-02

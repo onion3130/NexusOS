@@ -1,6 +1,6 @@
 # NexusOS deployment
 
-**Current milestone:** Milestone 2 identity and persistence deployment
+**Current milestone:** Milestone 3 dashboard shell deployment
 **Status:** Local/ARM64 foundation only. Production hardening is not complete.
 **Last updated:** 2026-08-02
 
@@ -21,7 +21,8 @@
 | `nexus-worker` | Placeholder | Future jobs, reminders, backups, and scans |
 | `nexus-ai` | Opt-in placeholder profile | Future local/provider boundary |
 
-All services use the private `nexus-private` bridge network. The web image's same-origin `/api/v1` rewrite targets `nexus-api:8000` inside that network. The development Compose file does not include a database container; SQLite is stored in the API-mounted `/var/lib/nexus/data` volume. Run the explicit owner bootstrap/migration command before expecting readiness.
+All services use the private `nexus-private` bridge network.The web image's same-origin `/api/v1` rewrite targets `nexus-api:8000` inside that network, while local development defaults to `127.0.0.1:8000`. The shell itself adds no new runtime service or native dependency.
+ The development Compose file does not include a database container; SQLite is stored in the API-mounted `/var/lib/nexus/data` volume. Run the explicit owner bootstrap/migration command before expecting readiness.
 
 ## Development deployment
 

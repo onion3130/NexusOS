@@ -1,6 +1,6 @@
 # NexusOS development setup
 
-**Status:** Milestone 2 implemented — API health, identity persistence, session authentication, and the authenticated web boundary are available; domain feature modules remain deferred.
+**Status:** Milestone 3 implemented — API health, identity persistence, session authentication, and the modular authenticated web shell are available; domain feature modules remain deferred.
 
 ## Prerequisites
 

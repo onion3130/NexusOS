@@ -1,6 +1,6 @@
 # NexusOS AI system
 
-**Current milestone:** Milestone 2 — identity and persistence
+**Current milestone:** Milestone 3 — authenticated dashboard shell and design system
 **Status:** Design only. No model provider, AI route, conversation storage, memory system, RAG pipeline, or tool registry is implemented.
 **Last updated:** 2026-08-02
 

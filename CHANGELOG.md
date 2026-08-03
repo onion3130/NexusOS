@@ -4,6 +4,14 @@ All notable NexusOS changes are recorded here. The repository is currently pre-r
 
 ## [Unreleased]
 
+### Milestone 3 — 2026-08-02
+
+- Replaced the monolithic dashboard page with modular auth, shell, theme, command palette, and status components.
+- Added responsive navigation, mobile menu behavior, skip-link support, locked future modules, and accessible loading/error/empty states.
+- Added persisted light/dark appearance controls and a fixed-command keyboard palette with Cmd/Ctrl+K, arrow navigation, Enter, Escape, focus trapping, and restoration.
+- Kept all domain feature APIs and host actions out of scope; the shell exposes only implemented identity behavior and fixed UI actions.
+- Validated the standalone frontend build and documented Raspberry Pi 5 ARM64 verification as part of the milestone gate.
+
 ### Milestone 2 — 2026-08-02
 
 - Implemented the SQLite/SQLAlchemy persistence boundary and reversible Alembic identity migration.
@@ -15,15 +23,14 @@ All notable NexusOS changes are recorded here. The repository is currently pre-r
 
 ### Documentation
 
-- Updated the project handoff to identify Milestone 2 as implemented and distinguish live identity/database behavior from deferred product modules.
+- Updated the project handoff to identify Milestone 2 and Milestone 3 as implemented and distinguish live identity/database/shell behavior from deferred product modules.
 - Refreshed the project handoff so a new coding agent can continue without previous conversation history.
 - Added `docs/ROADMAP.md` as the source of truth for milestone order and acceptance criteria.
-- Reconciled README, architecture, database, API, AI, deployment, and development documentation with the actual Milestone 2 implementation.
+- Reconciled README, architecture, database, API, AI, deployment, setup, and development documentation with the actual Milestone 3 implementation.
 - Marked planned resources and designs explicitly so they are not mistaken for live features.
 
 ### Planned
 
-- Milestone 3: authenticated dashboard shell and design-system completion.
 - Milestone 4: read-only Raspberry Pi system telemetry.
 
 ## [0.1.0] — 2026-08-02
@@ -33,7 +40,7 @@ All notable NexusOS changes are recorded here. The repository is currently pre-r
 - Environment-only FastAPI configuration with safe validation errors.
 - `GET /api/v1/health/live` process liveness endpoint.
 - `GET /api/v1/health/ready` storage readiness endpoint with a write/delete probe.
-- Responsive Next.js 15 web shell with login, session refresh, and deferred capabilities.
+- Responsive Next.js 15 web shell with login, session refresh, modular shell controls, and deferred capabilities.
 - ARM64-aware Docker Compose development stack with non-root API/web containers.
 - Loopback-only development ports and healthchecks.
 - Backend health, migration, identity, and security tests; frontend typecheck/build configuration; and public GitHub safety baseline.
