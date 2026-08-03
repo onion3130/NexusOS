@@ -1,7 +1,7 @@
 # NexusOS AI system
 
-**Current milestone:** Milestone 7 — notes, search, and retrieval foundations implemented
-**Status:** The bounded assistant gateway, conversation storage, provider normalization, read-only system/task/note tools, confirmation-gated task mutations, lexical search, and source-aware note chunks are implemented. Embeddings, autonomous memory, semantic RAG, streaming, and host actions remain deferred.
+**Current milestone:** v1.0 release hardening complete
+**Status:** The bounded assistant gateway, conversation storage, provider normalization, read-only system/task/note tools, confirmation-gated task mutations, lexical search, source-aware note chunks, and confirmation-gated maintenance proposals are implemented. Embeddings, autonomous memory, semantic RAG, streaming, and privileged host control remain deferred.
 **Last updated:** 2026-08-03
 
 ## Current behavior
@@ -11,7 +11,7 @@
 - The gateway normalizes bounded provider requests and responses.
 - The registry exposes only tools allowed by the authenticated user's permissions.
 - `system.get_overview` remains read-only and argument-free.
-- Task mutations are persisted as proposals and require explicit user approval.
+- Task mutations and maintenance proposals are persisted and require explicit user approval.
 
 ## Implemented note tools
 
@@ -30,6 +30,12 @@ Note content never grants permissions or triggers tool execution. The tools use 
 
 Approval and rejection are authenticated, ownership-scoped, CSRF-protected for cookies, expiry-bounded, permission-checked, typed, and audited. The same task service is used by REST routes and assistant tools.
 
+## Implemented maintenance tool
+
+- `maintenance.request_backup`: creates a user-visible proposal for a database backup; it does not queue or execute the backup. The browser confirmation workflow remains mandatory.
+
+The assistant cannot request arbitrary commands, paths, Docker operations, reboot, shutdown, package management, systemd controls, or restore. Maintenance actions use the same permission and audit boundary as direct API requests.
+
 ## Tool-calling lifecycle
 
 ```text
@@ -41,7 +47,7 @@ user message
   -> persist proposed call with expiry
   -> show confirmation UI
   -> approve or reject
-  -> execute fixed task service adapter
+  -> execute fixed task/maintenance service adapter after confirmation
   -> sanitize result and audit event
 ```
 
@@ -57,9 +63,9 @@ If retrieved note text is later added to model context, it must be explicitly de
 
 - Streaming responses
 - Provider health dashboards
-- Source-aware retrieval
+- Semantic source-aware retrieval
 - Memory and RAG
 - Additional integrations
-- Host actions
+- Privileged host control, restore, and backup replication
 
 See [`API.md`](API.md), [`DATABASE.md`](DATABASE.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), and [`ROADMAP.md`](ROADMAP.md).

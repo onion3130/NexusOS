@@ -1,7 +1,7 @@
 # NexusOS roadmap
 
-**Current milestone:** Milestone 7 — notes, search, and retrieval foundations implemented
-**Next milestone:** Milestone 8 — safe host actions
+**Current milestone:** v1.0 release hardening complete
+**Next milestone:** Milestone 9 — files, projects, Git, and Docker views
 **Last updated:** 2026-08-03
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
@@ -22,7 +22,7 @@ Milestone 6 is implemented within its approved scope. NexusOS now has an authent
 | 5. Assistant gateway | Complete | Conversations, bounded provider gateway, read-only system tool, assistant UI |
 | 6. Tasks and reminders | Complete | Tasks, due dates, priorities, categories, tags, recurrence, reminders, notifications, worker, assistant actions |
 | 7. Notes and scoped search | Complete | Notes, tags, SQLite FTS5 search, source-aware retrieval chunks, assistant read tools |
-| 8. Safe host actions | Planned | Confirmation UI, audit events, allowlisted operations, backups |
+| 8. Safe host actions | Complete | Confirmation-gated maintenance actions, audit events, verified SQLite backups, and recovery documentation |
 | 9. Files, projects, Git, Docker views | Planned | Approved paths, repository/project metadata, safe read operations |
 | 10. Deployment hardening | Planned | Reverse proxy, systemd, SSD operations, backups, restore drill |
 | 11. Integrations and plugins | Planned | Calendar/media/finance ports and out-of-process plugin boundary |
@@ -66,9 +66,40 @@ Known limitations:
 - FTS5 and target Raspberry Pi runtime validation require Docker-enabled ARM64 hardware.
 - Note content is intentionally rendered as text; rich Markdown/HTML rendering remains deferred.
 
-## Milestones 8–9 — useful modules
+## Milestone 8 complete — safe host actions and recovery foundations
 
-Add safe host actions, then files/projects/Git/Docker views. Each write capability requires permissions, validation, confirmation where risky, audit events, and tests.
+Implemented:
+
+- Reversible Alembic migration `0005_host_actions` for durable action proposals and backup metadata.
+- A server-owned allowlist for SQLite backup creation, backup verification, and database integrity checks.
+- Explicit confirmation workflows with expiring proposals, CSRF, permissions, idempotency, durable jobs, and auditable lifecycle transitions.
+- A non-root worker adapter using Python SQLite backup APIs; no arbitrary shell, Docker socket, filesystem path, reboot, shutdown, package, or systemd control.
+- Verified backup metadata with relative paths, SHA-256 hashes, SQLite integrity results, and user-scoped API visibility.
+- Authenticated maintenance workspace with review/confirm/reject states, job progress, backup history, and audit history.
+- Confirmation-gated assistant `maintenance.request_backup` proposal tool; assistants cannot bypass the same user confirmation flow.
+- Recovery and Raspberry Pi/Docker deployment documentation.
+
+Known limitations:
+
+- Automated restore, encrypted/off-host backup replication, retention cleanup, and last-backup deletion protection remain deployment work.
+- The current action catalog intentionally excludes reboot, shutdown, package management, systemd, Docker, arbitrary commands, and dynamic paths.
+- Docker runtime and sustained-load validation still require a Docker-enabled Raspberry Pi 5 or ARM64 host.
+
+## v1.0 release hardening complete
+
+Implemented:
+
+- Version metadata is aligned at `1.0.0` across API, web, and health responses.
+- Worker leases reclaim stale host-action jobs and stop after three bounded attempts with audit events.
+- Backup creation is confined to the configured data volume, retry-idempotent by job, and verification detects digest tampering without silently trusting altered files.
+- Migration `0006_v1_hardening` adds composite indexes for reminder and host-action claim scans.
+- Docker, ARM64, recovery, migration-head, and release validation guidance is synchronized.
+
+The v1.0 release remains private/local-first: reverse-proxy TLS, encrypted off-host replication, restore drills, and systemd orchestration remain operational follow-up work rather than hidden claims.
+
+## Milestones 9 — useful modules
+
+Add files/projects/Git/Docker read views. Each future write capability requires permissions, validation, confirmation where risky, audit events, and tests.
 
 ## Milestones 10–11 — production and expansion
 

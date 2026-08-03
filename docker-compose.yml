@@ -1,6 +1,6 @@
-# NexusOS Milestone 6 development stack
+# NexusOS v1.0 ARM64 development stack
 #
-# API/web/task worker are real services. Proxy and AI remain deferred/optional boundaries.
+# API/web/worker are real services. Proxy and AI remain deferred/optional boundaries.
 # Configure .env first.
 
 services:

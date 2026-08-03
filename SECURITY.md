@@ -4,7 +4,7 @@ NexusOS is a local-first project intended to run privately on a Raspberry Pi or 
 
 ## Supported versions
 
-The repository is pre-release. The `main` branch is the actively maintained development line. There are currently no published release versions with separate security support windows.
+The `v1.0.x` release line is supported for the private, local-first deployment described in the documentation. The `main` branch remains the actively maintained development line. Do not expose the v1.0 deployment directly to the public internet.
 
 ## Reporting a vulnerability
 

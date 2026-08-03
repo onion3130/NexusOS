@@ -10,6 +10,7 @@ import { TaskWorkspace } from "./task-workspace";
 import { NotificationCenter } from "./notification-center";
 import { NotesWorkspace } from "./notes-workspace";
 import { SearchWorkspace } from "./search-workspace";
+import { MaintenanceWorkspace } from "./maintenance-workspace";
 import { LockedState, StatusCard } from "./ui/status-card";
 import type { User } from "../lib/auth";
 
@@ -19,6 +20,7 @@ const navigation = [
   { label: "Tasks", icon: "□", available: true },
   { label: "Notes", icon: "▤", available: true },
   { label: "Search", icon: "⌕", available: true },
+  { label: "Maintenance", icon: "⚙", available: true },
 ];
 
 const metrics = [
@@ -31,7 +33,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
   const { toggleTheme } = useTheme();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [activeView, setActiveView] = useState<"overview" | "assistant" | "tasks" | "notes" | "search">("overview");
+  const [activeView, setActiveView] = useState<"overview" | "assistant" | "tasks" | "notes" | "search" | "maintenance">("overview");
   const [noteToOpen, setNoteToOpen] = useState<string | null>(null);
 
   useEffect(() => {
@@ -64,9 +66,9 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         </div>
         <nav aria-label="Primary navigation" className="nav-list">
           <p className="eyebrow">Workspace</p>
-          {navigation.map((item) => item.available ? (              <button aria-current={(item.label === "Overview" && activeView === "overview") || (item.label === "Assistant" && activeView === "assistant") || (item.label === "Tasks" && activeView === "tasks") || (item.label === "Notes" && activeView === "notes") || (item.label === "Search" && activeView === "search") ? "page" : undefined} className={`nav-item${((item.label === "Overview" && activeView === "overview") || (item.label === "Assistant" && activeView === "assistant") || (item.label === "Tasks" && activeView === "tasks") || (item.label === "Notes" && activeView === "notes") || (item.label === "Search" && activeView === "search")) ? " active" : ""}`} key={item.label} onClick={() => { setActiveView(item.label === "Assistant" ? "assistant" : item.label === "Tasks" ? "tasks" : item.label === "Notes" ? "notes" : item.label === "Search" ? "search" : "overview"); setMobileNavOpen(false); }} type="button">
+          {navigation.map((item) => item.available ? (              <button aria-current={(item.label === "Overview" && activeView === "overview") || (item.label === "Assistant" && activeView === "assistant") || (item.label === "Tasks" && activeView === "tasks") || (item.label === "Notes" && activeView === "notes") || (item.label === "Search" && activeView === "search") || (item.label === "Maintenance" && activeView === "maintenance") ? "page" : undefined} className={`nav-item${((item.label === "Overview" && activeView === "overview") || (item.label === "Assistant" && activeView === "assistant") || (item.label === "Tasks" && activeView === "tasks") || (item.label === "Notes" && activeView === "notes") || (item.label === "Search" && activeView === "search") || (item.label === "Maintenance" && activeView === "maintenance")) ? " active" : ""}`} key={item.label} onClick={() => { setActiveView(item.label === "Assistant" ? "assistant" : item.label === "Tasks" ? "tasks" : item.label === "Notes" ? "notes" : item.label === "Search" ? "search" : item.label === "Maintenance" ? "maintenance" : "overview"); setMobileNavOpen(false); }} type="button">
 
-              <span aria-hidden="true" className="nav-icon">{item.icon}</span>{item.label}{((item.label === "Overview" && activeView === "overview") || (item.label === "Assistant" && activeView === "assistant") || (item.label === "Tasks" && activeView === "tasks")) && <span className="active-dot" />}
+              <span aria-hidden="true" className="nav-icon">{item.icon}</span>{item.label}{((item.label === "Overview" && activeView === "overview") || (item.label === "Assistant" && activeView === "assistant") || (item.label === "Tasks" && activeView === "tasks") || (item.label === "Notes" && activeView === "notes") || (item.label === "Search" && activeView === "search") || (item.label === "Maintenance" && activeView === "maintenance")) && <span className="active-dot" />}
             </button>
           ) : (
             <button aria-disabled="true" className="nav-item nav-item-locked" key={item.label} type="button">
@@ -84,7 +86,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         <header className="topbar">
           <div className="mobile-topbar-row">
             <button aria-controls="mobile-navigation" aria-expanded={mobileNavOpen} aria-label="Toggle navigation" className="menu-button" onClick={() => setMobileNavOpen((open) => !open)} type="button">☰</button>
-            <div><p className="breadcrumb">Workspace / {activeView === "assistant" ? "Assistant" : activeView === "tasks" ? "Tasks" : activeView === "notes" ? "Notes" : activeView === "search" ? "Search" : "Overview"}</p><h1>{activeView === "assistant" ? "Your assistant workspace." : activeView === "tasks" ? "Make progress visible." : activeView === "notes" ? "Capture what matters." : activeView === "search" ? "Find your sources." : `Good morning, ${user.username}.`}</h1></div>
+            <div><p className="breadcrumb">Workspace / {activeView === "assistant" ? "Assistant" : activeView === "tasks" ? "Tasks" : activeView === "notes" ? "Notes" : activeView === "search" ? "Search" : activeView === "maintenance" ? "Maintenance" : "Overview"}</p><h1>{activeView === "assistant" ? "Your assistant workspace." : activeView === "tasks" ? "Make progress visible." : activeView === "notes" ? "Capture what matters." : activeView === "search" ? "Find your sources." : activeView === "maintenance" ? "Keep your host healthy." : `Good morning, ${user.username}.`}</h1></div>
           </div>
           <div className="topbar-actions">
             <NotificationCenter />
@@ -94,12 +96,12 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
           </div>
         </header>
 
-        {activeView === "assistant" ? <AssistantWorkspace /> : activeView === "tasks" ? <TaskWorkspace /> : activeView === "notes" ? <NotesWorkspace initialNoteId={noteToOpen} onSearch={() => setActiveView("search")} /> : activeView === "search" ? <SearchWorkspace onBack={() => setActiveView("notes")} onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }} /> : <>
+        {activeView === "assistant" ? <AssistantWorkspace /> : activeView === "tasks" ? <TaskWorkspace /> : activeView === "notes" ? <NotesWorkspace initialNoteId={noteToOpen} onSearch={() => setActiveView("search")} /> : activeView === "search" ? <SearchWorkspace onBack={() => setActiveView("notes")} onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }} /> : activeView === "maintenance" ? <MaintenanceWorkspace /> : <>
         <div className="hero-card">
           <div className="hero-copy">
-            <span className="status-pill"><span /> Milestone 6 tasks online</span>
+            <span className="status-pill"><span /> NexusOS v1.0 ready</span>
             <h2>Your digital life, <em>connected.</em></h2>
-            <p>Your private workspace is authenticated and ready for the next Nexus modules. The shell keeps unfinished capabilities visible without pretending they are live.</p>
+            <p>Your private workspace is authenticated and ready. The shell keeps deferred capabilities visible without pretending they are live.</p>
             <button className="primary-button" onClick={() => setPaletteOpen(true)} type="button">Explore commands <span aria-hidden="true">⌘ K</span></button>
           </div>
           <div aria-hidden="true" className="hero-orbit"><div className="orbit orbit-one"><span>AI</span></div><div className="orbit orbit-two"><span>SYS</span></div><div className="orbit orbit-three"><span>✦</span></div><div className="core">N</div></div>
@@ -114,7 +116,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
 
         <section aria-labelledby="next-heading" className="section-block">
           <div className="section-heading"><div><p className="eyebrow">Workspace status</p><h2 id="next-heading">Build your personal workspace</h2></div><span className="updated">No feature data loaded</span></div>
-          <StatusCard action={<span className="lock-label">Milestone 5 live</span>} description="The assistant gateway is available with owned conversations, bounded provider calls, and read-only system tools." eyebrow="Now available" icon="✦" title="Your assistant is ready" />
+          <StatusCard action={<span className="lock-label">v1.0 foundation live</span>} description="The assistant gateway is available with owned conversations, bounded provider calls, and read-only system tools." eyebrow="Now available" icon="✦" title="Your assistant is ready" />
         </section>
 
         <section aria-label="Workspace modules" className="locked-grid">
@@ -122,7 +124,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         </section>
 
         </>}
-        <footer>Local-first. Private by default. <span>NexusOS 0.1.0</span></footer>
+        <footer>Local-first. Private by default. <span>NexusOS 1.0.0</span></footer>
       </section>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} onLogout={signOut} onSearch={() => { setPaletteOpen(false); setActiveView("search"); }} onToggleTheme={() => { toggleTheme(); setPaletteOpen(false); }} />}
     </main>

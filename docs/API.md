@@ -1,7 +1,7 @@
 # NexusOS API
 
-**Current milestone:** Milestone 7 — notes, search, and retrieval foundations
-**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes, lexical search, and source-aware note retrieval are implemented. Embeddings, files, host actions, and streaming remain planned.
+**Current milestone:** v1.0 release hardening complete
+**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, confirmation-gated maintenance actions, verified SQLite backups, and audit visibility are implemented. Restore replication, embeddings, files, and streaming remain planned.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-03
 
@@ -132,15 +132,50 @@ Rejects one owned task mutation proposal without executing it.
 
 Task mutation proposals expire after a bounded period and all approvals, rejections, and task changes are audited.
 
+### Safe host-action and maintenance routes
+
+#### `GET /api/v1/system/actions`
+
+Returns the server-owned allowlist of enabled maintenance actions. The current catalog contains database backup creation, backup verification, and live database integrity checking. It never exposes arbitrary executables, filesystem paths, Docker operations, reboot, shutdown, package management, or systemd controls.
+
+#### `POST /api/v1/system/actions/proposals`
+
+Creates a durable, expiring proposal without executing a host operation. The typed action key and action-specific input are validated server-side. Cookie-authenticated requests require CSRF, the `system.host_actions` permission, and an `Idempotency-Key`.
+
+#### `GET /api/v1/system/actions/proposals` / `GET /api/v1/system/actions/proposals/{id}`
+
+Lists or reads only the current user's proposals and their bounded lifecycle state.
+
+#### `POST /api/v1/system/actions/proposals/{id}/confirm`
+
+Explicitly confirms one unexpired proposal and queues one durable `host_action` worker job. Confirmation is required even when the request originated from the assistant.
+
+#### `POST /api/v1/system/actions/proposals/{id}/reject`
+
+Rejects a proposal without creating a job or invoking an executor.
+
+#### `GET /api/v1/system/backups`
+
+Lists verified/failed backup metadata owned by the current user. It returns relative NexusOS paths, size, SHA-256, status, integrity result, and timestamps; it never returns file contents or arbitrary paths.
+
+#### `GET /api/v1/system/jobs/{id}`
+
+Returns the status of a host-action job only when the job belongs to a proposal owned by the current user.
+
+#### `GET /api/v1/system/audit`
+
+Returns the current user's bounded host-action proposal, confirmation, rejection, and execution audit events. Secrets, command text, and database contents are excluded.
+
 ## Current API behavior
 
 - Authentication supports HttpOnly access/refresh cookies and explicit bearer access tokens.
 - Cookie-authenticated mutations require CSRF validation.
 - CORS allows `PATCH` in addition to existing methods.
 - Database migrations are explicit; startup never mutates schema.
-- Readiness verifies the current Alembic head `0004_notes_search` and the notes FTS5 table.
+- Readiness verifies the current Alembic head `0006_v1_hardening` and the notes FTS5 table.
 - Notifications are persistent in-app records only.
-- No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, or provider URLs from a client.
+- No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, or provider URLs from a client.
+- Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf.
 
 ## Planned API groups
 
@@ -150,6 +185,6 @@ Task mutation proposals expire after a bounded period and all approvals, rejecti
 - `GET /api/v1/projects`
 - `GET /api/v1/git/repositories`
 - `GET /api/v1/docker/containers`
-- `POST /api/v1/system/actions/{action}`
+- `POST /api/v1/system/actions/{action}` (superseded by typed proposals and confirmation)
 
 Every future write action requires authentication, authorization, typed input, confirmation when risky, idempotency where appropriate, and an audit event.

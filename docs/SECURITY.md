@@ -1,6 +1,6 @@
 # NexusOS security baseline
 
-**Status:** Milestone 7 notes, search, retrieval, task, reminder, notification, and assistant-action controls implemented; semantic AI and deployment hardening remain deferred.
+**Status:** v1.0 application security controls implemented for safe host actions, backups, audit, notes, search, retrieval, tasks, reminders, notifications, and assistant actions; public-internet deployment hardening remains deferred.
 **Last updated:** 2026-08-03
 
 ## Runtime boundaries
@@ -10,7 +10,8 @@
 - Task and note services filter every owned entity by the authenticated user.
 - FTS5 results are joined back to canonical notes with user and deletion filters; derived chunks carry a direct user boundary.
 - The worker has no browser-facing port and performs only bounded database-backed reminder delivery.
-- No arbitrary shell text, SQL, Docker arguments, filesystem paths, or provider URLs are accepted from model output or the browser.
+- No arbitrary shell text, SQL, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, systemd controls, or provider URLs are accepted from model output or the browser.
+- Host-action execution uses fixed Python/SQLite adapters, not subprocesses. If future subprocess actions are proposed, they require a separate privileged-broker design, absolute executable paths, `shell=False`, fixed argument allowlists, and independent review.
 
 ## Notes, search, and retrieval controls
 
@@ -30,6 +31,17 @@
 - Rejection never invokes the task service.
 - Task deletion is soft deletion and is audited.
 - All task changes, reminder changes, notification state changes, and assistant approvals/rejections create bounded audit events.
+
+## Host-action and recovery controls
+
+- `system.host_actions`, `system.backups.read`, and `system.audit.read` are enforced server-side.
+- Proposal creation never executes an operation. Every enabled action requires explicit confirmation, even when proposed by the assistant.
+- Proposals expire after ten minutes, are user-scoped, and use idempotency keys to prevent duplicate queues.
+- Worker jobs are durable, bounded, claimable, and audited at proposal, confirmation, rejection, success, and failure transitions.
+- Backup files are created only beneath `DATA_DIR/backups`; clients cannot supply a path or filename.
+- Backup metadata includes a SHA-256 digest and SQLite `integrity_check` result. Backup contents are never returned by the API.
+- Restore through the API/assistant, backup deletion, retention cleanup, encrypted replication, and off-host upload are not enabled.
+- The worker remains non-root with no published port, no Docker socket, and no privileged host mount.
 
 ## Input and data safety
 
@@ -54,7 +66,7 @@
 
 - Idempotency keys cover task, reminder, category, tag, notification, and assistant approval mutations; callers must reuse the same key when retrying a request, and payload mismatches are rejected.
 - Standard error envelopes and request IDs remain future hardening.
-- Encrypted backups, restore drills, TLS, systemd, resource limits, monitoring, and image pinning remain deployment work.
+- Automated restore, encrypted/off-host backup replication, retention cleanup, backup-before-migration orchestration, TLS, systemd, resource limits, monitoring, and image pinning remain deployment work.
 
 ## Change checklist
 

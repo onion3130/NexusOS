@@ -1,7 +1,7 @@
 FROM node:20-alpine AS dependencies
 WORKDIR /app
 COPY apps/web/package.json ./
-RUN npm install --ignore-scripts
+RUN npm ci --ignore-scripts
 
 FROM node:20-alpine AS builder
 ARG API_PROXY_TARGET=http://127.0.0.1:8000

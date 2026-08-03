@@ -1,4 +1,4 @@
-"""Tests for the Milestone 2 health contract."""
+"""Tests for the NexusOS health contract."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ def test_live_endpoint_does_not_require_storage(monkeypatch, tmp_path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "nexus-api",
-        "version": "0.1.0",
+        "version": "1.0.0",
     }
 
 

@@ -1,7 +1,7 @@
 # NexusOS deployment
 
-**Current milestone:** Milestone 7 notes, search, and retrieval foundations
-**Status:** Local/ARM64 development deployment with a real API, web shell, reminder worker, notes, and SQLite FTS5 search. Production hardening is not complete.
+**Current milestone:** v1.0 release hardening complete
+**Status:** v1.0 release candidate with a real API, web shell, reminder/maintenance worker, notes, SQLite FTS5 search, confirmation-gated backups, bounded worker recovery, and audit visibility. Reverse-proxy TLS, off-host encrypted replication, and restore drills remain operational follow-up work.
 **Last updated:** 2026-08-03
 
 ## Target hardware
@@ -17,7 +17,7 @@
 |---|---|---|
 | `nexus-api` | Implemented | FastAPI identity, telemetry, assistant, task, reminder, and notification API |
 | `nexus-web` | Implemented | Next.js authenticated shell and task workspace |
-| `nexus-worker` | Implemented | Dedicated non-root ARM64 reminder dispatcher |
+| `nexus-worker` | Implemented | Dedicated non-root ARM64 reminder and confirmed maintenance dispatcher |
 | `nexus-proxy` | Placeholder | Future TLS/routing boundary |
 | `nexus-ai` | Opt-in placeholder profile | Optional future local/provider boundary |
 
@@ -54,9 +54,17 @@ The worker shares the API's SQLite data mount, publishes no host port, and runs 
 
 Ports remain loopback-only. Do not expose this development topology directly to the internet.
 
+## Safe maintenance behavior
+
+Maintenance actions are never direct shell commands. The UI or assistant creates an expiring proposal; the authenticated user must review and explicitly confirm it. Confirmation queues one durable job. The worker executes only the fixed SQLite backup, backup verification, or integrity-check adapter and writes audit metadata.
+
+Backups are stored beneath `${DATA_DIR}/db/backups` through the shared `/var/lib/nexus/data/backups` mount. They are hot SQLite backups, SHA-256 hashed, and checked with `PRAGMA integrity_check`. The API exposes metadata only.
+
+Do not treat these backups as a complete disaster-recovery system yet: restore, off-host replication, encryption, retention, and backup-before-migration automation remain future deployment work. To recover manually, stop API and worker, preserve the existing database, copy a verified backup over the database path using an operator-controlled procedure, then run `PRAGMA integrity_check` and `alembic upgrade head` before restarting. Never expose restore as an AI or browser action.
+
 ## Reminder worker behavior
 
-The worker polls due reminders in bounded batches. It claims pending or expired processing leases, creates one deduplicated in-app notification per reminder, marks successful reminders delivered, and cancels reminders whose tasks are completed, archived, or deleted. Worker restart is safe because notification deduplication is persisted.
+The worker polls due reminders and confirmed host actions in bounded batches. Host-action leases are reclaimed after a crash and terminally failed after three attempts; reminder notifications remain deduplicated across restarts. It claims pending or expired processing leases, creates one deduplicated in-app notification per reminder, marks successful reminders delivered, and cancels reminders whose tasks are completed, archived, or deleted. Worker restart is safe because notification deduplication is persisted.
 
 ## Raspberry Pi validation gate
 
@@ -73,7 +81,7 @@ curl http://127.0.0.1:8000/api/v1/health/ready
 docker compose --env-file .env down
 ```
 
-Also test a due reminder, worker restart, notification deduplication, note creation/update/search, FTS5 rebuild behavior, and healthcheck timing under representative Pi load. Docker is unavailable in the current environment, so these checks remain external validation rather than a local claim. Confirm the target Python runtime includes SQLite FTS5.
+Also test a due reminder, worker restart, notification deduplication, note creation/update/search, FTS5 rebuild behavior, proposal-without-execution, confirmation queueing, backup integrity, worker restart recovery, and healthcheck timing under representative Pi load. Docker is unavailable in the current environment, so these checks remain external validation rather than a local claim. Confirm the target Python runtime includes SQLite FTS5.
 
 ## Recovery and production gate
 

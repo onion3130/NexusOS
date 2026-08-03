@@ -1,7 +1,7 @@
 # NexusOS development
 
-**Current milestone:** Milestone 7 — notes, search, and retrieval foundations
-**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, and in-app notifications are implemented. Notes, memory, RAG, and host actions remain deferred.
+**Current milestone:** v1.0 release hardening complete
+**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, and confirmation-gated host maintenance are implemented. Restore replication, memory, RAG, and privileged host control remain deferred.
 **Last updated:** 2026-08-03
 
 Read this document with [`README.md`](../README.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`API.md`](API.md), [`DATABASE.md`](DATABASE.md), [`AI_SYSTEM.md`](AI_SYSTEM.md), [`SECURITY.md`](SECURITY.md), and [`ROADMAP.md`](ROADMAP.md) before changing code.
@@ -18,6 +18,11 @@ Backend:
 - `tests/test_tasks.py`: CRUD, CSRF, recurrence, worker, and assistant policy coverage.
 - `tests/test_notes.py`, `test_search.py`, `test_retrieval.py`: notes, FTS5 search, ownership, chunks, and retrieval coverage.
 - `migrations/versions/0004_notes_search.py`: notes, FTS5 projection, tags, and retrieval migration.
+- `app/modules/host_actions/`: allowlisted action catalog, proposals, fixed SQLite backup/integrity adapters, and worker execution.
+- `app/api/routes/host_actions.py`: authenticated catalog, confirmation, backup, job, and audit routes.
+- `migrations/versions/0005_host_actions.py`: reversible host-action and backup metadata migration.
+- `migrations/versions/0006_v1_hardening.py`: worker claim indexes for bounded SQLite scheduling.
+- `tests/test_host_actions.py`: proposal, CSRF, ownership, expiry, worker, backup, and audit coverage.
 
 Frontend:
 
@@ -38,15 +43,18 @@ Use a random local `JWT_SECRET` of at least 32 characters and keep `AI_PROVIDER=
 
 ## Backend validation
 
+The v1.0 release validation set is intentionally explicit:
+
 ```sh
 cd apps/api
 python -m pip install -e '.[test]'
 python -m pytest
 python -m py_compile $(find app migrations tests -name '*.py' -print)
 python -m alembic heads
+python -m alembic check
 ```
 
-The current expected migration head is `0004_notes_search`. The readiness check also requires the SQLite FTS5 notes index.
+The current expected migration head is `0006_v1_hardening`. The readiness check also requires the SQLite FTS5 notes index.
 
 ## Frontend validation
 
@@ -76,7 +84,7 @@ cd apps/web
 npm run dev
 ```
 
-The task workspace and Notes/Search workspaces are available from authenticated navigation. The notification center polls every 30 seconds. Notes use synchronous SQLite FTS5 projection updates and deterministic retrieval chunks. The assistant remains usable in disabled-provider mode for conversations; task mutations require a configured provider and explicit approval, while note tools are read-only.
+The task workspace, Notes/Search workspaces, and Maintenance workspace are available from authenticated navigation. The notification center polls every 30 seconds. Notes use synchronous SQLite FTS5 projection updates and deterministic retrieval chunks. The assistant remains usable in disabled-provider mode for conversations; task mutations require a configured provider and explicit approval, while note tools are read-only.
 
 Run the reminder worker separately for local scheduler testing:
 
@@ -96,7 +104,7 @@ docker compose --env-file .env ps
 docker compose --env-file .env down
 ```
 
-The API, web, and worker target `linux/arm64`, use non-root runtime users, share the SSD-backed SQLite volume, and use a private network. The current environment lacks Docker, so Compose and target-Pi execution remain required external checks.
+The API, web, and worker target `linux/arm64`, use non-root runtime users, share the SSD-backed SQLite volume, and use a private network. The current environment lacks Docker, so Compose and target-Pi execution remain required external checks; the repository includes a deterministic Compose configuration check for CI or a Docker-enabled host.
 
 ## Security rules
 
@@ -104,7 +112,8 @@ The API, web, and worker target `linux/arm64`, use non-root runtime users, share
 - Cookie mutations require CSRF.
 - Assistant task writes require permissions, typed validation, expiry, explicit approval, and audit events.
 - Task deletion is soft deletion.
-- No provider key, token, arbitrary command, filesystem path, or SQL reaches the browser or task service.
+- No provider key, token, arbitrary command, filesystem path, Docker socket, privileged host operation, or SQL reaches the browser or task/host-action service.
+- Host actions are proposed, explicitly confirmed, queued, fixed-adapter executed, and audited; backups remain on the configured data volume.
 
 ## Definition of done
 

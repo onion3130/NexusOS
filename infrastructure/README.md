@@ -5,7 +5,7 @@ This directory contains deployment design and configuration boundaries for Nexus
 ## Current state
 
 - The root [`docker-compose.yml`](../docker-compose.yml) is the executable ARM64 development stack.
-- API, web, and the Milestone 6 reminder worker are real non-root services.
+- API, web, and the v1.0 reminder/maintenance worker are real non-root services.
 - The proxy remains a placeholder for future TLS/routing.
 - The optional AI service remains a placeholder boundary.
 - `compose/README.md` documents future profile splits.

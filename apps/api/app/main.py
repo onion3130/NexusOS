@@ -16,6 +16,7 @@ from app.api.routes.health import router as health_router
 from app.api.routes.system import router as system_router
 from app.api.routes.tasks import router as tasks_router
 from app.api.routes.notes import router as notes_router
+from app.api.routes.host_actions import router as host_actions_router
 from app.core.config import cors_origins_from_environment, get_settings
 
 
@@ -46,3 +47,4 @@ app.include_router(assistant_approval_router)
 app.include_router(system_router)
 app.include_router(tasks_router)
 app.include_router(notes_router)
+app.include_router(host_actions_router)

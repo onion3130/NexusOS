@@ -1,12 +1,12 @@
 # Compose profile guidance
 
-The root `docker-compose.yml` is the current source of truth for the Milestone 6 development stack.
+The root `docker-compose.yml` is the current source of truth for the v1.0 ARM64 development stack.
 
 ## Current services
 
 - `nexus-api`: FastAPI API, loopback port 8000.
 - `nexus-web`: Next.js shell, loopback port 3000.
-- `nexus-worker`: dedicated ARM64 reminder worker, no published port, shared SQLite SSD mount.
+- `nexus-worker`: dedicated ARM64 reminder and confirmed maintenance worker, no published port, shared SQLite SSD mount.
 - `nexus-proxy`: deferred placeholder.
 - `nexus-ai`: opt-in deferred placeholder.
 
@@ -14,7 +14,7 @@ The root `docker-compose.yml` is the current source of truth for the Milestone 6
 
 | Profile | Purpose | Introduced |
 |---|---|---|
-| default | Local ARM64 foundation, API, web, and task worker | Milestone 6 |
+| default | Local ARM64 API, web, reminder/maintenance worker, and safe backup boundary | v1.0 |
 | `dev` | Hot-reload API/web development | Future |
 | `pi` | Raspberry Pi deployment with SSD mounts and recovery policies | Deployment milestone |
 | `postgres` | PostgreSQL compatibility validation | Persistence milestone |

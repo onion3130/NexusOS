@@ -1,12 +1,12 @@
 # NexusOS database
 
-**Current milestone:** Milestone 7 — notes, search, and retrieval foundations
-**Current status:** Identity, assistant, task, notes, search projection, and retrieval persistence are implemented through Alembic revisions `0001_identity`, `0002_assistant`, `0003_tasks_notifications`, and `0004_notes_search`.
+**Current milestone:** v1.0 release hardening complete
+**Current status:** Identity, assistant, task, notes, search/retrieval, host-action proposals, and backup metadata are implemented through Alembic revisions `0001_identity`, `0002_assistant`, `0003_tasks_notifications`, `0004_notes_search`, `0005_host_actions`, and `0006_v1_hardening`.
 **Last updated:** 2026-08-03
 
 ## Current database state
 
-The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys, WAL mode, and a bounded busy timeout are configured per connection. Startup does not run migrations automatically. Run Alembic or the owner-bootstrap command explicitly.
+The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys, WAL mode, a bounded busy timeout, and composite worker-claim indexes are configured for the v1.0 workload. Startup does not run migrations automatically. Run Alembic or the owner-bootstrap command explicitly.
 
 ## Implemented persistence boundary
 
@@ -16,6 +16,8 @@ The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys
 - `0001_identity` creates identity and audit tables.
 - `0002_assistant` creates conversations, messages, model runs, and tool calls.
 - `0003_tasks_notifications` creates categories, tags, task series, tasks, task tags, reminders, notifications, jobs, and approval lifecycle columns, including recoverable assistant-processing leases.
+- `0005_host_actions` creates expiring host-action proposals and verified backup metadata, and seeds owner permissions for host actions, backups, and audit history.
+- `0006_v1_hardening` adds composite claim indexes for bounded reminder and host-action worker queries.
 
 ## Milestone 7 tables
 
@@ -43,6 +45,15 @@ The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys
 | `jobs` | system | Durable worker job metadata for future expansion |
 
 Task deletion is soft deletion through `deleted_at`. Recurring completion creates one future occurrence while retaining the completed occurrence. Reminder delivery is idempotent through a unique `notifications.dedupe_key`.
+
+## Milestone 8 tables
+
+| Entity | Owner | Purpose |
+|---|---|---|
+| `host_action_proposals` | user | Expiring typed proposals, confirmation state, and linked worker job |
+| `backup_records` | user/system | Relative path, size, hash, integrity, and verification metadata for NexusOS-created backups |
+
+The live SQLite database and backup files remain the authoritative storage artifacts. A proposal is not execution: only confirmation queues a worker job. Backups are created beneath the configured data directory's fixed `backups/` child; client input cannot select paths.
 
 ## Recurrence
 
@@ -72,5 +83,5 @@ Note content changes increment `content_version`. Current chunks retain the sour
 ## Remaining database work
 
 - PostgreSQL compatibility remains a tested future claim, not an assumption.
-- Backup-before-migration automation, encrypted backups, and restore drills remain deployment work.
+- Automated restore, encrypted/off-host backup replication, retention cleanup, last-backup protection, and backup-before-migration orchestration remain deployment work.
 - Notification retention cleanup and permanent task deletion remain future policy work.

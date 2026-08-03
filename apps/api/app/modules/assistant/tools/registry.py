@@ -17,6 +17,8 @@ from app.modules.tasks.schemas import TaskCreate, TaskUpdate
 from app.modules.tasks.service import complete_task, create_task, delete_task, get_task, list_tasks, update_task
 from app.modules.notes.search import search_notes
 from app.modules.notes.service import get_note
+from app.modules.host_actions.schemas import ActionProposalCreate
+from app.modules.host_actions.service import create_proposal
 
 
 @dataclass(frozen=True)
@@ -46,6 +48,11 @@ class ToolRegistry:
     def _register_task_tools(self, db: OrmSession, user_id: str) -> None:
         """Register task tools against the current authenticated user context."""
         self._tools.update({
+            "maintenance.request_backup": RegisteredTool(
+                definition=ToolDefinition(key="maintenance.request_backup", description="Request a user-confirmed NexusOS database backup. The user must separately confirm the host action before it runs.", parameters={"type": "object", "properties": {}, "additionalProperties": False}),
+                required_permission="system.host_actions", requires_confirmation=True,
+                execute=lambda call: {"proposal_id": create_proposal(db, user_id, ActionProposalCreate(action_key="maintenance.create_backup", input={}), f"assistant:{call.provider_id}").id},
+            ),
             "notes.search": RegisteredTool(
                 definition=ToolDefinition(key="notes.search", description="Search the user's notes and return bounded source-aware excerpts.", parameters={"type": "object", "properties": {"query": {"type": "string", "maxLength": 200}, "tag": {"type": "string", "maxLength": 64}, "limit": {"type": "integer", "maximum": 10}}, "required": ["query"], "additionalProperties": False}),
                 required_permission="notes.read", requires_confirmation=False,

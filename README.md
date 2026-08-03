@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/onion3130/NexusOS?style=flat-square&label=license" alt="MIT License"></a>
-  <a href="https://github.com/onion3130/NexusOS/releases"><img src="https://img.shields.io/badge/release-pre--release-8b5cf6?style=flat-square" alt="Pre-release — no published release yet"></a>
+  <a href="https://github.com/onion3130/NexusOS/releases"><img src="https://img.shields.io/badge/release-v1.0.0-8b5cf6?style=flat-square" alt="NexusOS v1.0.0 release"></a>
   <img src="https://img.shields.io/badge/Docker-ARM64--ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker ARM64 ready">
   <img src="https://img.shields.io/badge/Raspberry%20Pi%205-supported-c51a4a?style=flat-square&logo=raspberrypi&logoColor=white" alt="Raspberry Pi 5 supported">
   <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11 or newer">
@@ -27,7 +27,8 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 - ⌕ **Scoped search** — local SQLite FTS5 search with source-aware excerpts and retrieval chunks
 - 🔔 **Notifications** — persistent in-app alerts with a dedicated reminder worker
 - 📈 **System telemetry** — read-only Raspberry Pi health and resource overview
-- 🔐 **Security boundaries** — user-owned data, sessions, CSRF protection, permissions, and audit events
+- 🔐 **Security boundaries** — user-owned data, sessions, CSRF protection, permissions, confirmation workflows, and audit events
+- 🛠️ **Safe maintenance** — explicit-confirmation SQLite backups, integrity checks, and recovery metadata without arbitrary host control
 - 🌓 **Responsive dashboard** — accessible loading/error states and theme switching
 - 🐳 **ARM64 deployment** — non-root Docker Compose services for local and Pi use
 
@@ -43,11 +44,11 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 | Item | Status |
 | --- | --- |
-| **Current milestone** | Milestone 7 — Notes, search, and retrieval foundations ✅ |
-| **Current version** | `0.1.0` — pre-release foundation |
-| **Next milestone** | Milestone 8 — Safe host actions |
+| **Current milestone** | v1.0 release hardening complete ✅ |
+| **Current version** | `1.0.0` — local-first release |
+| **Next milestone** | Milestone 9 — Files, projects, Git, and Docker views |
 
-NexusOS is functional within its current milestone, but it is not yet a production-hardened public service. See the [roadmap](docs/ROADMAP.md) for scope, limitations, and upcoming work.
+NexusOS v1.0 is ready for private, local-first Raspberry Pi use. Public internet exposure, off-host encrypted replication, restore drills, and reverse-proxy TLS remain explicitly outside this release. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
 
 ## Technology stack
 

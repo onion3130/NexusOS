@@ -1,7 +1,7 @@
 # NexusOS architecture
 
-**Current milestone:** Milestone 7 — notes, search, and retrieval foundations implemented
-**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes service, a dedicated SQLite reminder worker, and an authenticated modular Next.js shell.
+**Current milestone:** v1.0 release hardening complete
+**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions service, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-03
 
 NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an external SSD. The browser, API, persistence, worker, provider, and future host-action boundaries remain separate.
@@ -11,9 +11,10 @@ NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an exte
 - `apps/api`: FastAPI application with identity, read-only telemetry, assistant gateway, tasks, reminders, and notifications.
 - `apps/api/app/modules/tasks`: task service, schemas, recurrence calculator, and reminder dispatcher.
 - `apps/api/app/modules/notes`: canonical notes, SQLite FTS5 search, deterministic chunks, and source-aware retrieval.
-- `apps/api/app/worker.py`: dedicated bounded SQLite reminder worker.
+- `apps/api/app/modules/host_actions`: typed action catalog, proposal lifecycle, SQLite backups, fixed executor, and worker processing.
+- `apps/api/app/worker.py`: dedicated bounded SQLite reminder and confirmed host-action worker.
 - `apps/api/app/db`: SQLAlchemy engine/session and all persisted models.
-- `apps/api/migrations`: explicit Alembic migration history through `0004_notes_search`.
+- `apps/api/migrations`: explicit Alembic migration history through `0006_v1_hardening`.
 - `apps/web`: authenticated Next.js shell with overview, assistant, tasks, and notification center.
 - `docker-compose.yml`: ARM64 development topology with API, web, and real worker services; proxy and optional AI remain placeholders.
 
@@ -27,9 +28,11 @@ FastAPI
   ├── read-only system telemetry
   ├── bounded assistant gateway -> typed tool registry
   ├── tasks service -> tasks/categories/tags/reminders/notifications
-  └── notes service -> notes/tags/search projection/retrieval chunks
+  ├── notes service -> notes/tags/search projection/retrieval chunks
+  └── host-actions service -> typed proposals -> confirmed job queue -> fixed backup/integrity adapters
 
-Dedicated worker -> SQLite reminder claims -> persistent in-app notifications
+Dedicated worker -> SQLite reminder claims -> notifications
+Dedicated worker -> confirmed host-action claims -> verified backup/integrity results
 
 Docker Compose -> private bridge network
   ├── nexus-api
@@ -39,7 +42,7 @@ Docker Compose -> private bridge network
   └── nexus-ai (opt-in placeholder profile)
 ```
 
-The API and worker share the SQLite database on the external SSD. The worker has no published port and performs no host actions.
+The API and worker share the SQLite database on the external SSD. The worker has no published port. Host actions are limited to SQLite APIs under a fixed data-directory boundary; no shell, Docker socket, privileged command, or arbitrary filesystem operation exists.
 
 ## Task architecture
 
@@ -54,6 +57,12 @@ The task module owns:
 - Task mutation audit events
 
 The worker owns only scheduled reminder delivery. It claims bounded batches, uses processing leases for restart recovery, and uses a unique deduplication key to avoid duplicate notifications.
+
+## Safe host-action architecture
+
+Host operations are represented as typed, expiring proposals. Creating a proposal is inert. An authenticated user with `system.host_actions` must explicitly confirm it, after which one durable job is queued. The worker claims the job and invokes only a server-owned adapter. Proposal, confirmation, rejection, success, and failure transitions are audit events.
+
+The current catalog provides database backup creation, backup verification, and SQLite integrity checking. Backups use Python's SQLite online backup API, fixed `DATA_DIR/backups` storage, SHA-256 metadata, and integrity checks. Restore, replication, reboot, shutdown, systemd, package management, Docker, and arbitrary commands are intentionally excluded.
 
 ## Assistant action architecture
 
@@ -89,7 +98,7 @@ Not implemented today:
 - Email, SMS, push, or calendar notification channels
 - Embeddings, vector search, and semantic memory extraction
 - External document ingestion and file sources
-- Host actions and service/container control
+- Privileged host actions and service/container control
 - Files, projects, Git, Docker views
 - Production reverse proxy, systemd, encrypted backups, restore drills, limits, and monitoring
 - Plugin loading and package verification
@@ -98,4 +107,4 @@ See [`ROADMAP.md`](ROADMAP.md) and [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Raspberry Pi and operational limits
 
-The API/web/worker images target `linux/arm64` and run non-root. Worker polling and batch sizes are configuration-bounded. Compose remains development infrastructure; Docker image builds and sustained-load/healthcheck timing must be validated on the target Pi before production use. Docker is not available in the current development environment, so local Compose validation is deferred to a Docker-enabled or Pi environment.
+The API/web/worker images target `linux/arm64` and run non-root. Worker polling, reminder batches, and host-action batches are bounded. Backup work is throttled through SQLite's online backup page size/sleep controls. Compose is release-validated infrastructure; Docker image builds and sustained-load/healthcheck timing must still be smoke-tested on the target Pi before production use. Docker is not available in the current development environment, so local Compose validation is deferred to a Docker-enabled or Pi environment.
