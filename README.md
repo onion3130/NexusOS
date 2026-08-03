@@ -4,7 +4,7 @@ NexusOS is a local-first personal AI operating system intended to run on a Raspb
 
 ## Current milestone
 
-**Milestone 3 — authenticated dashboard shell and design system implemented.**
+**Milestone 4 — read-only Raspberry Pi system module implemented.**
 
 The repository currently contains:
 
@@ -13,11 +13,23 @@ The repository currently contains:
 - SQLite persistence with an explicit Alembic migration.
 - Argon2id password hashing, tracked sessions, JWT access tokens, CSRF protection, and login backoff.
 - A responsive Next.js dashboard shell with modular navigation, theme switching, command palette, accessible states, and a login/authentication boundary.
+- Authenticated read-only Raspberry Pi telemetry for CPU, memory, storage, temperature, uptime, and network status.
 - ARM64-aware, non-root API and web Dockerfiles.
 - A Docker Compose development topology with loopback-only ports.
 - Public-repository protections, environment templates, tests, and operational documentation.
 
-AI calls, tool calling, tasks, notes, system telemetry, backups, and other product modules are not implemented yet. The authoritative next-step plan is [`docs/ROADMAP.md`](docs/ROADMAP.md).
+AI calls, tool calling, tasks, notes, backups, service actions, and other product modules are not implemented yet. The authoritative next-step plan is [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+## Milestone 4 implementation status — 2026-08-02
+
+Milestone 4 is implemented within its approved read-only scope. The API collects bounded Linux telemetry through fixed procfs/sysfs/filesystem adapters, requires authentication, degrades safely when sources are unavailable, and deliberately does not expose service/container control or Docker socket access.
+
+Implemented system boundary:
+
+- `GET /api/v1/system/overview`
+- Read-only CPU, memory, storage, temperature, uptime, and network adapters
+- Dashboard polling with loading, stale, unavailable, and degraded states
+- Explicit unavailable service/container status boundary
 
 ## Milestone 3 implementation status — 2026-08-02
 
@@ -47,7 +59,7 @@ Authentication uses Argon2id password hashes, short-lived HS256 access JWTs, has
 
 ## Project checkpoint — 2026-08-02
 
-Phase 0, Milestone 1 foundation, Milestone 2 identity/persistence, and approved Milestone 3 shell/design-system work are implemented. No later product feature was started during this milestone.
+Phase 0, Milestone 1 foundation, Milestone 2 identity/persistence, Milestone 3 shell/design-system, and approved Milestone 4 read-only telemetry work are implemented. No later product feature was started during this milestone.
 
 ### What has been built
 
@@ -82,7 +94,7 @@ The API starts when required environment variables are valid, explicit migration
 
 ### Incomplete
 
-There is no AI provider call, tool registry, job worker, feature API, Pi telemetry adapter, host action, reverse-proxy TLS, systemd service, encrypted backup, or public/LAN access mode. The current identity/database implementation is intentionally limited to the first owner/session schema. These are roadmap work, not hidden implementation.
+There is no AI provider call, tool registry, job worker, domain feature API, host action, reverse-proxy TLS, systemd service, encrypted backup, or public/LAN access mode. The current identity/database implementation is intentionally limited to the first owner/session schema. These are roadmap work, not hidden implementation.
 
 ### Checkpoint findings and technical debt
 
@@ -215,4 +227,4 @@ nexusos/
 
 ## Remaining work
 
-The next approved milestone is the read-only Raspberry Pi system module. Later work includes the AI gateway, tasks, notes/search, safe host actions, files/projects, and production deployment hardening. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the ordered plan.
+The next approved milestone is the assistant gateway. Later work includes tasks, notes/search, safe host actions, files/projects, and production deployment hardening. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the ordered plan.

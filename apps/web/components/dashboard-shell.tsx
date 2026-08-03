@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CommandPalette } from "./command-palette";
 import { ThemeToggle } from "./theme-toggle";
 import { useTheme } from "./theme-provider";
+import { SystemOverview } from "./system-overview";
 import { LockedState, StatusCard } from "./ui/status-card";
 import type { User } from "../lib/auth";
 
@@ -86,7 +87,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
 
         <div className="hero-card">
           <div className="hero-copy">
-            <span className="status-pill"><span /> Milestone 3 shell online</span>
+            <span className="status-pill"><span /> Milestone 4 telemetry online</span>
             <h2>Your digital life, <em>connected.</em></h2>
             <p>Your private workspace is authenticated and ready for the next Nexus modules. The shell keeps unfinished capabilities visible without pretending they are live.</p>
             <button className="primary-button" onClick={() => setPaletteOpen(true)} type="button">Explore commands <span aria-hidden="true">⌘ K</span></button>
@@ -98,6 +99,8 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
           <div className="section-heading"><div><p className="eyebrow">At a glance</p><h2 id="status-heading">System status</h2></div><span className="updated">Authenticated locally</span></div>
           <div className="metric-grid">{metrics.map((metric) => <article className="metric-card" key={metric.label}><div className={`metric-indicator ${metric.tone}`} /><p>{metric.label}</p><strong>{metric.value}</strong><span>{metric.detail}</span></article>)}</div>
         </section>
+
+        <SystemOverview />
 
         <section aria-labelledby="next-heading" className="section-block">
           <div className="section-heading"><div><p className="eyebrow">Workspace status</p><h2 id="next-heading">Build your personal workspace</h2></div><span className="updated">No feature data loaded</span></div>

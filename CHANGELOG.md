@@ -4,6 +4,13 @@ All notable NexusOS changes are recorded here. The repository is currently pre-r
 
 ## [Unreleased]
 
+### Milestone 4 — 2026-08-02
+
+- Added an authenticated, read-only Raspberry Pi system overview for CPU, memory, storage, temperature, uptime, and network status.
+- Added fixed procfs/sysfs/filesystem adapters with bounded unavailable states and no subprocess, arbitrary path, Docker socket, or host-control access.
+- Added dashboard polling with loading, stale, degraded, retry, and unavailable states.
+- Verified the module with deterministic adapter/route tests while preserving the existing identity and shell boundaries.
+
 ### Milestone 3 — 2026-08-02
 
 - Replaced the monolithic dashboard page with modular auth, shell, theme, command palette, and status components.
@@ -23,7 +30,7 @@ All notable NexusOS changes are recorded here. The repository is currently pre-r
 
 ### Documentation
 
-- Updated the project handoff to identify Milestone 2 and Milestone 3 as implemented and distinguish live identity/database/shell behavior from deferred product modules.
+- Updated the project handoff to identify Milestones 2–4 as implemented and distinguish live identity/database/shell/telemetry behavior from deferred product modules.
 - Refreshed the project handoff so a new coding agent can continue without previous conversation history.
 - Added `docs/ROADMAP.md` as the source of truth for milestone order and acceptance criteria.
 - Reconciled README, architecture, database, API, AI, deployment, setup, and development documentation with the actual Milestone 3 implementation.
@@ -31,7 +38,7 @@ All notable NexusOS changes are recorded here. The repository is currently pre-r
 
 ### Planned
 
-- Milestone 4: read-only Raspberry Pi system telemetry.
+- Milestone 5: assistant gateway and read-only AI tool boundary.
 
 ## [0.1.0] — 2026-08-02
 

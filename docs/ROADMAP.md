@@ -1,14 +1,14 @@
 # NexusOS roadmap
 
-**Current milestone:** Milestone 3 — authenticated dashboard shell and design system implemented
-**Next milestone:** Milestone 4 — read-only Raspberry Pi system module
+**Current milestone:** Milestone 4 — read-only Raspberry Pi system module implemented
+**Next milestone:** Milestone 5 — assistant gateway
 **Last updated:** 2026-08-02
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
 
 ## Checkpoint status — 2026-08-02
 
-The project is paused after Milestone 3. The authenticated shell and design-system work is complete within scope. Local frontend validation is green, and the API/web ARM64 images, Compose configuration, and web runtime were verified on the available Raspberry Pi 5.
+The project is paused after Milestone 4. The authenticated shell and read-only system telemetry work are complete within scope. Local validation and the API/web ARM64 image/runtime checks on the available Raspberry Pi 5 are green.
 
 Current boundaries:
 
@@ -26,7 +26,7 @@ Current boundaries:
 | 1. ARM64 application foundation | Complete | API health service, foundation web shell, Compose, validation, tests |
 | 2. Identity and persistence | Complete | Owner bootstrap, SQLite/Alembic, sessions, auth boundary |
 | 3. Dashboard shell and design system | Complete | Authenticated navigation, shared UI primitives, accessible states |
-| 4. System read-only module | Planned | Pi telemetry and allowlisted service/container status |
+| 4. System read-only module | Complete | Authenticated Pi telemetry with safe unavailable service/container boundary |
 | 5. Assistant gateway | Planned | Conversations, provider gateway, streaming jobs, read-only tools |
 | 6. Tasks and reminders | Planned | Homework/tasks, reminders, notifications, assistant task actions |
 | 7. Notes and scoped search | Planned | Notes, tags, search, source-aware retrieval |
@@ -82,9 +82,17 @@ Acceptance criteria met:
 - Frontend typecheck, production build, and dependency audit pass.
 
 
-## Milestone 4 — read-only system module
+## Milestone 4 complete — read-only system module
 
-Add Pi CPU, memory, storage, temperature, network, uptime, and allowlisted service/container status through a bounded adapter. Keep all write actions disabled.
+Implemented authenticated CPU, memory, storage, temperature, network, and uptime telemetry through bounded procfs/sysfs/filesystem adapters. Missing sources degrade to safe status codes. Service/container status remains explicitly unavailable because no Docker socket or host-control boundary was introduced. Dashboard polling is bounded to 30 seconds and all write actions remain disabled.
+
+Acceptance criteria met:
+
+- Unauthenticated callers cannot access system telemetry.
+- Adapter failures do not expose host paths, stack traces, or command output.
+- API and frontend expose no restart, shutdown, Docker write, or arbitrary command action.
+- Deterministic adapter/authentication tests pass.
+- ARM64 Docker and runtime validation remains compatible with the verified Pi deployment boundary.
 
 ## Milestone 5 — assistant gateway
 

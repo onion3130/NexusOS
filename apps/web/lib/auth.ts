@@ -32,18 +32,31 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+/**
+ * Fetch an authenticated API resource and refresh the access session once after
+ * an expired access token. Callers still receive a 401 when refresh fails.
+ */
+export async function authenticatedFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+): Promise<Response> {
+  const requestInit: RequestInit = { ...init, credentials: "include" };
+  let response = await fetch(input, requestInit);
+  if (response.status !== 401) return response;
+
+  const refreshed = await fetch(`${API_ROOT}/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+    headers: csrfHeader(),
+  });
+  if (!refreshed.ok) return response;
+
+  response = await fetch(input, requestInit);
+  return response;
+}
+
 export async function readCurrentUser(): Promise<User | null> {
-  let response = await fetch(`${API_ROOT}/auth/me`, { credentials: "include" });
-  if (response.status === 401) {
-    const refreshed = await fetch(`${API_ROOT}/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-      headers: csrfHeader(),
-    });
-    if (refreshed.ok) {
-      response = await fetch(`${API_ROOT}/auth/me`, { credentials: "include" });
-    }
-  }
+  const response = await authenticatedFetch(`${API_ROOT}/auth/me`);
   if (response.status === 401) return null;
   return parseResponse<User>(response);
 }

@@ -1,6 +1,6 @@
-# NexusOS Milestone 2 development stack
+# NexusOS Milestone 4 development stack
 #
-# API and web are now real identity/persistence services. Worker, proxy, and AI remain
+# API and web are now real identity/persistence/telemetry services. Worker, proxy, and AI remain
 # deferred placeholders until their approved milestones. Configure .env first.
 
 services:

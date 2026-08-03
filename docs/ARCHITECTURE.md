@@ -1,6 +1,6 @@
 # NexusOS architecture
 
-**Current milestone:** Milestone 3 — authenticated dashboard shell and design system implemented
+**Current milestone:** Milestone 4 — read-only Raspberry Pi system module implemented
 **Status:** Current runtime is a FastAPI health/identity service plus an authenticated, modular Next.js shell. AI and product modules remain design-only.
 **Last updated:** 2026-08-02
 
@@ -23,9 +23,10 @@ Core principles:
 
 ### Runtime components
 
-- `apps/api`: FastAPI application with environment-backed settings and a startup lifespan check.
-- `apps/api/app/api/routes/health.py` and `auth.py`: health and identity route modules.
+- `apps/api`: FastAPI application with environment-backed settings, identity, and read-only system telemetry.
+- `apps/api/app/api/routes/health.py`, `auth.py`, and `system.py`: health, identity, and read-only system route modules.
 - `apps/api/app/db`: SQLAlchemy engine, models, and request-scoped sessions.
+- `apps/api/app/modules/system`: fixed-source telemetry adapters and safe aggregation service.
 - `apps/api/migrations`: explicit Alembic migration history.
 - `apps/web`: Next.js 15 shell with login/current-user/logout boundary, modular navigation, theme context, command palette, and accessible state components.
 - `infrastructure/docker/api.Dockerfile`: non-root API image.
@@ -40,7 +41,8 @@ Browser -> authenticated Next.js shell -> same-origin `/api/v1` rewrite -> FastA
 
 Health client -> FastAPI
                  ├── /api/v1/health/live
-                 └── /api/v1/health/ready -> DATA_DIR probe
+                 ├── /api/v1/health/ready -> DATA_DIR/database probe
+                 └── /api/v1/system/overview -> fixed procfs/sysfs/storage reads
 
 Docker Compose -> private bridge network
                  ├── nexus-api  (real)
@@ -129,7 +131,7 @@ Not implemented today:
 - Authenticated dashboard data modules beyond the current shell/design system.
 - AI provider calls, conversation storage, memory, RAG, tool registry, and streaming.
 - Tasks, notes, calendar, files, projects, Git, Docker inventory, finance, and media integrations.
-- Pi telemetry adapters and write actions.
+- Pi write actions and service/container control; read-only telemetry is implemented.
 - Production reverse proxy, systemd service, encrypted backups, restore drills, limits, and monitoring.
 - Plugin loading and package verification.
 
@@ -147,6 +149,10 @@ The architecture still matches the Nexus requirements at the current stage: loca
 - The API accepts configuration through environment variables, connects only to the configured SQLite identity database after explicit migration, and does not contact an AI provider.
 - The web image's `output: "standalone"` setting matches its runner-stage copy.
 - No arbitrary subprocess, shell execution, Docker socket mount, or privileged container was found in the current implementation.
+
+### Milestone 4 system boundary
+
+System telemetry is authenticated and read-only. Adapters may read fixed procfs/sysfs paths and the configured data volume, but never accept arbitrary paths, execute subprocesses, access the Docker socket, or mutate services. A missing source produces a bounded unavailable reason and does not fail the entire overview.
 
 ### Milestone 3 design boundary
 

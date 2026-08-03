@@ -1,4 +1,4 @@
-"""NexusOS API application entrypoint for Milestone 2."""
+"""NexusOS API application entrypoint for Milestone 4."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import __version__
 from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router as health_router
+from app.api.routes.system import router as system_router
 from app.core.config import cors_origins_from_environment, get_settings
 
 
@@ -24,7 +25,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="NexusOS API",
     version=__version__,
-    description="NexusOS Milestone 2 identity and persistence API.",
+    description="NexusOS identity, persistence, and read-only system API.",
     lifespan=lifespan,
 )
 app.add_middleware(
@@ -36,3 +37,4 @@ app.add_middleware(
 )
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(system_router)

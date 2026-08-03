@@ -1,6 +1,6 @@
 # NexusOS API
 
-**Current milestone:** Milestone 3 — authenticated dashboard shell and design system
+**Current milestone:** Milestone 4 — read-only Raspberry Pi system module
 **Status:** Health and identity/session endpoints below are implemented. Other API sections are planned contracts.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-02
@@ -80,13 +80,21 @@ Lists the authenticated user's session metadata without token values.
 
 Requires CSRF for cookie authentication and revokes an owned session.
 
+## Implemented system API
+
+### `GET /api/v1/system/overview`
+
+Authenticated read-only Raspberry Pi telemetry. Returns CPU, memory, configured storage-volume usage, thermal reading, uptime, network counters, and an explicit unavailable service/container status boundary. The route reads fixed host-provided sources only; it does not execute commands, accept paths, mount Docker, or mutate the host.
+
+A `200` response may have `status: "degraded"` when one or more sources are unavailable. Safe source reasons include `cpu_unavailable`, `memory_unavailable`, `storage_unavailable`, `temperature_unavailable`, `uptime_unavailable`, `network_unavailable`, and `service_status_unavailable`.
+
 ## Current API behavior
 
 - Authentication supports HttpOnly access/refresh cookies and explicit bearer access tokens.
 - Cookie-authenticated mutations require `X-CSRF-Token` matching the readable CSRF cookie.
 - Database migrations are explicit; application startup never mutates schema.
 - There is no error-envelope middleware or request-ID middleware yet.
-- There are no feature routes beyond health and identity.
+- The only feature route is the authenticated read-only system overview; domain feature routes remain unimplemented.
 - FastAPI's development OpenAPI endpoints may be available locally; production exposure is not configured.
 
 ## Planned API conventions

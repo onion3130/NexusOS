@@ -1,6 +1,6 @@
 # NexusOS deployment
 
-**Current milestone:** Milestone 3 dashboard shell deployment
+**Current milestone:** Milestone 4 read-only system deployment
 **Status:** Local/ARM64 foundation only. Production hardening is not complete.
 **Last updated:** 2026-08-02
 
@@ -15,7 +15,7 @@
 
 | Service | Current state | Purpose |
 |---|---|---|
-| `nexus-api` | Implemented | FastAPI health/identity service, non-root, port 8000 on loopback |
+| `nexus-api` | Implemented | FastAPI health/identity/system read-only service, non-root, port 8000 on loopback |
 | `nexus-web` | Implemented | Next.js authenticated shell, non-root, port 3000 on loopback |
 | `nexus-proxy` | Placeholder | Future TLS/routing boundary |
 | `nexus-worker` | Placeholder | Future jobs, reminders, backups, and scans |
@@ -59,7 +59,7 @@ Do not expose ports 3000 or 8000 directly to the internet. No TLS, remote access
 
 Compose uses `restart: unless-stopped` and bounded healthchecks. Liveness confirms the API process responds; readiness confirms storage plus the migrated identity database. A passing liveness check does not mean future feature modules are ready.
 
-The external SSD is primary runtime storage, not a backup. Encrypted rotating backups, restore verification, systemd startup, resource limits, storage alerts, and upgrade/rollback automation are future deployment work.
+The external SSD is primary runtime storage, not a backup. Read-only telemetry reports the configured data volume but does not perform host actions. Encrypted rotating backups, restore verification, systemd startup, resource limits, storage alerts, and upgrade/rollback automation are future deployment work.
 
 ## Production gate
 
