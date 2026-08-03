@@ -1,26 +1,55 @@
-# NexusOS
+<p align="center">
+  <img src="docs/assets/nexus-banner.svg" alt="NexusOS — a private AI operating system for Raspberry Pi 5" width="100%">
+</p>
 
-A local-first personal AI operating system for the Raspberry Pi 5.
+<p align="center">
+  <strong>A local-first personal AI operating system for the Raspberry Pi 5.</strong><br>
+  Private by default. Modular by design. Built for your own hardware.
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/onion3130/NexusOS?style=flat-square&label=license" alt="MIT License"></a>
+  <a href="https://github.com/onion3130/NexusOS/releases"><img src="https://img.shields.io/badge/release-pre--release-8b5cf6?style=flat-square" alt="Pre-release — no published release yet"></a>
+  <img src="https://img.shields.io/badge/Docker-ARM64--ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker ARM64 ready">
+  <img src="https://img.shields.io/badge/Raspberry%20Pi%205-supported-c51a4a?style=flat-square&logo=raspberrypi&logoColor=white" alt="Raspberry Pi 5 supported">
+  <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11 or newer">
+  <img src="https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js&logoColor=white" alt="Next.js 15">
+  <img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript 5.9">
+</p>
 
 NexusOS brings an authenticated dashboard, assistant, productivity tools, and read-only system monitoring together in one private, self-hosted application. It is designed for Raspberry Pi deployments with persistent data stored on an external SSD.
 
 ## Features
 
-- 🤖 Provider-neutral AI assistant with server-side credentials
-- ✅ Tasks with due dates, priorities, categories, tags, recurring schedules, and reminders
-- 🔔 Persistent in-app notifications with a dedicated reminder worker
-- 📈 Read-only Raspberry Pi system telemetry
-- 🔐 User-owned data, session authentication, CSRF protection, permissions, and audit events
-- 🌓 Responsive Next.js dashboard with accessible loading and error states
-- 🐳 ARM64-aware Docker Compose deployment for local and Raspberry Pi use
+- 🤖 **AI assistant** — provider-neutral, bounded, and configured server-side
+- ✅ **Task management** — due dates, priorities, categories, tags, recurring schedules, and reminders
+- 🔔 **Notifications** — persistent in-app alerts with a dedicated reminder worker
+- 📈 **System telemetry** — read-only Raspberry Pi health and resource overview
+- 🔐 **Security boundaries** — user-owned data, sessions, CSRF protection, permissions, and audit events
+- 🌓 **Responsive dashboard** — accessible loading/error states and theme switching
+- 🐳 **ARM64 deployment** — non-root Docker Compose services for local and Pi use
 
 ## Screenshots
 
-A product screenshot will be added here as the dashboard evolves.
+> **Screenshot placeholder:** replace this mockup with a real product capture when the public dashboard showcase is ready.
+
+<p align="center">
+  <img src="docs/assets/dashboard-placeholder.svg" alt="NexusOS dashboard screenshot placeholder" width="100%">
+</p>
+
+## Project status
+
+| Item | Status |
+| --- | --- |
+| **Current milestone** | Milestone 6 — Tasks, reminders, and notifications ✅ |
+| **Current version** | `0.1.0` — pre-release foundation |
+| **Next milestone** | Milestone 7 — Notes and scoped search |
+
+NexusOS is functional within its current milestone, but it is not yet a production-hardened public service. See the [roadmap](docs/ROADMAP.md) for scope, limitations, and upcoming work.
 
 ## Technology stack
 
-- **Frontend:** Next.js, React, TypeScript
+- **Frontend:** Next.js 15, React 19, TypeScript 5.9
 - **Backend:** FastAPI, Python 3.11+, SQLAlchemy
 - **Database:** SQLite with Alembic migrations
 - **Deployment:** Docker Compose, Linux ARM64, Raspberry Pi OS
@@ -39,27 +68,23 @@ docker compose --env-file .env run --rm nexus-api python -m app.cli.bootstrap_ow
 docker compose --env-file .env up --build -d
 ```
 
-Open `http://localhost:3000`. AI is disabled by default; see the setup guide before enabling a provider. For local development without Docker, use the detailed setup instructions.
+Open `http://localhost:3000`. AI is disabled by default. For local development without Docker, read the [setup guide](docs/SETUP.md).
 
 ## Documentation
 
-- [Setup](docs/SETUP.md) — local development and first-run instructions
-- [Deployment](docs/DEPLOYMENT.md) — Docker, Raspberry Pi, and operational deployment
-- [Development](docs/DEVELOPMENT.md) — project workflow and validation commands
-- [Environment](docs/ENVIRONMENT.md) — configuration variables and security rules
-- [Security](docs/SECURITY.md) — application boundaries and deployment hardening
-- [API reference](docs/API.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Database](docs/DATABASE.md)
-- [AI system](docs/AI_SYSTEM.md)
-- [Roadmap](docs/ROADMAP.md)
-- [Changelog](CHANGELOG.md)
+Use the [documentation index](docs/README.md) to find the right guide:
 
-## Roadmap
+- [Setup](docs/SETUP.md) · [Deployment](docs/DEPLOYMENT.md) · [Development](docs/DEVELOPMENT.md)
+- [Environment](docs/ENVIRONMENT.md) · [Security](docs/SECURITY.md) · [API](docs/API.md)
+- [Architecture](docs/ARCHITECTURE.md) · [Database](docs/DATABASE.md) · [AI system](docs/AI_SYSTEM.md)
+- [Roadmap](docs/ROADMAP.md) · [Changelog](CHANGELOG.md)
 
-Milestone 6, tasks and reminders, is complete. The next milestone focuses on notes and scoped search, followed by safe host actions, files/projects/Git/Docker views, deployment hardening, and carefully isolated integrations.
+## Community
 
-See the [full roadmap](docs/ROADMAP.md) for current status, scope, and known limitations.
+- [Contributing](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security policy](SECURITY.md)
+- [MIT License](LICENSE)
 
 ## License
 

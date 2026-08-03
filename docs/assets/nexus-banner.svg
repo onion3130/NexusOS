@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 420" role="img" aria-labelledby="title desc">
+  <title id="title">NexusOS — personal AI operating system</title>
+  <desc id="desc">A dark blue and violet gradient banner with an abstract nexus orbit mark and the NexusOS wordmark.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07111f"/>
+      <stop offset="0.52" stop-color="#111b3a"/>
+      <stop offset="1" stop-color="#321b56"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="#70e1ff" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#70e1ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8cf3ff"/>
+      <stop offset="1" stop-color="#9a7bff"/>
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1600" height="420" rx="28" fill="url(#bg)"/>
+  <circle cx="360" cy="210" r="250" fill="url(#glow)"/>
+  <g opacity=".16" fill="none" stroke="#b7c8ff">
+    <path d="M0 330C260 190 430 470 720 300S1190 70 1600 170"/>
+    <path d="M0 380C260 240 430 520 720 350S1190 120 1600 220"/>
+  </g>
+  <g transform="translate(360 210)" fill="none" stroke="url(#accent)" stroke-width="9" filter="url(#shadow)">
+    <ellipse rx="128" ry="52" transform="rotate(28)"/>
+    <ellipse rx="128" ry="52" transform="rotate(-28)"/>
+    <ellipse rx="128" ry="52" transform="rotate(90)"/>
+  </g>
+  <circle cx="360" cy="210" r="22" fill="#f4fbff"/>
+  <circle cx="360" cy="210" r="10" fill="#8cf3ff"/>
+  <g fill="#f4fbff" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif">
+    <text x="590" y="205" font-size="92" font-weight="750" letter-spacing="-3">NexusOS</text>
+    <text x="596" y="266" font-size="28" font-weight="500" letter-spacing="4" fill="#b9c9ef">A PRIVATE AI OPERATING SYSTEM FOR RASPBERRY PI 5</text>
+  </g>
+  <rect x="596" y="302" width="170" height="5" rx="2.5" fill="url(#accent)"/>
+</svg>

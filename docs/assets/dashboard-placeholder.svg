@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 820" role="img" aria-labelledby="title desc">
+  <title id="title">NexusOS dashboard screenshot placeholder</title>
+  <desc id="desc">A stylized dashboard mockup labeled screenshot placeholder, ready to be replaced with a real product screenshot.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#08111f"/><stop offset="1" stop-color="#1f2146"/></linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#162842"/><stop offset="1" stop-color="#182044"/></linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#75e4ff"/><stop offset="1" stop-color="#9d83ff"/></linearGradient>
+  </defs>
+  <rect width="1400" height="820" rx="22" fill="url(#bg)"/>
+  <rect x="28" y="28" width="1344" height="764" rx="16" fill="#0c1729" stroke="#2c4164"/>
+  <rect x="28" y="28" width="250" height="764" rx="16" fill="#0a1425"/>
+  <circle cx="74" cy="76" r="16" fill="#86eaff"/><text x="104" y="87" font-size="27" font-weight="700" fill="#f2f6ff" font-family="Inter, sans-serif">NexusOS</text>
+  <g fill="#8ea4c8" font-family="Inter, sans-serif" font-size="20"><text x="66" y="160">Overview</text><text x="66" y="214" fill="#f2f6ff">Tasks</text><text x="66" y="268">Assistant</text><text x="66" y="322">System</text></g>
+  <rect x="55" y="188" width="190" height="45" rx="10" fill="#243c61" opacity=".9"/>
+  <text x="315" y="105" font-size="42" font-weight="700" fill="#f2f6ff" font-family="Inter, sans-serif">Good morning, owner</text>
+  <text x="317" y="141" font-size="19" fill="#8ea4c8" font-family="Inter, sans-serif">Your private workspace at a glance.</text>
+  <g fill="url(#card)" stroke="#2b4264"><rect x="315" y="188" width="300" height="150" rx="14"/><rect x="640" y="188" width="300" height="150" rx="14"/><rect x="965" y="188" width="350" height="150" rx="14"/></g>
+  <g font-family="Inter, sans-serif"><text x="344" y="228" font-size="17" fill="#8ea4c8">OPEN TASKS</text><text x="344" y="295" font-size="48" font-weight="700" fill="#f2f6ff">12</text><text x="670" y="228" font-size="17" fill="#8ea4c8">NEXT REMINDER</text><text x="670" y="282" font-size="26" font-weight="650" fill="#f2f6ff">Review notes</text><text x="670" y="310" font-size="16" fill="#75e4ff">Today · 14:00</text><text x="995" y="228" font-size="17" fill="#8ea4c8">SYSTEM HEALTH</text><text x="995" y="295" font-size="32" font-weight="700" fill="#8cf3b0">Healthy</text></g>
+  <rect x="315" y="382" width="1000" height="330" rx="14" fill="#111f35" stroke="#2b4264"/>
+  <text x="350" y="430" font-size="24" font-weight="650" fill="#f2f6ff" font-family="Inter, sans-serif">Today’s focus</text>
+  <g font-family="Inter, sans-serif" font-size="20"><g fill="#f2f6ff"><text x="390" y="500">Prepare weekly review</text><text x="390" y="570">Check Raspberry Pi storage</text><text x="390" y="640">Plan next milestone</text></g><g fill="#75e4ff"><text x="1050" y="500">09:30</text><text x="1050" y="570">11:00</text><text x="1050" y="640">16:30</text></g></g>
+  <g opacity=".92"><rect x="430" y="742" width="540" height="38" rx="19" fill="#f4f7ff"/><text x="700" y="768" text-anchor="middle" font-size="17" font-weight="700" fill="#18213d" font-family="Inter, sans-serif">SCREENSHOT PLACEHOLDER · REPLACE WITH PRODUCT CAPTURE</text></g>
+</svg>
