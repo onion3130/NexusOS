@@ -4,6 +4,8 @@ COPY apps/web/package.json ./
 RUN npm install --ignore-scripts
 
 FROM node:20-alpine AS builder
+ARG API_PROXY_TARGET=http://127.0.0.1:8000
+ENV API_PROXY_TARGET=${API_PROXY_TARGET}
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY apps/web ./

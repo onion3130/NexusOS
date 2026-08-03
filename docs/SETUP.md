@@ -79,7 +79,7 @@ Open `http://localhost:3000` for the shell and `http://localhost:8000/api/v1/hea
 docker compose --env-file .env down
 ```
 
-The API and web services build from ARM64-compatible Dockerfiles and run as non-root users. The proxy, worker, and AI services remain deferred placeholders.
+The API and web services build from ARM64-compatible Dockerfiles and run as non-root users. The web image proxies same-origin `/api/v1` requests to `nexus-api` on the private Compose network; local `npm run dev` defaults to `127.0.0.1:8000`. The proxy, worker, and AI services remain deferred placeholders.
 
 ## Validation before a change is committed
 

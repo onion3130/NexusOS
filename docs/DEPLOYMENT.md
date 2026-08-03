@@ -21,7 +21,7 @@
 | `nexus-worker` | Placeholder | Future jobs, reminders, backups, and scans |
 | `nexus-ai` | Opt-in placeholder profile | Future local/provider boundary |
 
-All services use the private `nexus-private` bridge network. The development Compose file does not include a database container; SQLite is stored in the API-mounted `/var/lib/nexus/data` volume. Run the explicit owner bootstrap/migration command before expecting readiness.
+All services use the private `nexus-private` bridge network. The web image's same-origin `/api/v1` rewrite targets `nexus-api:8000` inside that network. The development Compose file does not include a database container; SQLite is stored in the API-mounted `/var/lib/nexus/data` volume. Run the explicit owner bootstrap/migration command before expecting readiness.
 
 ## Development deployment
 

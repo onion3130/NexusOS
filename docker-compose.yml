@@ -52,6 +52,8 @@ services:
     build:
       context: .
       dockerfile: infrastructure/docker/web.Dockerfile
+      args:
+        API_PROXY_TARGET: http://nexus-api:8000
     platform: linux/arm64
     environment:
       NODE_ENV: development
