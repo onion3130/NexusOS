@@ -1,6 +1,6 @@
 # NexusOS deployment
 
-**Current milestone:** v1.4 — grounded assistant notes (unreleased)
+**Current milestone:** v1.5 — external source ingestion and source lifecycle management (unreleased)
 **Status:** Hardened Compose/systemd/proxy configuration, encrypted off-host directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, bounded worker recovery, optional semantic retrieval, grounded assistant note context and provenance, Maintenance deployment status, and outbound email/push notification channels are implemented. Target-Pi image, TLS trust, restore-drill validation, and real SMTP/ntfy endpoint checks remain required operator checks.
 **Last updated:** 2026-08-04
 

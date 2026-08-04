@@ -1,6 +1,6 @@
 # NexusOS architecture
 
-**Current milestone:** v1.4 — grounded assistant notes (unreleased)
+**Current milestone:** v1.5 — external source ingestion and source lifecycle management (unreleased)
 **Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service with grounded note context, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-04
 
@@ -12,11 +12,12 @@ NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an exte
 - `apps/api/app/modules/tasks`: task service, schemas, recurrence calculator, and reminder dispatcher.
 - `apps/api/app/modules/notifications`: channel settings, outbound email/push adapters, enqueue/resend service, and bounded delivery worker.
 - `apps/api/app/modules/notes`: canonical notes, SQLite FTS5 search, deterministic chunks, and source-aware retrieval.
+- `apps/api/app/modules/sources`: bounded UTF-8 text/Markdown uploads, approved-root imports, source lifecycle, immutable versions, deterministic chunks, and worker ingestion.
 - `apps/api/app/modules/host_actions`: typed action catalog, proposal lifecycle, SQLite backups, confirmation-gated restore, retention cleanup/key rotation, plugin lifecycle actions, fixed executor, and worker processing.
 - `apps/api/app/modules/plugins`: validated manifests, approved-directory discovery, secret-free JSON-stdio subprocess broker, bounded run history, and capability/risk enforcement.
 - `apps/api/app/worker.py`: dedicated bounded SQLite reminder, confirmed host-action, replication, notification-delivery, media-rescan, and embedding worker.
 - `apps/api/app/db`: SQLAlchemy engine/session and all persisted models.
-- `apps/api/migrations`: explicit Alembic migration history through `0017_assistant_grounding`.
+- `apps/api/migrations`: explicit Alembic migration history through `0018_external_sources`.
 - `apps/web`: authenticated Next.js shell with overview, assistant, tasks, notifications, and notification settings.
 - `docker-compose.yml`: ARM64 development topology with API, web, and real worker services; proxy and optional AI remain placeholders.
 
@@ -31,6 +32,7 @@ FastAPI
   ├── bounded assistant gateway -> typed tool registry
   ├── tasks service -> tasks/categories/tags/reminders/notifications
   ├── notes service -> notes/tags/search projection/retrieval chunks
+  ├── sources service -> server-owned source storage -> durable ingestion -> versions/chunks -> retrieval
   ├── host-actions service -> typed proposals -> confirmed job queue -> fixed backup/integrity adapters
   ├── workspace-views service -> approved-root file/project/Git adapters -> optional Docker metadata adapter
   ├── backup-replication service -> bounded AES-GCM encryption -> operator-mounted destination adapter
@@ -39,6 +41,7 @@ FastAPI
   └── provider gateway -> optional NVIDIA NIM/OpenAI-compatible chat and embeddings -> bounded worker batches -> serialized vectors
 
 Dedicated worker -> SQLite reminder claims -> notifications -> enqueued channel deliveries
+Dedicated worker -> bounded external source ingestion -> immutable versions/chunks
 Dedicated worker -> confirmed host-action claims -> verified backup/integrity/restore results
 Dedicated worker -> encrypted backup replication claims with leases/retries
 Dedicated worker -> outbound channel delivery claims with leases/retries -> email/push
@@ -51,7 +54,7 @@ Docker Compose -> private bridge network
   └── nexus-ai (opt-in placeholder profile)
 ```
 
-The API and worker share the SQLite database on the external SSD. The worker has no published port. Host actions are limited to SQLite APIs under a fixed data-directory boundary; workspace views use approved roots and an optional API-only Docker socket. Docker socket access is a powerful host-control boundary even with a filesystem `:ro` mount, so it is disabled by default and must be separately reviewed; no browser-facing shell, privileged command, or arbitrary filesystem operation exists.
+The API and worker share the SQLite database on the external SSD. The owner-only admin status endpoint reads validated process configuration and database readiness but returns only redacted allowlisted status; it never edits `.env` or exposes secrets. The worker has no published port. Host actions are limited to SQLite APIs under a fixed data-directory boundary; workspace views use approved roots and an optional API-only Docker socket. Docker socket access is a powerful host-control boundary even with a filesystem `:ro` mount, so it is disabled by default and must be separately reviewed; no browser-facing shell, privileged command, or arbitrary filesystem operation exists.
 
 ## Task architecture
 
@@ -110,6 +113,10 @@ Milestone 9 exposes live read-only metadata beneath server-configured approved r
 ## Notes and retrieval architecture
 
 Notes are canonical user-authored sources. A derived search projection feeds SQLite FTS5, while deterministic versioned chunks provide provenance for RAG. Optional provider-scoped embeddings are generated asynchronously and stored as bounded serialized vectors; hybrid retrieval combines lexical and semantic scores while retaining lexical fallback. Search and retrieval always join through owned canonical notes. Assistant note tools are read-only and return bounded, explicitly source-labeled content. Grounded assistant requests assemble a bounded, explicitly delimited untrusted context and persist source provenance on the assistant message; retrieved text cannot grant tool permissions.
+
+## External source architecture
+
+External source uploads are stored with generated filenames beneath `DATA_DIR/sources`; the browser never selects a destination. Approved-file imports use opaque server-issued file IDs and revalidate the configured root, symlink state, size, hash, and UTF-8 content immediately before copying. The worker processes short, leased ingestion jobs, verifies the stored digest, parses only UTF-8 text/Markdown, creates immutable versions and deterministic chunks, and records bounded audit events. Source content participates in lexical retrieval as untrusted reference material; it cannot authorize tools or mutate the system.
 
 ## Deferred scope
 

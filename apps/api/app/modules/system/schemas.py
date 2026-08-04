@@ -84,6 +84,36 @@ class ServiceStatusTelemetry(BaseModel):
     source: Availability
 
 
+class AssistantProviderStatus(BaseModel):
+    """Safe provider status for authenticated assistant users."""
+
+    provider: Literal["disabled", "openai", "openai_compatible", "nvidia_nim"]
+    label: str
+    state: Literal["configured", "disabled"]
+    model: str | None = None
+    detail: str
+
+
+class AdminStatusCard(BaseModel):
+    """One redacted status card for the authenticated owner dashboard."""
+
+    state: Literal["ready", "degraded", "disabled"]
+    value: str
+    detail: str
+
+
+class AdminStatusResponse(BaseModel):
+    """Redacted administrative status without secrets or host paths."""
+
+    version: str
+    migration_head: str
+    checked_at: datetime
+    system: AdminStatusCard
+    ai_provider: AdminStatusCard
+    storage: AdminStatusCard
+    embedding_provider: AdminStatusCard
+
+
 class SystemOverviewResponse(BaseModel):
     """Authenticated read-only Raspberry Pi system overview."""
 

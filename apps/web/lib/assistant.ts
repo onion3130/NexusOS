@@ -1,5 +1,13 @@
 import { authenticatedFetch } from "./auth";
 
+export type AssistantProviderStatus = {
+  provider: "disabled" | "openai" | "openai_compatible" | "nvidia_nim";
+  label: string;
+  state: "configured" | "disabled";
+  model: string | null;
+  detail: string;
+};
+
 export type ConversationSummary = {
   id: string;
   title: string | null;
@@ -15,7 +23,7 @@ export type GroundingOptions = {
 };
 
 export type SourceReference = {
-  source_type: "note";
+  source_type: "note" | "external_source";
   source_id: string;
   chunk_id: string;
   title: string;
@@ -36,29 +44,13 @@ export type Message = {
   sources: SourceReference[];
 };
 
-export type Conversation = ConversationSummary & {
-  messages: Message[];
-};
+export type Conversation = ConversationSummary & { messages: Message[] };
 
 export type AssistantResult = {
   user_message: Message;
   assistant_message: Message;
-  model_run: {
-    id: string;
-    provider: string;
-    model: string | null;
-    status: "started" | "succeeded" | "failed" | "disabled";
-    latency_ms: number | null;
-    error_code: string | null;
-  };
-  tool_calls: Array<{
-    id: string;
-    tool_key: string;
-    status: "proposed" | "validated" | "executed" | "failed";
-    error_code: string | null;
-    requires_confirmation: boolean;
-    arguments: Record<string, unknown>;
-  }>;
+  model_run: { id: string; provider: string; model: string | null; status: "started" | "succeeded" | "failed" | "disabled"; latency_ms: number | null; error_code: string | null };
+  tool_calls: Array<{ id: string; tool_key: string; status: "proposed" | "validated" | "executed" | "failed"; error_code: string | null; requires_confirmation: boolean; arguments: Record<string, unknown> }>;
 };
 
 async function parse<T>(response: Response): Promise<T> {
@@ -69,40 +61,14 @@ async function parse<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function listConversations(): Promise<ConversationSummary[]> {
-  return parse<ConversationSummary[]>(await authenticatedFetch("/api/v1/conversations", { cache: "no-store" }));
+export async function readAssistantProvider(): Promise<AssistantProviderStatus> {
+  return parse<AssistantProviderStatus>(await authenticatedFetch("/api/v1/system/assistant/provider", { cache: "no-store" }));
 }
 
-export async function createConversation(title?: string): Promise<ConversationSummary> {
-  return parse<ConversationSummary>(await authenticatedFetch("/api/v1/conversations", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ title }),
-  }));
-}
-
-export async function readConversation(id: string): Promise<Conversation> {
-  return parse<Conversation>(await authenticatedFetch(`/api/v1/conversations/${encodeURIComponent(id)}`, { cache: "no-store" }));
-}
-
-function idempotencyKey(): string {
-  return typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-}
-
-export async function approveToolCall(id: string): Promise<void> {
-  const response = await authenticatedFetch(`/api/v1/ai/tool-calls/${encodeURIComponent(id)}/approve`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey() } });
-  if (!response.ok) throw new Error(`Approval failed with ${response.status}`);
-}
-
-export async function rejectToolCall(id: string): Promise<void> {
-  const response = await authenticatedFetch(`/api/v1/ai/tool-calls/${encodeURIComponent(id)}/reject`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey() } });
-  if (!response.ok) throw new Error(`Rejection failed with ${response.status}`);
-}
-
-export async function sendMessage(id: string, content: string, grounding: GroundingOptions = { enabled: true, mode: "hybrid", limit: 6 }): Promise<AssistantResult> {
-  return parse<AssistantResult>(await authenticatedFetch(`/api/v1/conversations/${encodeURIComponent(id)}/messages`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content, grounding }),
-  }));
-}
+export async function listConversations(): Promise<ConversationSummary[]> { return parse<ConversationSummary[]>(await authenticatedFetch("/api/v1/conversations", { cache: "no-store" })); }
+export async function createConversation(title?: string): Promise<ConversationSummary> { return parse<ConversationSummary>(await authenticatedFetch("/api/v1/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }) })); }
+export async function readConversation(id: string): Promise<Conversation> { return parse<Conversation>(await authenticatedFetch(`/api/v1/conversations/${encodeURIComponent(id)}`, { cache: "no-store" })); }
+function idempotencyKey(): string { return typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`; }
+export async function approveToolCall(id: string): Promise<void> { const response = await authenticatedFetch(`/api/v1/ai/tool-calls/${encodeURIComponent(id)}/approve`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey() } }); if (!response.ok) throw new Error(`Approval failed with ${response.status}`); }
+export async function rejectToolCall(id: string): Promise<void> { const response = await authenticatedFetch(`/api/v1/ai/tool-calls/${encodeURIComponent(id)}/reject`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey() } }); if (!response.ok) throw new Error(`Rejection failed with ${response.status}`); }
+export async function sendMessage(id: string, content: string, grounding: GroundingOptions = { enabled: true, mode: "hybrid", limit: 6 }): Promise<AssistantResult> { return parse<AssistantResult>(await authenticatedFetch(`/api/v1/conversations/${encodeURIComponent(id)}/messages`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, grounding }) })); }

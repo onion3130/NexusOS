@@ -1,17 +1,26 @@
 # NexusOS security baseline
 
-**Status:** v1.4 grounded assistant notes are implemented alongside the local-first security boundaries; public-internet deployment remains out of scope.
+**Status:** v1.5 external source ingestion is implemented alongside the local-first security boundaries; public-internet deployment remains out of scope.
 **Last updated:** 2026-08-04
 
 ## Runtime boundaries
 
-- The browser never receives provider keys, database credentials, Docker socket access, or unrestricted host paths.
-- The API is the authorization boundary; frontend visibility is not authorization.
+- The browser never receives provider keys, database credentials, Docker socket access, or unrestricted host paths. Admin status returns only allowlisted state/value/detail fields and never raw environment values.
+- The API is the authorization boundary; frontend visibility is not authorization. The owner-only admin status panel requires `admin.manage_users` server-side, and the frontend condition is only a presentation optimization.
 - Task and note services filter every owned entity by the authenticated user.
 - FTS5 results are joined back to canonical notes with user and deletion filters; derived chunks carry a direct user boundary.
 - The worker has no browser-facing port and performs only bounded database-backed reminder delivery.
 - No arbitrary shell text, SQL, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, systemd controls, or provider URLs are accepted from model output or the browser.
 - Host-action execution uses fixed Python/SQLite adapters. Plugin execution is the separate, non-privileged JSON-stdio broker: no shell, confined approved entrypoints, a minimal secret-free environment, bounded output/time, and Linux resource limits. Plugins are trusted operator-installed code, not a hostile-code sandbox.
+
+## External source controls
+
+- Uploads accept only bounded UTF-8 `.txt`, `.md`, and `.markdown` content. PDF, executable, credential-like, binary, empty, and oversized files are rejected.
+- Uploaded bytes are stored beneath the server-owned `DATA_DIR/sources` directory using generated IDs; client filenames are metadata only and never become storage paths.
+- Approved-file imports expose opaque IDs from server-configured roots. The server rechecks root confinement, symlink state, size, digest, and UTF-8 decoding before copying.
+- Source records, versions, chunks, and ingestion jobs are user-scoped; source mutations require permissions, cookie CSRF, idempotency conventions, and audit events.
+- Worker ingestion verifies the stored SHA-256, uses bounded reads/chunks/retries, and records redacted error codes. Source content is never executed or rendered as trusted HTML.
+- External source chunks are treated as untrusted prompt context and cannot authorize tools, permissions, host actions, or policy changes.
 
 ## Notes, search, and retrieval controls
 

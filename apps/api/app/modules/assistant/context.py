@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings
 from app.modules.assistant.schemas import GatewayMessage, GroundingOptions, SourceReference
-from app.modules.notes.retrieval import retrieve_hybrid_chunks, retrieve_note_chunks, retrieve_semantic_chunks
+from app.modules.notes.retrieval import retrieve_external_chunks, retrieve_hybrid_chunks, retrieve_note_chunks, retrieve_semantic_chunks
 
 MAX_SOURCES = 8
 MAX_SOURCE_CHARS = 1_800
@@ -44,9 +44,18 @@ async def build_grounding_context(
     if mode == "semantic":
         results = await retrieve_semantic_chunks(db, settings, user_id, query, limit=min(options.limit, MAX_SOURCES))
     elif mode == "hybrid":
-        results = await retrieve_hybrid_chunks(db, settings, user_id, query, limit=min(options.limit, MAX_SOURCES))
+        results = await retrieve_hybrid_chunks(
+            db,
+            settings,
+            user_id,
+            query,
+            limit=min(options.limit, MAX_SOURCES),
+            include_external="sources.read" in permissions,
+        )
     else:
         results = retrieve_note_chunks(db, user_id, query, limit=min(options.limit, MAX_SOURCES))
+        if "sources.read" in permissions:
+            results += retrieve_external_chunks(db, user_id, query, limit=min(options.limit, MAX_SOURCES))
 
     sources: list[SourceReference] = []
     blocks: list[str] = []

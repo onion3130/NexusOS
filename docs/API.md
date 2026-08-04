@@ -1,6 +1,6 @@
 # NexusOS API
 
-**Current milestone:** v1.4 — grounded assistant notes (unreleased)
+**Current milestone:** v1.5 — external source ingestion and source lifecycle management (unreleased)
 **Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, optional embeddings, calendar, finance, media, confirmation-gated maintenance actions, verified SQLite backups, automated restore, retention cleanup, encryption key rotation, audit visibility, read-only workspace views, outbound email/push notification channels, and the out-of-process plugin boundary are implemented. Streaming remains planned.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-04
@@ -11,7 +11,15 @@ All browser-authenticated mutations require the readable CSRF cookie value in th
 
 ### Health, identity, system, and assistant
 
-The existing health, identity, system, and conversation routes remain as documented in the previous milestone. The assistant gateway is server-configured, provider credentials remain server-side, and `AI_PROVIDER=disabled` remains safe. Grounded responses can retrieve owned notes through bounded lexical, semantic, or hybrid retrieval when the request enables grounding and the authenticated user has the required note permissions. Retrieved material is untrusted context and responses expose server-derived source provenance.
+#### `GET /api/v1/system/assistant/provider`
+
+Returns the authenticated user's configured assistant provider state, label, model identifier, and safe setup guidance. It requires `assistant.task_actions` and never returns provider URLs, API keys, or environment values.
+
+#### `GET /api/v1/system/admin/status`
+
+Returns redacted owner-only status cards for system readiness, the configured chat AI provider, optional embedding provider, SQLite storage, application version, and migration head. A configured provider means validated server settings are present; the endpoint does not probe provider reachability or claim that a remote service is healthy. It requires `admin.manage_users` and never returns credentials, provider URLs, database URLs, filesystem paths, or environment values. AI configuration remains server-side and environment-driven; this endpoint is read-only.
+
+The existing health, identity, system, and conversation routes remain as documented in the previous milestone. The assistant gateway is server-configured, provider credentials remain server-side, and `AI_PROVIDER=disabled` remains safe. When `AI_PROVIDER=nvidia_nim`, the Assistant uses NVIDIA's OpenAI-compatible chat endpoint with `NVIDIA_API_KEY` and `AI_MODEL` supplied only to the API/worker environment. Grounded responses can retrieve owned notes through bounded lexical, semantic, or hybrid retrieval when the request enables grounding and the authenticated user has the required note permissions. Retrieved material is untrusted context and responses expose server-derived source provenance.
 
 ### Productivity routes
 
@@ -100,6 +108,38 @@ Returns bounded, ownership-scoped source-aware retrieval results. `mode=lexical`
 #### `GET /api/v1/search/embeddings/status`
 
 Returns aggregate semantic-index availability and counts for the authenticated user. It never returns vectors, note content, provider credentials, or upstream payloads.
+
+### External sources
+
+#### `GET /api/v1/sources`
+
+Lists owned external sources. `status_filter=active|archived|all` and bounded pagination are supported.
+
+#### `POST /api/v1/sources/upload`
+
+Uploads one bounded UTF-8 `.txt`, `.md`, or `.markdown` source. The browser sends the file bytes with `X-Source-Filename`; the server validates the extension, size, UTF-8 content, stores it under a generated name beneath `DATA_DIR/sources`, and queues worker ingestion. PDF and arbitrary binary files are rejected.
+
+#### `GET /api/v1/sources/approved-files`
+
+Lists bounded text files discovered beneath server-configured `WORKSPACE_ROOTS`. Responses contain opaque file IDs, not absolute paths.
+
+#### `POST /api/v1/sources/import-approved-file`
+
+Imports one approved file by opaque `file_id`. The server rescans and revalidates root confinement, symlink state, size, hash, and UTF-8 content before copying it into private source storage.
+
+#### `GET /api/v1/sources/{id}` / `GET /api/v1/sources/{id}/versions` / `GET /api/v1/sources/{id}/chunks`
+
+Return owned source metadata, immutable ingestion versions, or current-version bounded chunks.
+
+#### `POST /api/v1/sources/{id}/reindex`
+
+Queues a bounded source re-ingestion job.
+
+#### `POST /api/v1/sources/{id}/archive` / `POST /api/v1/sources/{id}/restore` / `DELETE /api/v1/sources/{id}`
+
+Perform owned source lifecycle transitions. Delete is soft deletion and never accepts a path.
+
+The dedicated worker processes at most a small bounded source batch, verifies the stored SHA-256, parses UTF-8 text, creates a version and deterministic chunks, and records success/failure audit events.
 
 ### Notifications
 
@@ -252,7 +292,7 @@ Returns the current user's bounded host-action proposal, confirmation, rejection
 - Cookie-authenticated mutations require CSRF validation.
 - CORS allows `PATCH` in addition to existing methods.
 - Database migrations are explicit; startup never mutates schema.
-- Readiness verifies the current Alembic head `0017_assistant_grounding` and the notes FTS5 table.
+- Readiness verifies the current Alembic head `0018_external_sources` and the notes FTS5 table.
 - Notifications are persistent records; optional outbound email/push channels are server-configured and delivery is worker-side only.
 - No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, or provider URLs from a client.
 - Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf. Restore is the highest-risk action and additionally requires a verified source, a fresh safety backup, staged digest/integrity verification, and an atomic swap. Retention cleanup accepts no input and prunes only per the server policy with last-backup protection; key rotation accepts no input and uses only environment-configured keys.

@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as OrmSession, selectinload
 
 from app.core.config import Settings
-from app.db.models import Note, NoteChunk
+from app.db.models import Note, NoteChunk, Source, SourceChunk
 from app.modules.embeddings.gateway import embedding_gateway_from_settings
 from app.modules.embeddings.service import semantic_candidates
 from app.modules.notes.schemas import RetrievalResult
@@ -28,13 +28,32 @@ def retrieve_note_chunks(db: OrmSession, user_id: str, query: str, *, limit: int
         score = sum(haystack.count(term) for term in terms)
         if score:
             ranked.append((score, chunk, note))
-    ranked.sort(key=lambda item: (-item[0], item[2].updated_at), reverse=False)
+    ranked.sort(key=lambda item: (-item[0], -item[2].updated_at.timestamp()))
     return [_result(chunk, note, float(score), lexical_score=float(score), semantic_score=None, mode="lexical") for score, chunk, note in ranked[:max(1, min(limit, 20))]]
 
 
 def _result(chunk: NoteChunk, note: Note, score: float, *, lexical_score: float | None, semantic_score: float | None, mode: str) -> RetrievalResult:
     """Build one bounded result with explicit provenance and ranking metadata."""
     return RetrievalResult(source_type="note", source_id=note.id, chunk_id=chunk.id, title=note.title, excerpt=chunk.content[:1200], score=score, lexical_score=lexical_score, semantic_score=semantic_score, retrieval_mode=mode, source_version=chunk.source_version, updated_at=note.updated_at, metadata={"content_hash": chunk.content_hash, "chunk_index": chunk.chunk_index, "tags": [tag.name for tag in note.tags]})
+
+
+def retrieve_external_chunks(db: OrmSession, user_id: str, query: str, *, limit: int = 8, include_archived: bool = False) -> list[RetrievalResult]:
+    """Return bounded lexical results from owned ingested external sources."""
+    terms = [term.casefold() for term in _TOKEN_RE.findall(query)[:32]]
+    if not terms:
+        return []
+    statement = select(SourceChunk, Source).join(Source, Source.id == SourceChunk.source_id).where(SourceChunk.user_id == user_id, Source.user_id == user_id, Source.deleted_at.is_(None), SourceChunk.source_version == Source.current_version).order_by(Source.updated_at.desc()).limit(500)
+    if not include_archived:
+        statement = statement.where(Source.status == "ready")
+    else:
+        statement = statement.where(Source.status.in_(("ready", "archived")))
+    ranked: list[tuple[int, SourceChunk, Source]] = []
+    for chunk, source in db.execute(statement).all():
+        score = sum(chunk.content.casefold().count(term) for term in terms)
+        if score:
+            ranked.append((score, chunk, source))
+    ranked.sort(key=lambda item: (-item[0], -item[2].updated_at.timestamp()))
+    return [RetrievalResult(source_type="external_source", source_id=source.id, chunk_id=chunk.id, title=source.title, excerpt=chunk.content[:1200], score=float(score), lexical_score=float(score), semantic_score=None, retrieval_mode="lexical", source_version=chunk.source_version, updated_at=source.updated_at, metadata={"content_hash": chunk.content_hash, "chunk_index": chunk.chunk_index, "original_name": source.original_name}) for score, chunk, source in ranked[:max(1, min(limit, 20))]]
 
 
 async def retrieve_semantic_chunks(db: OrmSession, settings: Settings, user_id: str, query: str, *, limit: int = 8, include_archived: bool = False) -> list[RetrievalResult]:
@@ -49,10 +68,12 @@ async def retrieve_semantic_chunks(db: OrmSession, settings: Settings, user_id: 
     return [_result(chunk, note, score, lexical_score=None, semantic_score=score, mode="semantic") for score, _embedding, chunk, note in ranked]
 
 
-async def retrieve_hybrid_chunks(db: OrmSession, settings: Settings, user_id: str, query: str, *, limit: int = 8, include_archived: bool = False) -> list[RetrievalResult]:
+async def retrieve_hybrid_chunks(db: OrmSession, settings: Settings, user_id: str, query: str, *, limit: int = 8, include_archived: bool = False, include_external: bool = False) -> list[RetrievalResult]:
     """Combine normalized lexical and semantic scores without requiring vectors."""
     bounded_limit = max(1, min(limit, 20))
     lexical = retrieve_note_chunks(db, user_id, query, limit=min(50, bounded_limit * 3), include_archived=include_archived)
+    external = retrieve_external_chunks(db, user_id, query, limit=min(50, bounded_limit * 3), include_archived=include_archived) if include_external else []
+    lexical = (lexical + external)[: max(1, min(50, bounded_limit * 3))]
     if settings.embedding_provider == "disabled":
         return lexical[:bounded_limit]
     batch = await embedding_gateway_from_settings(settings).embed([query[: settings.embedding_max_chunk_length]])

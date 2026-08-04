@@ -1,6 +1,6 @@
 # NexusOS AI system
 
-**Current milestone:** v1.4 — grounded assistant notes (unreleased)
+**Current milestone:** v1.5 — external source ingestion and source lifecycle management (unreleased)
 **Status:** The bounded assistant gateway, conversation storage, provider normalization, hosted NVIDIA NIM configuration, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, optional embeddings, semantic/hybrid retrieval, grounded note context with source provenance, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Autonomous memory, external ingestion, streaming, and privileged host control remain deferred.
 **Last updated:** 2026-08-04
 
@@ -8,6 +8,8 @@
 
 - `AI_PROVIDER=disabled` remains the safe default.
 - `AI_PROVIDER=nvidia_nim` uses the hosted NVIDIA API Catalog chat endpoint by default; `NVIDIA_API_KEY` remains server-side and custom public endpoints must be explicitly configured.
+- Grounding can retrieve owned note chunks and ingested external text/Markdown chunks through the same bounded, untrusted-source context boundary.
+- The Assistant workspace reads a redacted provider-status endpoint and uses the existing bounded gateway; it never receives the NVIDIA key or endpoint.
 - Provider credentials stay server-side.
 - The gateway normalizes bounded provider requests and responses.
 - The registry exposes only tools allowed by the authenticated user's permissions.
@@ -77,12 +79,16 @@ Milestone 7 introduced lexical, provider-neutral retrieval results containing so
 
 Grounded assistant requests now add bounded retrieved note chunks to model context as escaped, explicitly delimited untrusted user-authored reference material. The request requires `notes.read`; semantic and hybrid modes require `notes.semantic`; grounding is skipped when chat AI is disabled. Source provenance is persisted with the assistant message and exposed as metadata-only citations. Retrieved content cannot alter system instructions or bypass confirmation-gated task actions.
 
+## External source grounding
+
+External sources are read-only reference material. The source worker creates immutable versions and deterministic chunks; grounded requests may include matching source chunks alongside notes, with `source_type=external_source` provenance. Source content remains escaped, explicitly delimited, bounded, and unable to grant tool permissions or override system policy.
+
 ## Deferred AI work
 
 - Streaming responses
 - Provider health dashboards
 - Autonomous semantic memory and model-written notes
-- External document ingestion and file sources
+- PDF/OCR parsing, external URLs, crawling, and automatic source synchronization
 - Autonomous memory and model-written notes
 - Additional integrations
 - Privileged host control, assistant-triggered restore, cloud/object-storage replication, and autonomous memory

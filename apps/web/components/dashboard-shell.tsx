@@ -19,7 +19,9 @@ import { FilesWorkspace } from "./files-workspace";
 import { ProjectsWorkspace } from "./projects-workspace";
 import { GitWorkspace } from "./git-workspace";
 import { DockerWorkspace } from "./docker-workspace";
+import { SourcesWorkspace } from "./sources-workspace";
 import { NotificationSettingsWorkspace } from "./notification-settings";
+import { AdminStatusPanel } from "./admin-status-panel";
 import { LockedState, StatusCard } from "./ui/status-card";
 import type { User } from "../lib/auth";
 
@@ -29,6 +31,7 @@ const navigation = [
   { label: "Tasks", icon: "□", available: true },
   { label: "Notifications", icon: "♢", available: true },
   { label: "Notes", icon: "▤", available: true },
+  { label: "Sources", icon: "◇", available: true },
   { label: "Search", icon: "⌕", available: true },
   { label: "Calendar", icon: "▦", available: true },
   { label: "Finance", icon: "₿", available: true },
@@ -41,17 +44,11 @@ const navigation = [
   { label: "Docker", icon: "▣", available: true },
 ];
 
-const metrics = [
-  { label: "System status", value: "Foundation ready", detail: "Health endpoints online", tone: "green" },
-  { label: "AI provider", value: "Disabled", detail: "Enable in a future milestone", tone: "purple" },
-  { label: "Storage", value: "SQLite ready", detail: "Identity persistence online", tone: "blue" },
-];
-
 export function DashboardShell({ user, onLogout }: { user: User; onLogout: () => void }) {
   const { toggleTheme } = useTheme();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [activeView, setActiveView] = useState<"overview" | "assistant" | "tasks" | "notifications" | "notes" | "search" | "calendar" | "finance" | "media" | "plugins" | "maintenance" | "files" | "projects" | "git" | "docker">("overview");
+  const [activeView, setActiveView] = useState<"overview" | "assistant" | "tasks" | "notifications" | "notes" | "sources" | "search" | "calendar" | "finance" | "media" | "plugins" | "maintenance" | "files" | "projects" | "git" | "docker">("overview");
   const [noteToOpen, setNoteToOpen] = useState<string | null>(null);
 
   function viewKey(label: string): typeof activeView {
@@ -111,7 +108,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         <header className="topbar">
           <div className="mobile-topbar-row">
             <button aria-controls="mobile-navigation" aria-expanded={mobileNavOpen} aria-label="Toggle navigation" className="menu-button" onClick={() => setMobileNavOpen((open) => !open)} type="button">☰</button>
-            <div><p className="breadcrumb">Workspace / {activeView === "assistant" ? "Assistant" : activeView === "tasks" ? "Tasks" : activeView === "notifications" ? "Notifications" : activeView === "notes" ? "Notes" : activeView === "search" ? "Search" : activeView === "calendar" ? "Calendar" : activeView === "finance" ? "Finance" : activeView === "media" ? "Media" : activeView === "plugins" ? "Plugins" : activeView === "maintenance" ? "Maintenance" : activeView === "files" ? "Files" : activeView === "projects" ? "Projects" : activeView === "git" ? "Git" : activeView === "docker" ? "Docker" : "Overview"}</p><h1>{activeView === "assistant" ? "Your assistant workspace." : activeView === "tasks" ? "Make progress visible." : activeView === "notifications" ? "Stay in the loop." : activeView === "notes" ? "Capture what matters." : activeView === "search" ? "Find your sources." : activeView === "calendar" ? "Make time visible." : activeView === "finance" ? "Know your numbers." : activeView === "media" ? "See your library." : activeView === "plugins" ? "Extend your command center safely." : activeView === "maintenance" ? "Keep your host healthy." : activeView === "files" ? "See what is changing." : activeView === "projects" ? "Your projects, in one place." : activeView === "git" ? "Review repository status." : activeView === "docker" ? "Inspect your containers." : `Good morning, ${user.username}.`}</h1></div>
+            <div><p className="breadcrumb">Workspace / {activeView === "assistant" ? "Assistant" : activeView === "tasks" ? "Tasks" : activeView === "notifications" ? "Notifications" : activeView === "notes" ? "Notes" : activeView === "sources" ? "Sources" : activeView === "search" ? "Search" : activeView === "calendar" ? "Calendar" : activeView === "finance" ? "Finance" : activeView === "media" ? "Media" : activeView === "plugins" ? "Plugins" : activeView === "maintenance" ? "Maintenance" : activeView === "files" ? "Files" : activeView === "projects" ? "Projects" : activeView === "git" ? "Git" : activeView === "docker" ? "Docker" : "Overview"}</p><h1>{activeView === "assistant" ? "Your assistant workspace." : activeView === "tasks" ? "Make progress visible." : activeView === "notifications" ? "Stay in the loop." : activeView === "notes" ? "Capture what matters." : activeView === "sources" ? "Bring your knowledge together." : activeView === "search" ? "Find your sources." : activeView === "calendar" ? "Make time visible." : activeView === "finance" ? "Know your numbers." : activeView === "media" ? "See your library." : activeView === "plugins" ? "Extend your command center safely." : activeView === "maintenance" ? "Keep your host healthy." : activeView === "files" ? "See what is changing." : activeView === "projects" ? "Your projects, in one place." : activeView === "git" ? "Review repository status." : activeView === "docker" ? "Inspect your containers." : `Good morning, ${user.username}.`}</h1></div>
           </div>
           <div className="topbar-actions">
             <NotificationCenter />
@@ -121,10 +118,10 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
           </div>
         </header>
 
-        {activeView === "assistant" ? <AssistantWorkspace onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }} /> : activeView === "tasks" ? <TaskWorkspace /> : activeView === "notifications" ? <NotificationSettingsWorkspace /> : activeView === "notes" ? <NotesWorkspace initialNoteId={noteToOpen} onSearch={() => setActiveView("search")} /> : activeView === "search" ? <SearchWorkspace onBack={() => setActiveView("notes")} onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }} /> : activeView === "calendar" ? <CalendarWorkspace /> : activeView === "finance" ? <FinanceWorkspace /> : activeView === "media" ? <MediaWorkspace /> : activeView === "plugins" ? <PluginsWorkspace /> : activeView === "maintenance" ? <MaintenanceWorkspace /> : activeView === "files" ? <FilesWorkspace /> : activeView === "projects" ? <ProjectsWorkspace /> : activeView === "git" ? <GitWorkspace /> : activeView === "docker" ? <DockerWorkspace /> : <>
+        {activeView === "assistant" ? <AssistantWorkspace onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }} onOpenSource={() => setActiveView("sources")} /> : activeView === "tasks" ? <TaskWorkspace /> : activeView === "notifications" ? <NotificationSettingsWorkspace /> : activeView === "notes" ? <NotesWorkspace initialNoteId={noteToOpen} onSearch={() => setActiveView("search")} /> : activeView === "sources" ? <SourcesWorkspace /> : activeView === "search" ? <SearchWorkspace onBack={() => setActiveView("notes")} onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }} /> : activeView === "calendar" ? <CalendarWorkspace /> : activeView === "finance" ? <FinanceWorkspace /> : activeView === "media" ? <MediaWorkspace /> : activeView === "plugins" ? <PluginsWorkspace /> : activeView === "maintenance" ? <MaintenanceWorkspace /> : activeView === "files" ? <FilesWorkspace /> : activeView === "projects" ? <ProjectsWorkspace /> : activeView === "git" ? <GitWorkspace /> : activeView === "docker" ? <DockerWorkspace /> : <>
         <div className="hero-card">
           <div className="hero-copy">
-            <span className="status-pill"><span /> NexusOS v1.1 ready</span>
+            <span className="status-pill"><span /> NexusOS v1.3.2 ready</span>
             <h2>Your digital life, <em>connected.</em></h2>
             <p>Your private workspace is authenticated and ready. The shell keeps deferred capabilities visible without pretending they are live.</p>
             <button className="primary-button" onClick={() => setPaletteOpen(true)} type="button">Explore commands <span aria-hidden="true">⌘ K</span></button>
@@ -132,10 +129,10 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
           <div aria-hidden="true" className="hero-orbit"><div className="orbit orbit-one"><span>AI</span></div><div className="orbit orbit-two"><span>SYS</span></div><div className="orbit orbit-three"><span>✦</span></div><div className="core">N</div></div>
         </div>
 
-        <section aria-labelledby="status-heading" className="section-block">
+        {user.permissions.includes("admin.manage_users") && <section aria-labelledby="status-heading" className="section-block">
           <div className="section-heading"><div><p className="eyebrow">At a glance</p><h2 id="status-heading">System status</h2></div><span className="updated">Authenticated locally</span></div>
-          <div className="metric-grid">{metrics.map((metric) => <article className="metric-card" key={metric.label}><div className={`metric-indicator ${metric.tone}`} /><p>{metric.label}</p><strong>{metric.value}</strong><span>{metric.detail}</span></article>)}</div>
-        </section>
+          <AdminStatusPanel />
+        </section>}
 
         <SystemOverview />
 

@@ -50,6 +50,9 @@ OWNER_PERMISSIONS = (
     ("media.write", "Trigger media library rescans"),
     ("plugins.read", "List installed plugins and their capabilities"),
     ("plugins.write", "Invoke plugin methods and manage plugin lifecycle"),
+    ("sources.read", "Read owned external sources"),
+    ("sources.write", "Upload and import external sources"),
+    ("sources.delete", "Archive and delete external sources"),
 )
 
 

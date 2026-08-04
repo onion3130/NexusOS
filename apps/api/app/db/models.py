@@ -152,8 +152,10 @@ class AssistantSourceReference(Base):
     conversation_id: Mapped[str] = mapped_column(ForeignKey("conversations.id", ondelete="CASCADE"), index=True)
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     source_type: Mapped[str] = mapped_column(String(24))
-    source_id: Mapped[str] = mapped_column(ForeignKey("notes.id", ondelete="CASCADE"), index=True)
-    chunk_id: Mapped[str] = mapped_column(ForeignKey("note_chunks.id", ondelete="CASCADE"), index=True)
+    source_id: Mapped[str | None] = mapped_column(ForeignKey("notes.id", ondelete="CASCADE"), nullable=True, index=True)
+    chunk_id: Mapped[str | None] = mapped_column(ForeignKey("note_chunks.id", ondelete="CASCADE"), nullable=True, index=True)
+    external_source_id: Mapped[str | None] = mapped_column(ForeignKey("sources.id", ondelete="CASCADE"), nullable=True, index=True)
+    external_chunk_id: Mapped[str | None] = mapped_column(ForeignKey("source_chunks.id", ondelete="CASCADE"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(160))
     source_version: Mapped[int] = mapped_column(Integer)
     retrieval_mode: Mapped[str] = mapped_column(String(16))
@@ -403,6 +405,69 @@ class NoteChunkEmbedding(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, index=True)
     chunk: Mapped[NoteChunk] = relationship(back_populates="embeddings")
     __table_args__ = (UniqueConstraint("chunk_id", "provider", "model", name="uq_note_chunk_embeddings_provider_model"),)
+
+
+class Source(Base):
+    """A user-owned external text source stored beneath the Nexus data volume."""
+
+    __tablename__ = "sources"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(24), default="upload")
+    title: Mapped[str] = mapped_column(String(160))
+    original_name: Mapped[str] = mapped_column(String(255))
+    stored_path: Mapped[str] = mapped_column(String(128), unique=True)
+    mime_type: Mapped[str] = mapped_column(String(64))
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64), index=True)
+    status: Mapped[str] = mapped_column(String(24), default="processing", index=True)
+    current_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_ingested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, index=True)
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    versions: Mapped[list[SourceVersion]] = relationship(back_populates="source", cascade="all, delete-orphan")
+    chunks: Mapped[list[SourceChunk]] = relationship(back_populates="source", cascade="all, delete-orphan")
+
+
+class SourceVersion(Base):
+    """An immutable parsed snapshot of an external source."""
+
+    __tablename__ = "source_versions"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    source_id: Mapped[str] = mapped_column(ForeignKey("sources.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    content_length: Mapped[int] = mapped_column(Integer)
+    parser: Mapped[str] = mapped_column(String(32))
+    parser_version: Mapped[str] = mapped_column(String(16))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    source: Mapped[Source] = relationship(back_populates="versions")
+    chunks: Mapped[list[SourceChunk]] = relationship(back_populates="version", cascade="all, delete-orphan")
+    __table_args__ = (UniqueConstraint("source_id", "version", name="uq_source_versions_source_version"),)
+
+
+class SourceChunk(Base):
+    """A deterministic, source-aware retrieval chunk."""
+
+    __tablename__ = "source_chunks"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    source_id: Mapped[str] = mapped_column(ForeignKey("sources.id", ondelete="CASCADE"), index=True)
+    source_version_id: Mapped[str] = mapped_column(ForeignKey("source_versions.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    chunk_index: Mapped[int] = mapped_column(Integer)
+    content: Mapped[str] = mapped_column(Text)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    start_offset: Mapped[int] = mapped_column(Integer)
+    end_offset: Mapped[int] = mapped_column(Integer)
+    source_version: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    source: Mapped[Source] = relationship(back_populates="chunks")
+    version: Mapped[SourceVersion] = relationship(back_populates="chunks")
+    __table_args__ = (UniqueConstraint("source_version_id", "chunk_index", name="uq_source_chunks_version_index"),)
 
 
 class AuditEvent(Base):

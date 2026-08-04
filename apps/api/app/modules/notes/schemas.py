@@ -90,7 +90,7 @@ class NoteListResponse(BaseModel):
 
 
 class SearchResult(BaseModel):
-    source_type: Literal["note"]
+    source_type: Literal["note", "external_source"]
     source_id: str
     chunk_id: str | None
     title: str
@@ -124,7 +124,7 @@ class NoteChunksResponse(BaseModel):
 
 
 class RetrievalResult(BaseModel):
-    source_type: Literal["note"]
+    source_type: Literal["note", "external_source"]
     source_id: str
     chunk_id: str
     title: str

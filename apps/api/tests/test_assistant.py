@@ -6,7 +6,7 @@ import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 
-from app.db.models import AssistantMessage, AssistantSourceReference, Conversation, Note, NoteChunk, User
+from app.db.models import AssistantMessage, AssistantSourceReference, Conversation, Note, NoteChunk, Source, SourceChunk, User
 
 import pytest
 from pydantic import SecretStr
@@ -174,6 +174,41 @@ def test_disabled_provider_skips_grounding(client, monkeypatch) -> None:
 
         asyncio.run(run())
         assert called is False
+    finally:
+        db.close()
+
+
+def test_external_message_source_endpoint_returns_external_ids(client) -> None:
+    """External provenance uses its dedicated source and chunk identifiers."""
+    _bootstrap_owner()
+    _login(client)
+    db = get_session_factory()()
+    try:
+        user = db.query(User).first()
+        conversation = Conversation(user_id=user.id)
+        db.add(conversation)
+        db.flush()
+        source = Source(user_id=user.id, kind="upload", title="External source", original_name="source.txt", stored_path="source-id.txt", mime_type="text/plain", size_bytes=7, sha256="a" * 64, status="ready", current_version=1)
+        db.add(source)
+        db.flush()
+        version = source.versions[0] if source.versions else None
+        if version is None:
+            from app.db.models import SourceVersion
+            version = SourceVersion(source_id=source.id, user_id=user.id, version=1, content_hash="b" * 64, content_length=7, parser="utf8-text", parser_version="1")
+            db.add(version)
+            db.flush()
+        chunk = SourceChunk(source_id=source.id, source_version_id=version.id, user_id=user.id, chunk_index=0, content="private", content_hash="c" * 64, start_offset=0, end_offset=7, source_version=1)
+        db.add(chunk)
+        db.flush()
+        message = AssistantMessage(conversation_id=conversation.id, role="assistant", content="grounded", sequence=0)
+        db.add(message)
+        db.flush()
+        db.add(AssistantSourceReference(message_id=message.id, conversation_id=conversation.id, user_id=user.id, source_type="external_source", external_source_id=source.id, external_chunk_id=chunk.id, title="External source", source_version=1, retrieval_mode="lexical", rank=1))
+        db.commit()
+        response = client.get(f"/api/v1/conversations/{conversation.id}/messages/{message.id}/sources")
+        assert response.status_code == 200
+        assert response.json()["sources"][0]["source_id"] == source.id
+        assert response.json()["sources"][0]["chunk_id"] == chunk.id
     finally:
         db.close()
 

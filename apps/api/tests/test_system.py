@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import SecretStr
+
+from app.core.config import Settings, get_settings
+from app.db.models import User
 from app.db.session import get_session_factory
+from app.modules.system.admin import _provider_status
 from app.modules.identity.service import bootstrap_owner
 from app.modules.system.adapters.network import read_interfaces
 from app.modules.system.adapters.procfs import read_memory, read_uptime
@@ -59,6 +64,101 @@ def test_system_service_degrades_without_exposing_paths(tmp_path) -> None:
     assert result.storage.source.reason == "storage_unavailable"
     assert result.temperature.source.reason == "temperature_unavailable"
     assert str(tmp_path) not in result.model_dump_json()
+
+
+def test_admin_status_is_owner_only_and_redacted(client, monkeypatch) -> None:
+    """The owner panel exposes safe status without provider secrets."""
+    assert client.get("/api/v1/system/admin/status").status_code == 401
+    _bootstrap_owner()
+    login = client.post("/api/v1/auth/login", json={"username": "owner", "password": "correct horse battery staple"})
+    assert login.status_code == 200
+    response = client.get("/api/v1/system/admin/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["system"]["state"] in {"ready", "degraded"}
+    assert body["storage"]["value"] == "SQLite ready"
+    assert body["ai_provider"]["state"] == "disabled"
+    assert "reachability" not in body["ai_provider"]["detail"]
+    assert body["embedding_provider"]["state"] == "disabled"
+    assert "test-secret" not in response.text
+    assert "database_url" not in response.text
+    assert body["migration_head"]
+
+
+def test_configured_provider_status_is_redacted() -> None:
+    """Configured-provider status never includes the server credential or endpoint."""
+    settings = Settings(
+        NEXUS_ENV="test",
+        TZ="UTC",
+        DATA_DIR=".",
+        DB_TYPE="sqlite",
+        DATABASE_URL="sqlite:///./data/nexus.db",
+        JWT_SECRET="test-secret-that-is-longer-than-thirty-two-characters",
+        SESSION_COOKIE_SECURE=False,
+        CORS_ORIGINS="http://localhost:3000",
+        AI_PROVIDER="nvidia_nim",
+        NVIDIA_API_KEY=SecretStr("server-only-nvidia-key"),
+        AI_MODEL="meta/llama-3.1-8b-instruct",
+    )
+    card = _provider_status(settings)
+    assert card.state == "ready"
+    assert card.value == "Configured · NVIDIA NIM"
+    assert "server-only-nvidia-key" not in card.model_dump_json()
+    assert "integrate.api.nvidia.com" not in card.model_dump_json()
+    assert "reachability is checked when a message is sent" in card.detail
+
+
+def test_admin_status_denies_a_user_without_admin_permission(client) -> None:
+    """Admin status is not granted by ordinary authenticated access."""
+    _bootstrap_owner()
+    db = get_session_factory()()
+    try:
+        user = db.query(User).first()
+        user.roles = []
+        db.commit()
+    finally:
+        db.close()
+    login = client.post("/api/v1/auth/login", json={"username": "owner", "password": "correct horse battery staple"})
+    assert login.status_code == 200
+    assert client.get("/api/v1/system/admin/status").status_code == 403
+
+
+def test_assistant_provider_status_is_authenticated_and_redacted(client) -> None:
+    """The Assistant receives provider state without credentials or endpoints."""
+    assert client.get("/api/v1/system/assistant/provider").status_code == 401
+    _bootstrap_owner()
+    login = client.post("/api/v1/auth/login", json={"username": "owner", "password": "correct horse battery staple"})
+    assert login.status_code == 200
+    response = client.get("/api/v1/system/assistant/provider")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["provider"] == "disabled"
+    assert body["state"] == "disabled"
+    assert "NVIDIA_API_KEY" not in response.text
+    assert "integrate.api.nvidia.com" not in response.text
+
+
+def test_assistant_provider_status_reports_configured_nim_without_secrets(client, monkeypatch) -> None:
+    """Configured NIM status exposes only the provider label and model."""
+    _bootstrap_owner()
+    monkeypatch.setenv("AI_PROVIDER", "nvidia_nim")
+    monkeypatch.setenv("AI_MODEL", "meta/llama-3.1-8b-instruct")
+    monkeypatch.setenv("NVIDIA_API_KEY", "server-only-nvidia-key")
+    get_settings.cache_clear()
+    login = client.post("/api/v1/auth/login", json={"username": "owner", "password": "correct horse battery staple"})
+    assert login.status_code == 200
+    response = client.get("/api/v1/system/assistant/provider")
+    assert response.status_code == 200
+    body = response.json()
+    assert body == {
+        "provider": "nvidia_nim",
+        "label": "NVIDIA NIM",
+        "state": "configured",
+        "model": "meta/llama-3.1-8b-instruct",
+        "detail": "Server-side configuration is valid; provider reachability is checked when a message is sent",
+    }
+    assert "server-only-nvidia-key" not in response.text
+    assert "integrate.api.nvidia.com" not in response.text
 
 
 def test_system_overview_requires_authentication(client) -> None:

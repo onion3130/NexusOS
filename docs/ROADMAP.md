@@ -1,7 +1,7 @@
 # NexusOS roadmap
 
-**Current milestone:** v1.4 — grounded assistant notes (unreleased)
-**Next milestone:** v1.5 — external source ingestion and source lifecycle management
+**Current milestone:** v1.5 — external source ingestion and source lifecycle management (unreleased)
+**Next milestone:** v1.6 — source synchronization, richer document parsing, and streaming Assistant responses
 **Last updated:** 2026-08-04
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
@@ -29,6 +29,7 @@ Milestone 6 is implemented within its approved scope. NexusOS now has an authent
 
 | 12. Restore and recovery automation | Complete | Confirmation-gated restore from verified local and encrypted off-host backup artifacts with safety backup, staging, digest/integrity verification, and atomic swap |
 | 13. Backup retention and lifecycle | Complete | Policy-driven retention cleanup with last-backup protection, digest-safe pruning of local and encrypted artifacts, and confirmation-gated AES-256 key rotation |
+| 15. External source ingestion | In progress | Bounded text/Markdown uploads, approved-file imports, versioned ingestion, source-aware retrieval, and lifecycle controls |
 
 ## Milestone 6 complete — tasks, reminders, and notifications
 
@@ -231,6 +232,23 @@ Known limitations:
 - Target Raspberry Pi ARM64 provider latency and sustained worker-load validation remain operational checks.
 - Autonomous memory, external ingestion, and model-written notes remain future scope.
 
+## v1.5 external source ingestion and lifecycle
+
+Implemented:
+
+- Migration `0018_external_sources` with user-owned sources, immutable versions, deterministic chunks, and source permissions.
+- Bounded UTF-8 text and Markdown uploads stored beneath a server-owned data directory with generated filenames.
+- Approved-root text-file discovery and opaque file identifiers; client paths are never accepted.
+- Durable worker ingestion with bounded retries, integrity hashing, versioned chunks, audit events, and lifecycle states.
+- Sources workspace with upload/import, processing, retry, archive, restore, delete, loading, and error states.
+- Shared lexical retrieval and grounded Assistant provenance support for external sources.
+
+Known limitations:
+
+- PDF, OCR, arbitrary URLs, web crawling, automatic synchronization, autonomous memory extraction, model-written notes, and streaming remain deferred.
+- Source-aware semantic indexing will follow the existing provider-neutral embedding boundary in a future increment.
+- Docker and Raspberry Pi sustained-ingestion validation remain target-environment checks.
+
 ## v1.4 grounded assistant notes
 
 Implemented:
@@ -246,7 +264,7 @@ Known limitations:
 
 - Sources are server-derived retrieved-source references, not claims that the model cited or quoted each source.
 - External document ingestion, autonomous memory extraction, model-written notes, and streaming remain deferred.
-- The v1.4 feature is unreleased; the current production tag remains v1.3.2 until a release is created.
+- The v1.5 feature is unreleased; the current production tag remains v1.3.2 until a release is created.
 
 ## v1.3 provider integration — NVIDIA NIM
 

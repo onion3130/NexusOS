@@ -68,5 +68,6 @@ Milestone 11 adds Calendar, Finance, Media, and the optional out-of-process plug
 - Production rejects placeholder/short JWT secrets and insecure cookies.
 - Provider keys are required only when AI is enabled.
 - Worker settings are bounded to preserve Raspberry Pi resource use.
-- Future integration credentials use Docker secrets or an approved encrypted credential boundary, not ordinary settings rows.
+- External source uploads are stored beneath `DATA_DIR/sources`; source ingestion is bounded by the worker and does not require a separate search service.
+- Future integration credentials use Docker secrets or an approved encrypted credential boundary, not ordinary settings rows. The admin panel reports only whether configured provider settings are valid; it does not edit or reveal environment secrets.
 - Channel credentials are required only when the corresponding channel is enabled.

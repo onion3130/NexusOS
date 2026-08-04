@@ -40,7 +40,7 @@ class GroundingOptions(BaseModel):
 class SourceReference(BaseModel):
     """Server-owned provenance metadata for one grounded source."""
 
-    source_type: Literal["note"]
+    source_type: Literal["note", "external_source"]
     source_id: str
     chunk_id: str
     title: str

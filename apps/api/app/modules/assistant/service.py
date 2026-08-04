@@ -11,7 +11,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session as OrmSession, selectinload
 
 from app.core.config import Settings
-from app.db.models import AssistantMessage, AssistantModelRun, AssistantSourceReference, AssistantToolCall, Conversation, Job, Note, NoteChunk
+from app.db.models import AssistantMessage, AssistantModelRun, AssistantSourceReference, AssistantToolCall, Conversation, Job, Note, NoteChunk, Source, SourceChunk
 from app.modules.identity.service import add_audit_event
 from app.modules.assistant.gateway import ModelGateway
 from app.modules.assistant.schemas import (
@@ -40,22 +40,24 @@ def _source_responses(db: OrmSession, message: AssistantMessage, user_id: str) -
     """Return only provenance whose canonical note and chunk belong together and to the user."""
     rows = db.execute(
         select(AssistantSourceReference)
-        .join(Note, Note.id == AssistantSourceReference.source_id)
-        .join(NoteChunk, NoteChunk.id == AssistantSourceReference.chunk_id)
+        .outerjoin(Note, Note.id == AssistantSourceReference.source_id)
+        .outerjoin(NoteChunk, NoteChunk.id == AssistantSourceReference.chunk_id)
+        .outerjoin(Source, Source.id == AssistantSourceReference.external_source_id)
+        .outerjoin(SourceChunk, SourceChunk.id == AssistantSourceReference.external_chunk_id)
         .where(
             AssistantSourceReference.message_id == message.id,
             AssistantSourceReference.user_id == user_id,
-            Note.user_id == user_id,
-            NoteChunk.user_id == user_id,
-            NoteChunk.note_id == Note.id,
-            NoteChunk.id == AssistantSourceReference.chunk_id,
+            (((Note.user_id == user_id) & (NoteChunk.user_id == user_id)) | ((Source.user_id == user_id) & (SourceChunk.user_id == user_id))),
+        )
+        .where(
+            (AssistantSourceReference.source_type == "note") | (AssistantSourceReference.source_type == "external_source")
         )
         .order_by(AssistantSourceReference.rank)
     ).scalars().all()
     return [SourceReference.model_validate({
         "source_type": item.source_type,
-        "source_id": item.source_id,
-        "chunk_id": item.chunk_id,
+        "source_id": item.source_id if item.source_type == "note" else item.external_source_id,
+        "chunk_id": item.chunk_id if item.source_type == "note" else item.external_chunk_id,
         "title": item.title,
         "source_version": item.source_version,
         "retrieval_mode": item.retrieval_mode,
@@ -227,8 +229,10 @@ async def send_message(
             conversation_id=conversation.id,
             user_id=conversation.user_id,
             source_type=source.source_type,
-            source_id=source.source_id,
-            chunk_id=source.chunk_id,
+            source_id=source.source_id if source.source_type == "note" else None,
+            chunk_id=source.chunk_id if source.source_type == "note" else None,
+            external_source_id=source.source_id if source.source_type == "external_source" else None,
+            external_chunk_id=source.chunk_id if source.source_type == "external_source" else None,
             title=source.title,
             source_version=source.source_version,
             retrieval_mode=source.retrieval_mode,

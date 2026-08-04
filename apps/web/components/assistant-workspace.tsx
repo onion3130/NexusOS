@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { approveToolCall, createConversation, listConversations, readConversation, rejectToolCall, sendMessage, type Conversation, type ConversationSummary } from "../lib/assistant";
+import { approveToolCall, createConversation, listConversations, readAssistantProvider, readConversation, rejectToolCall, sendMessage, type AssistantProviderStatus, type Conversation, type ConversationSummary } from "../lib/assistant";
 import { AssistantActionConfirmation } from "./assistant-action-confirmation";
 import { AssistantSourceCitations } from "./assistant-source-citations";
 
@@ -14,7 +14,7 @@ function ConversationList({ items, selected, onSelect, onCreate }: { items: Conv
   );
 }
 
-export function AssistantWorkspace({ onOpenNote }: { onOpenNote?: (id: string) => void }) {
+export function AssistantWorkspace({ onOpenNote, onOpenSource }: { onOpenNote?: (id: string) => void; onOpenSource?: (id: string) => void }) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [draft, setDraft] = useState("");
@@ -25,12 +25,14 @@ export function AssistantWorkspace({ onOpenNote }: { onOpenNote?: (id: string) =
   const [pendingAction, setPendingAction] = useState<{ id: string; tool: string; arguments: Record<string, unknown> } | null>(null);
   const [groundingEnabled, setGroundingEnabled] = useState(true);
   const [groundingMode, setGroundingMode] = useState<"lexical" | "semantic" | "hybrid">("hybrid");
+  const [provider, setProvider] = useState<AssistantProviderStatus | null>(null);
 
   const loadConversations = useCallback(async () => {
     setLoading(true);
     try {
       const items = await listConversations();
       setConversations(items);
+      try { setProvider(await readAssistantProvider()); } catch { setProvider(null); }
       if (items[0]) setConversation(await readConversation(items[0].id));
       setError(null);
       setErrorKind(null);
@@ -91,11 +93,11 @@ export function AssistantWorkspace({ onOpenNote }: { onOpenNote?: (id: string) =
   }
 
   return <section aria-labelledby="assistant-heading" className="assistant-workspace section-block">
-    <div className="section-heading"><div><p className="eyebrow">Private by default</p><h2 id="assistant-heading">Assistant</h2></div><span className="updated">Bounded gateway</span></div>
+    <div className="section-heading"><div><p className="eyebrow">{provider?.provider === "nvidia_nim" ? "NVIDIA NIM connected" : "Private by default"}</p><h2 id="assistant-heading">Assistant</h2></div><span className={`updated assistant-provider-badge ${provider?.state === "disabled" ? "provider-disabled" : "provider-configured"}`}>{provider?.state === "configured" ? `${provider.label}${provider.model ? ` · ${provider.model}` : ""}` : provider?.label ?? "Checking provider…"}</span></div>
     <div className="assistant-layout">
       <ConversationList items={conversations} selected={conversation?.id ?? null} onSelect={(id) => void selectConversation(id)} onCreate={() => void newConversation()} />
       <div className="assistant-panel">
-        {loading ? <div className="assistant-state" role="status">Loading conversations…</div> : conversation ? <><div aria-live="polite" className="message-list">{conversation.messages.length === 0 ? <div className="assistant-state"><strong>Start a conversation</strong><span>Ask about your NexusOS system or anything you are building.</span></div> : conversation.messages.map((message) => <article className={`assistant-message ${message.role}`} key={message.id}><span className="message-role">{message.role === "user" ? "You" : "Nexus"}</span><p>{message.content}</p>{message.role === "assistant" && <AssistantSourceCitations onOpenNote={(id) => onOpenNote?.(id)} sources={message.sources} />}</article>)}</div><form className="assistant-composer" onSubmit={submit}><div className="assistant-grounding-controls"><label><input checked={groundingEnabled} onChange={(event) => setGroundingEnabled(event.target.checked)} type="checkbox" /> Use my notes</label>{groundingEnabled && <label>Mode <select aria-label="Grounding retrieval mode" value={groundingMode} onChange={(event) => setGroundingMode(event.target.value as typeof groundingMode)}><option value="hybrid">Hybrid</option><option value="lexical">Lexical</option><option value="semantic">Semantic</option></select></label>}</div><textarea aria-label="Message assistant" maxLength={4000} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder="Ask NexusOS… Press Enter to send, Shift+Enter for a new line" value={draft} /><div><span>{draft.length}/4000 · Provider stays server-side</span><button className="primary-button" disabled={!draft.trim() || sending} type="submit">{sending ? "Thinking…" : "Send"}</button></div></form></> : <div className="assistant-state"><strong>No conversation selected</strong><button className="text-button" onClick={() => void newConversation()} type="button">Create one</button></div>}
+        {loading ? <div className="assistant-state" role="status">Loading conversations…</div> : conversation ? <><div aria-live="polite" className="message-list">{conversation.messages.length === 0 ? <div className="assistant-state"><strong>{provider?.state === "disabled" ? "Configure NVIDIA NIM to start" : "Start a conversation"}</strong><span>{provider?.state === "disabled" ? "Set AI_PROVIDER=nvidia_nim, AI_MODEL, and NVIDIA_API_KEY on the server, then restart NexusOS." : "Ask your configured NVIDIA model about your system, tasks, notes, or anything you are building."}</span></div> : conversation.messages.map((message) => <article className={`assistant-message ${message.role}`} key={message.id}><span className="message-role">{message.role === "user" ? "You" : "Nexus"}</span><p>{message.content}</p>{message.role === "assistant" && <AssistantSourceCitations onOpenSource={(source) => source.source_type === "note" ? onOpenNote?.(source.source_id) : onOpenSource?.(source.source_id)} sources={message.sources} />}</article>)}</div><form className="assistant-composer" onSubmit={submit}><div className="assistant-grounding-controls"><label><input checked={groundingEnabled} onChange={(event) => setGroundingEnabled(event.target.checked)} type="checkbox" /> Use my notes</label>{groundingEnabled && <label>Mode <select aria-label="Grounding retrieval mode" value={groundingMode} onChange={(event) => setGroundingMode(event.target.value as typeof groundingMode)}><option value="hybrid">Hybrid</option><option value="lexical">Lexical</option><option value="semantic">Semantic</option></select></label>}</div><textarea aria-label="Message assistant" maxLength={4000} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder="Ask NexusOS… Press Enter to send, Shift+Enter for a new line" value={draft} /><div><span>{draft.length}/4000 · Provider stays server-side</span><button className="primary-button" disabled={!draft.trim() || sending || provider?.state === "disabled"} type="submit">{sending ? "Thinking…" : "Send"}</button></div></form></> : <div className="assistant-state"><strong>No conversation selected</strong><button className="text-button" onClick={() => void newConversation()} type="button">Create one</button></div>}
         {error && <div className="inline-state error-state" role="alert"><strong>Assistant unavailable.</strong><span>{error === "ai_provider_disabled" ? "Configure an AI provider on the server to send messages." : error}</span>{errorKind === "send" ? <button className="text-button" onClick={() => { setError(null); setErrorKind(null); }} type="button">Dismiss</button> : <button className="text-button" onClick={() => void loadConversations()} type="button">Retry</button>}</div>}
         {pendingAction && <AssistantActionConfirmation arguments={pendingAction.arguments} onApprove={() => void approvePending()} onReject={() => void rejectPending()} tool={pendingAction.tool} />}
       </div>

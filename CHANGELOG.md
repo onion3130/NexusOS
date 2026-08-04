@@ -4,6 +4,30 @@ All notable NexusOS changes are recorded here. NexusOS releases use Semantic Ver
 
 ## [Unreleased]
 
+### External source ingestion
+
+NexusOS v1.5.0 adds bounded external source ingestion and source-aware grounding while preserving the local-first security model.
+
+- Added bounded UTF-8 text and Markdown uploads with server-generated storage names and background ingestion jobs.
+- Added approved-root text-file discovery/import without accepting client filesystem paths.
+- Added immutable source versions, deterministic chunks, lifecycle controls, ownership checks, audit events, and source-aware lexical retrieval.
+- Added the Sources workspace with upload, import, processing, retry, archive, restore, and delete states.
+- Added migration `0018_external_sources` and coverage for ingestion, ownership, migration reversibility, unsafe files, and retrieval.
+- PDF, arbitrary URLs, crawling, OCR, autonomous memory extraction, and model-written notes remain deferred.
+
+### NVIDIA NIM Assistant integration
+
+- Connected the Assistant workspace to the existing server-side NVIDIA NIM gateway.
+- Added authenticated provider-status metadata, model labeling, disabled-provider setup guidance, and no-browser-secret guarantees.
+- Preserved bounded timeouts, SSRF/DNS-rebinding defenses, tool confirmation, and source-grounding controls.
+
+### Owner admin status
+
+- Replaced static dashboard status cards with a refreshable owner-only admin status panel.
+- Added redacted system, chat-provider, embedding-provider, SQLite, version, and migration status.
+- Kept AI configuration environment-driven and server-side; the panel does not edit or expose credentials.
+
+
 ### Grounded assistant notes
 
 - Added bounded lexical, semantic, and hybrid note grounding for assistant responses.

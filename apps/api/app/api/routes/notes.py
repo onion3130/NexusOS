@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session as OrmSession
 from app.db.models import Note, NoteChunk
 from app.db.session import get_db
 from app.modules.identity.dependencies import AuthContext, get_auth_context, require_csrf, require_permission
+from app.modules.identity.service import permission_names
 from app.core.config import Settings, get_settings
-from app.modules.notes.retrieval import retrieve_hybrid_chunks, retrieve_note_chunks, retrieve_semantic_chunks
+from app.modules.notes.retrieval import retrieve_external_chunks, retrieve_hybrid_chunks, retrieve_note_chunks, retrieve_semantic_chunks
 from app.modules.embeddings.schemas import EmbeddingError, EmbeddingStatus
 from app.modules.embeddings.service import embedding_status
 from app.modules.notes.schemas import NoteChunksResponse, NoteCreate, NoteListResponse, NoteResponse, NoteUpdate, RetrievalChunkResponse, RetrievalResult, SearchResponse
@@ -125,13 +126,17 @@ async def retrieve(q: str, mode: str = "lexical", include_archived: bool = False
         if mode == "semantic":
             return await retrieve_semantic_chunks(db, settings, context.user.id, q, limit=limit, include_archived=include_archived)
         if mode == "hybrid":
-            return await retrieve_hybrid_chunks(db, settings, context.user.id, q, limit=limit, include_archived=include_archived)
-        return retrieve_note_chunks(db, context.user.id, q, limit=limit, include_archived=include_archived)
+            return await retrieve_hybrid_chunks(db, settings, context.user.id, q, limit=limit, include_archived=include_archived, include_external="sources.read" in set(permission_names(context.user)))
+        note_results = retrieve_note_chunks(db, context.user.id, q, limit=limit, include_archived=include_archived)
+        external_results = retrieve_external_chunks(db, context.user.id, q, limit=limit, include_archived=include_archived) if "sources.read" in set(permission_names(context.user)) else []
+        return sorted(note_results + external_results, key=lambda item: (-item.score, -item.updated_at.timestamp()))[:max(1, min(limit, 20))]
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except EmbeddingError:
         if mode in {"semantic", "hybrid"}:
-            return retrieve_note_chunks(db, context.user.id, q, limit=limit, include_archived=include_archived)
+            note_results = retrieve_note_chunks(db, context.user.id, q, limit=limit, include_archived=include_archived)
+            external_results = retrieve_external_chunks(db, context.user.id, q, limit=limit, include_archived=include_archived) if "sources.read" in set(permission_names(context.user)) else []
+            return sorted(note_results + external_results, key=lambda item: (-item.score, -item.updated_at.timestamp()))[:max(1, min(limit, 20))]
         raise HTTPException(status_code=503, detail="retrieval_unavailable")
     except Exception as exc:
         raise HTTPException(status_code=503, detail="retrieval_unavailable") from exc

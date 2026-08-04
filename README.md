@@ -21,12 +21,14 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 ## Features
 
-- 🤖 **AI assistant** — provider-neutral, bounded, and configured server-side
+- 🤖 **AI assistant** — bounded provider gateway with optional NVIDIA NIM chat models configured server-side
 - ✅ **Task management** — due dates, priorities, categories, tags, recurring schedules, and reminders
 - 📝 **Private notes** — versioned source notes with tags, archive, and soft deletion
-- ⌕ **Scoped search** — local SQLite FTS5 search with source-aware excerpts and retrieval chunks
+- ◇ **External sources** — bounded UTF-8 text/Markdown uploads and approved-file imports with background ingestion
+- ⌕ **Scoped search** — local source-aware retrieval across notes and ingested sources
 - 🔔 **Notifications** — persistent in-app alerts plus optional email and push (ntfy) delivery for reminders
 - 📈 **System telemetry** — read-only Raspberry Pi health and resource overview
+- 🛡️ **Owner admin status** — redacted system, provider, storage, and migration status without exposing secrets
 - 🔐 **Security boundaries** — user-owned data, sessions, CSRF protection, permissions, confirmation workflows, and audit events
 - 🛠️ **Safe maintenance** — explicit-confirmation SQLite backups, integrity checks, restore, retention cleanup, and encryption key rotation without arbitrary host control
 - 🌓 **Responsive dashboard** — accessible loading/error states and theme switching
@@ -46,11 +48,11 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 | Item | Status |
 | --- | --- |
-| **Current milestone** | v1.4 — grounded assistant notes ✅ (unreleased) |
-| **Current version** | `1.3.2` — NVIDIA NIM, migration, and Docker health fixes |
-| **Next milestone** | v1.5 — external source ingestion and source lifecycle management |
+| **Current milestone** | v1.5 — external source ingestion ✅ (unreleased) |
+| **Current version** | `1.3.2` — latest released Docker health and migration compatibility fixes |
+| **Next milestone** | v1.6 — external synchronization and richer document parsers |
 
-NexusOS v1.4 adds grounded assistant responses over owned notes with bounded retrieval, source provenance, and retrieved-source navigation while preserving provider-neutral retrieval, lexical fallback, and the private, local-first Raspberry Pi architecture. NVIDIA NIM remains optional and disabled by default. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
+NexusOS v1.5 adds bounded external text/Markdown ingestion, source lifecycle controls, background versioned chunking, source-aware retrieval, and Assistant provenance while preserving the private, local-first Raspberry Pi architecture. NVIDIA NIM remains optional and disabled by default. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
 
 ## Technology stack
 
