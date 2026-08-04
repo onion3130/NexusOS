@@ -1,6 +1,6 @@
 # NexusOS development setup
 
-**Status:** v1.0.0 released — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, confirmation-gated host maintenance, verified SQLite backups, encrypted directory replication, confirmation-gated restore, outbound email/push notification channels, and audit history are available. Embeddings and autonomous memory remain deferred.
+**Status:** v1.0.0 released — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, confirmation-gated host maintenance, verified SQLite backups, encrypted directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, outbound email/push notification channels, and audit history are available. Embeddings and autonomous memory remain deferred.
 
 ## Prerequisites
 

@@ -31,7 +31,17 @@ def main() -> int:
         session = get_session_factory()()
         try:
             process_due_reminders(session, batch_size=settings.task_worker_batch_size)
-            process_host_actions(session, data_dir=settings.data_dir, database_url=settings.database_url, replication_destination=settings.backup_replication_destination, encryption_key=settings.backup_encryption_key.get_secret_value() if settings.backup_encryption_key else None, batch_size=10)
+            process_host_actions(
+                session,
+                data_dir=settings.data_dir,
+                database_url=settings.database_url,
+                replication_destination=settings.backup_replication_destination,
+                encryption_key=settings.backup_encryption_key.get_secret_value() if settings.backup_encryption_key else None,
+                retention_count=settings.backup_retention_count,
+                retention_days=settings.backup_retention_days,
+                previous_encryption_key=settings.backup_replication_key_previous.get_secret_value() if settings.backup_replication_key_previous else None,
+                batch_size=10,
+            )
             process_replication_jobs(session, data_dir=settings.data_dir, destination=settings.backup_replication_destination, encryption_key=settings.backup_encryption_key.get_secret_value() if settings.backup_encryption_key else None, batch_size=2)
             process_notification_deliveries(session, settings=settings, batch_size=settings.notification_delivery_batch_size)
         except Exception:

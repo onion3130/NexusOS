@@ -1,7 +1,7 @@
 # NexusOS deployment
 
-**Current milestone:** Milestone 12 — restore and recovery automation
-**Status:** Hardened Compose/systemd/proxy configuration, encrypted off-host directory replication, confirmation-gated restore, bounded worker recovery, Maintenance deployment status, and outbound email/push notification channels are implemented. Target-Pi image, TLS trust, restore-drill validation, and real SMTP/ntfy endpoint checks remain required operator checks.
+**Current milestone:** Milestone 13 — backup retention and lifecycle policy
+**Status:** Hardened Compose/systemd/proxy configuration, encrypted off-host directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, bounded worker recovery, Maintenance deployment status, and outbound email/push notification channels are implemented. Target-Pi image, TLS trust, restore-drill validation, and real SMTP/ntfy endpoint checks remain required operator checks.
 **Last updated:** 2026-08-03
 
 ## Target hardware
@@ -68,7 +68,9 @@ Backups are stored beneath `${DATA_DIR}/db/backups` through the shared `/var/lib
 
 Restore is an explicit, confirmation-gated maintenance action (risk `high`). From the Maintenance workspace (or through the same proposal/confirm API flow), select one verified backup and confirm. The worker then creates a verified safety backup of the current database (rollback guarantee), stages the chosen source (the local verified backup, or the decrypted off-host artifact when `BACKUP_REPLICATION_DESTINATION` and `BACKUP_REPLICATION_KEY` are configured on the restoring host), re-verifies SHA-256 and integrity before touching anything, records a restore marker and audit row inside the staged database, swaps it in atomically, and cleans stale WAL/SHM/journal sidecars. NexusOS must be restarted after a successful restore; the UI and API result state this explicitly. Restore never accepts client paths, commands, or destinations.
 
-Do not treat these backups as a complete disaster-recovery system yet: restore drills on the target Pi, retention, key rotation, and backup-before-migration automation remain operator deployment work. Replication is disabled unless both destination and key are configured.
+Retention is a confirmed Maintenance action driven by `BACKUP_RETENTION_COUNT` (default 7) and `BACKUP_RETENTION_DAYS` (default 30): it keeps the newest verified backups and everything younger than the day window, always retains the newest backup, deletes only digest-matched local artifacts (and encrypted off-host artifacts when the destination is configured), soft-deletes the records, and audits each prune. Key rotation is a confirmed high-risk action: set `BACKUP_REPLICATION_KEY_PREVIOUS` to the old `BACKUP_ENCRYPTION_KEY` value, run the rotation, verify the Maintenance panel, then remove the previous key from the environment. Keys never cross the API or database.
+
+Do not treat these backups as a complete disaster-recovery system yet: restore drills on the target Pi, retention tuning, and backup-before-migration automation remain operator deployment work. Replication is disabled unless both destination and key are configured.
 
 ## Reminder worker behavior
 

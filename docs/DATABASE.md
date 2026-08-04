@@ -1,7 +1,7 @@
 # NexusOS database
 
-**Current milestone:** Milestone 12 — restore and recovery automation
-**Current status:** Identity, assistant, task, notes, search/retrieval, host-action proposals, backup metadata, restore markers, workspace permissions, encrypted replication metadata, and outbound notification channel deliveries are implemented through Alembic revisions `0001_identity`, `0002_assistant`, `0003_tasks_notifications`, `0004_notes_search`, `0005_host_actions`, `0006_v1_hardening`, `0007_workspace_views`, `0008_deployment_hardening`, `0009_notification_channels`, and `0010_restore`.
+**Current milestone:** Milestone 13 — backup retention and lifecycle policy
+**Current status:** Identity, assistant, task, notes, search/retrieval, host-action proposals, backup metadata, restore markers, retention pruning markers, workspace permissions, encrypted replication metadata, and outbound notification channel deliveries are implemented through Alembic revisions `0001_identity`, `0002_assistant`, `0003_tasks_notifications`, `0004_notes_search`, `0005_host_actions`, `0006_v1_hardening`, `0007_workspace_views`, `0008_deployment_hardening`, `0009_notification_channels`, `0010_restore`, and `0011_backup_lifecycle`.
 **Last updated:** 2026-08-04
 
 ## Current database state
@@ -22,6 +22,7 @@ The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys
 - `0008_deployment_hardening` adds encryption and replication metadata to `backup_records`; encrypted artifacts themselves remain outside the application database.
 - `0009_notification_channels` creates `notification_channel_deliveries` and seeds the `notifications.settings` owner permission.
 - `0010_restore` adds `backup_records.restored_at` to track the most recent restore of a verified backup artifact.
+- `0011_backup_lifecycle` adds `backup_records.pruned_at` so retention cleanup can soft-delete records (status `deleted`) while preserving audit history.
 
 ## Milestone 7 tables
 
@@ -56,7 +57,7 @@ Task deletion is soft deletion through `deleted_at`. Recurring completion create
 | Entity | Owner | Purpose |
 |---|---|---|
 | `host_action_proposals` | user | Expiring typed proposals, confirmation state, and linked worker job |
-| `backup_records` | user/system | Relative path, size, hash, integrity, verification, encryption/replication, and restore metadata for NexusOS-created backups |
+| `backup_records` | user/system | Relative path, size, hash, integrity, verification, encryption/replication, restore, and retention/prune metadata for NexusOS-created backups |
 
 The live SQLite database and backup files remain the authoritative storage artifacts. A proposal is not execution: only confirmation queues a worker job. Backups are created beneath the configured data directory's fixed `backups/` child; client input cannot select paths.
 
@@ -92,5 +93,5 @@ Milestone 11 delivery rows are derived from owned notifications and deduplicated
 ## Remaining database work
 
 - PostgreSQL compatibility remains a tested future claim, not an assumption.
-- Retention cleanup, key rotation, last-backup protection, and backup-before-migration orchestration remain deployment work.
-- Notification retention cleanup and permanent task deletion remain future policy work.
+- Backup-before-migration orchestration and notification retention cleanup remain deployment work.
+- Permanent task and backup-record deletion remain future policy work.

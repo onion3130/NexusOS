@@ -1,7 +1,7 @@
 # NexusOS API
 
-**Current milestone:** Milestone 12 — restore and recovery automation
-**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, confirmation-gated maintenance actions, verified SQLite backups, automated restore, audit visibility, read-only workspace views, and outbound email/push notification channels are implemented. Embeddings, streaming, and calendar/media/finance integrations remain planned.
+**Current milestone:** Milestone 13 — backup retention and lifecycle policy
+**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, confirmation-gated maintenance actions, verified SQLite backups, automated restore, retention cleanup, encryption key rotation, audit visibility, read-only workspace views, and outbound email/push notification channels are implemented. Embeddings, streaming, and calendar/media/finance integrations remain planned.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-04
 
@@ -192,7 +192,11 @@ Rejects a proposal without creating a job or invoking an executor.
 
 #### `GET /api/v1/system/backups`
 
-Lists verified/failed backup metadata owned by the current user. It returns relative NexusOS paths, size, SHA-256, status, integrity result, timestamps, and (after a restore) the `restored_at` marker; it never returns file contents or arbitrary paths.
+Lists non-pruned backup metadata owned by the current user. It returns relative NexusOS paths, size, SHA-256, status, integrity result, timestamps, the `restored_at` marker, and (after retention cleanup) the `pruned_at` marker; it never returns file contents or arbitrary paths.
+
+#### `GET /api/v1/system/backups/retention-preview`
+
+Read-only preview of what the configured retention policy (`BACKUP_RETENTION_COUNT` / `BACKUP_RETENTION_DAYS`) would prune. Returns the policy and bounded `to_prune` / `retained` backup lists. Requires `system.backups.read`; nothing is deleted by this endpoint.
 
 #### `POST /api/v1/system/actions/proposals` with `maintenance.restore_backup`
 
@@ -212,10 +216,10 @@ Returns the current user's bounded host-action proposal, confirmation, rejection
 - Cookie-authenticated mutations require CSRF validation.
 - CORS allows `PATCH` in addition to existing methods.
 - Database migrations are explicit; startup never mutates schema.
-- Readiness verifies the current Alembic head `0010_restore` and the notes FTS5 table.
+- Readiness verifies the current Alembic head `0011_backup_lifecycle` and the notes FTS5 table.
 - Notifications are persistent records; optional outbound email/push channels are server-configured and delivery is worker-side only.
 - No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, or provider URLs from a client.
-- Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf. Restore is the highest-risk action and additionally requires a verified source, a fresh safety backup, staged digest/integrity verification, and an atomic swap.
+- Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf. Restore is the highest-risk action and additionally requires a verified source, a fresh safety backup, staged digest/integrity verification, and an atomic swap. Retention cleanup accepts no input and prunes only per the server policy with last-backup protection; key rotation accepts no input and uses only environment-configured keys.
 
 ## Planned API groups
 

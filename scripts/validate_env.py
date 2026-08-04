@@ -109,6 +109,33 @@ def validate(values: dict[str, str]) -> list[str]:
                 raise ValueError
         except ValueError:
             errors.append("BACKUP_ENCRYPTION_KEY must be a 64-character hexadecimal AES-256 key")
+    previous_key = values.get("BACKUP_REPLICATION_KEY_PREVIOUS", "").strip()
+    if previous_key:
+        try:
+            bytes.fromhex(previous_key)
+            if len(previous_key) != 64:
+                raise ValueError
+        except ValueError:
+            errors.append("BACKUP_REPLICATION_KEY_PREVIOUS must be a 64-character hexadecimal AES-256 key")
+        if not replication_key:
+            errors.append("BACKUP_REPLICATION_KEY_PREVIOUS requires BACKUP_ENCRYPTION_KEY")
+        elif previous_key.lower() == replication_key.lower():
+            errors.append("BACKUP_REPLICATION_KEY_PREVIOUS must differ from BACKUP_ENCRYPTION_KEY")
+
+    retention_count = values.get("BACKUP_RETENTION_COUNT", "").strip()
+    if retention_count:
+        try:
+            if not 1 <= int(retention_count) <= 100:
+                raise ValueError
+        except ValueError:
+            errors.append("BACKUP_RETENTION_COUNT must be an integer between 1 and 100")
+    retention_days = values.get("BACKUP_RETENTION_DAYS", "").strip()
+    if retention_days:
+        try:
+            if not 1 <= int(retention_days) <= 3650:
+                raise ValueError
+        except ValueError:
+            errors.append("BACKUP_RETENTION_DAYS must be an integer between 1 and 3650")
 
     email_enabled = values.get("NOTIFICATION_EMAIL_ENABLED", "").strip().lower()
     if email_enabled not in {"", "true", "false"}:

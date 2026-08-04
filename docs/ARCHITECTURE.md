@@ -1,6 +1,6 @@
 # NexusOS architecture
 
-**Current milestone:** Milestone 12 — restore and recovery automation
+**Current milestone:** Milestone 13 — backup retention and lifecycle policy
 **Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-04
 
@@ -12,10 +12,10 @@ NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an exte
 - `apps/api/app/modules/tasks`: task service, schemas, recurrence calculator, and reminder dispatcher.
 - `apps/api/app/modules/notifications`: channel settings, outbound email/push adapters, enqueue/resend service, and bounded delivery worker.
 - `apps/api/app/modules/notes`: canonical notes, SQLite FTS5 search, deterministic chunks, and source-aware retrieval.
-- `apps/api/app/modules/host_actions`: typed action catalog, proposal lifecycle, SQLite backups, confirmation-gated restore, fixed executor, and worker processing.
+- `apps/api/app/modules/host_actions`: typed action catalog, proposal lifecycle, SQLite backups, confirmation-gated restore, retention cleanup and key rotation, fixed executor, and worker processing.
 - `apps/api/app/worker.py`: dedicated bounded SQLite reminder, confirmed host-action, replication, and notification-delivery worker.
 - `apps/api/app/db`: SQLAlchemy engine/session and all persisted models.
-- `apps/api/migrations`: explicit Alembic migration history through `0010_restore`.
+- `apps/api/migrations`: explicit Alembic migration history through `0011_backup_lifecycle`.
 - `apps/web`: authenticated Next.js shell with overview, assistant, tasks, notifications, and notification settings.
 - `docker-compose.yml`: ARM64 development topology with API, web, and real worker services; proxy and optional AI remain placeholders.
 
@@ -75,6 +75,8 @@ Host operations are represented as typed, expiring proposals. Creating a proposa
 The current catalog provides database backup creation, backup verification, SQLite integrity checking, and database restore. Backups use Python's SQLite online backup API, fixed `DATA_DIR/backups` storage, SHA-256 metadata, and integrity checks. Optional replication uses bounded AES-256-GCM chunks and an operator-mounted destination adapter; `decrypt_file()` authenticates each chunk in memory-bounded reads and returns the plaintext digest for cross-verification.
 
 Restore is the highest-risk catalogued action and runs only in the worker after the standard propose → confirm flow. The worker first creates a verified safety backup of the live database (rollback guarantee), stages the source (a local verified backup, or a decrypted off-host artifact when the replication key is configured), re-verifies SHA-256 and SQLite integrity before anything is replaced, records a restore marker and audit row inside the staged database, swaps it in atomically, and cleans stale sidecars. A successful restore requires an API/worker restart. Reboot, shutdown, systemd control, package management, Docker control, and arbitrary commands remain excluded from the assistant and browser.
+
+Backup lifecycle completes the operational loop with two more catalogued actions. Retention cleanup (`medium`) prunes verified backups beyond the server-configured policy (`BACKUP_RETENTION_COUNT` / `BACKUP_RETENTION_DAYS`); the newest verified backup is always retained, local artifacts are deleted only when their digest still matches the trusted record, encrypted off-host artifacts are deleted when the destination is configured, and every prune is a soft-delete with an audit row. Key rotation (`high`) re-encrypts every replicated artifact from `BACKUP_REPLICATION_KEY_PREVIOUS` to the current `BACKUP_ENCRYPTION_KEY` in bounded authenticated chunks with atomic replace, staging cleanup, and idempotent retries; keys are environment-only and never cross the API.
 
 ## Assistant action architecture
 

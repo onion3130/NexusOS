@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session as OrmSession
 
 from app.db.models import BackupRecord
 from app.modules.host_actions.backups import create_backup, verify_backup
+from app.modules.host_actions.lifecycle import LifecycleError, prune_backups, retention_policy, rotate_encryption_keys
 from app.modules.host_actions.restore import RestoreError, restore_backup
 from app.modules.backup_replication.replicator import queue_replication
 
@@ -24,6 +25,9 @@ def execute_action(
     operation_id: str | None = None,
     replication_destination: Path | None = None,
     encryption_key: str | None = None,
+    retention_count: int = 7,
+    retention_days: int = 30,
+    previous_encryption_key: str | None = None,
 ) -> dict[str, object]:
     """Execute one catalogued operation using fixed Python/SQLite APIs."""
     if action_key == "maintenance.create_backup":
@@ -55,5 +59,27 @@ def execute_action(
         try:
             return restore_backup(data_dir, database_url, record, db, operation_id=operation_id, replication_destination=replication_destination, encryption_key=encryption_key)
         except RestoreError as exc:
+            raise ValueError(str(exc)) from exc
+    if action_key == "maintenance.retention_cleanup":
+        records = db.scalars(select(BackupRecord).where(BackupRecord.user_id == user_id)).all()
+        to_prune, retained = retention_policy(records, retention_count=retention_count, retention_days=retention_days)
+        try:
+            summary = prune_backups(data_dir, db, to_prune, user_id=user_id, operation_id=operation_id, replication_destination=replication_destination)
+        except LifecycleError as exc:
+            raise ValueError(str(exc)) from exc
+        summary["retained"] = len(retained)
+        return summary
+    if action_key == "maintenance.rotate_encryption_key":
+        try:
+            return rotate_encryption_keys(
+                db=db,
+                user_id=user_id,
+                destination=replication_destination,
+                current_key=encryption_key,
+                previous_key=previous_encryption_key,
+                operation_id=operation_id,
+            )
+
+        except LifecycleError as exc:
             raise ValueError(str(exc)) from exc
     raise ValueError("action_not_allowed")

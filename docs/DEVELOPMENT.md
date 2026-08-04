@@ -1,7 +1,7 @@
 # NexusOS development
 
-**Current milestone:** Milestone 12 — restore and recovery automation
-**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, confirmation-gated host maintenance, confirmation-gated restore, read-only workspace views, encrypted directory replication, and outbound email/push notification channels are implemented. Memory, RAG, and privileged host control remain deferred.
+**Current milestone:** Milestone 13 — backup retention and lifecycle policy
+**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, confirmation-gated host maintenance, confirmation-gated restore, retention cleanup, encryption key rotation, read-only workspace views, encrypted directory replication, and outbound email/push notification channels are implemented. Memory, RAG, and privileged host control remain deferred.
 **Last updated:** 2026-08-04
 
 Read this document with [`README.md`](../README.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`API.md`](API.md), [`DATABASE.md`](DATABASE.md), [`AI_SYSTEM.md`](AI_SYSTEM.md), [`SECURITY.md`](SECURITY.md), and [`ROADMAP.md`](ROADMAP.md) before changing code.
@@ -33,6 +33,9 @@ Backend:
 - `app/modules/backup_replication/encryption.py`: `decrypt_file()` bounded authenticated AES-GCM chunk decryption.
 - `migrations/versions/0010_restore.py`: reversible `backup_records.restored_at` migration.
 - `tests/test_restore.py`: local/encrypted restore, tamper, source resolution, safety-backup failure, ownership, and proposal flow coverage.
+- `app/modules/host_actions/lifecycle.py`: retention policy, digest-safe pruning with last-backup protection, and idempotent encryption key rotation.
+- `migrations/versions/0011_backup_lifecycle.py`: reversible `backup_records.pruned_at` migration.
+- `tests/test_backup_lifecycle.py`: retention boundaries, pruning safety, path confinement, rotation idempotency, preview endpoint, and proposal pipeline coverage.
 - `app/modules/workspace_views/`: approved-root Files, Projects, Git, and optional Docker adapters.
 - `app/api/routes/workspace_views.py`: authenticated read-only workspace routes.
 - `tests/test_workspace_views.py`: adapter, permission, authentication, and redaction coverage.
@@ -72,7 +75,7 @@ python -m alembic heads
 python -m alembic check  # may report pre-existing SQLite FTS5/legacy-index model drift; upgrade and migration tests remain authoritative
 ```
 
-The current expected migration head is `0010_restore`. The readiness check also requires the SQLite FTS5 notes index.
+The current expected migration head is `0011_backup_lifecycle`. The readiness check also requires the SQLite FTS5 notes index.
 
 ## Frontend validation
 

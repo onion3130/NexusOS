@@ -9,6 +9,8 @@ _CATALOG = {
     "maintenance.verify_backup": ActionCatalogItem(key="maintenance.verify_backup", title="Verify a database backup", description="Run a bounded integrity check against one NexusOS-created backup.", risk_level="low"),
     "maintenance.integrity_check": ActionCatalogItem(key="maintenance.integrity_check", title="Check database integrity", description="Run SQLite integrity_check against the live NexusOS database.", risk_level="medium"),
     "maintenance.restore_backup": ActionCatalogItem(key="maintenance.restore_backup", title="Restore database from a verified backup", description="Restore the live database from one verified NexusOS backup after creating a safety backup of the current database. NexusOS must be restarted after a successful restore.", risk_level="high"),
+    "maintenance.retention_cleanup": ActionCatalogItem(key="maintenance.retention_cleanup", title="Run backup retention cleanup", description="Prune verified backups beyond the configured retention policy (BACKUP_RETENTION_COUNT and BACKUP_RETENTION_DAYS). The newest verified backup is always retained. No individual backup is selected manually.", risk_level="medium"),
+    "maintenance.rotate_encryption_key": ActionCatalogItem(key="maintenance.rotate_encryption_key", title="Rotate backup encryption key", description="Re-encrypt every replicated backup artifact from BACKUP_REPLICATION_KEY_PREVIOUS to the current BACKUP_ENCRYPTION_KEY. Configure the previous key in the server environment before confirming; remove it after the rotation completes.", risk_level="high"),
 }
 
 

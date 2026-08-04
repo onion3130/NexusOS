@@ -1,6 +1,6 @@
 # NexusOS roadmap
 
-**Current milestone:** Milestone 12 — restore and recovery automation
+**Current milestone:** Milestone 13 — backup retention and lifecycle policy
 **Next milestone:** Milestone 11 (part 2) — calendar, media, finance, and plugin boundary
 **Last updated:** 2026-08-04
 
@@ -27,6 +27,7 @@ Milestone 6 is implemented within its approved scope. NexusOS now has an authent
 | 10. Deployment hardening | Complete | Hardened LAN proxy, systemd startup, encrypted replication, resource limits, and recovery gate |
 | 11. Integrations and plugins | Part 1 complete | Outbound email and push notification channels implemented; calendar/media/finance ports and out-of-process plugin boundary remain (part 2) |
 | 12. Restore and recovery automation | Complete | Confirmation-gated restore from verified local and encrypted off-host backup artifacts with safety backup, staging, digest/integrity verification, and atomic swap |
+| 13. Backup retention and lifecycle | Complete | Policy-driven retention cleanup with last-backup protection, digest-safe pruning of local and encrypted artifacts, and confirmation-gated AES-256 key rotation |
 
 ## Milestone 6 complete — tasks, reminders, and notifications
 
@@ -135,6 +136,24 @@ Known limitations:
 - The current adapter targets an operator-mounted destination directory; object-storage providers remain future integrations.
 - Restore remains an operator-controlled procedure and requires a real Pi restore drill.
 - Certificate trust installation, Docker image builds, cold-boot behavior, retention, key rotation, and production monitoring require target-environment validation.
+
+## Milestone 13 complete — backup retention and lifecycle policy
+
+Implemented:
+
+- Reversible Alembic migration `0011_backup_lifecycle` adding `backup_records.pruned_at`; pruned records are soft-deleted (status `deleted`) and excluded from the backup listing.
+- Server-configured retention policy (`BACKUP_RETENTION_COUNT`, default 7, and `BACKUP_RETENTION_DAYS`, default 30) with a read-only `GET /api/v1/system/backups/retention-preview` endpoint.
+- A `maintenance.retention_cleanup` action (risk `medium`) that prunes verified backups beyond the policy. The newest verified backup is always retained (last-backup protection); a local artifact is deleted only when its digest still matches the trusted record, encrypted off-host artifacts are deleted when the replication destination is configured, and every prune is audited.
+- A `maintenance.rotate_encryption_key` action (risk `high`) that re-encrypts every replicated artifact from `BACKUP_REPLICATION_KEY_PREVIOUS` to the current `BACKUP_ENCRYPTION_KEY` in bounded authenticated chunks with atomic replace, staging cleanup, idempotent retries, and audit rows.
+- Maintenance workspace lifecycle panel with the current policy, a prune preview, the retention cleanup action, and the rotation action (shown when replication is configured).
+- Backend tests covering retention boundaries, last-backup protection, digest-safe pruning, path confinement, fail-closed encrypted pruning, rotation idempotency, the preview endpoint, and both proposal pipelines.
+
+Known limitations:
+
+- Retention cleanup is policy-driven but still requires explicit confirmation; unattended scheduled pruning is deliberately not enabled because every destructive NexusOS operation requires confirmation.
+- Retention considers only `verified` records and deliberately skips digest-mismatched artifacts, so tampered or failed backups and their files are never pruned and can accumulate in the data volume; a future failed-artifact cleanup policy is planned.
+- Pruning an encrypted artifact requires `BACKUP_REPLICATION_DESTINATION` to be configured on the pruning host; otherwise the action fails closed before deleting anything.
+- Key rotation requires the operator to set `BACKUP_REPLICATION_KEY_PREVIOUS` in the server environment, run the action, then remove it; this keeps keys out of the API and database.
 
 ## Milestone 12 complete — restore and recovery automation
 

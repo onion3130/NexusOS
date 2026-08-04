@@ -11,7 +11,8 @@ from app.core.config import Settings, get_settings
 from app.db.models import AuditEvent, BackupRecord, HostActionProposal, Job
 from app.db.session import CURRENT_MIGRATION_HEAD, get_db
 from app.modules.host_actions.catalog import catalog, get_action
-from app.modules.host_actions.schemas import ActionCatalogItem, ActionProposalCreate, ActionProposalResponse, AuditEventResponse, AuditListResponse, BackupResponse, JobResponse
+from app.modules.host_actions.lifecycle import retention_policy
+from app.modules.host_actions.schemas import ActionCatalogItem, ActionProposalCreate, ActionProposalResponse, AuditEventResponse, AuditListResponse, BackupResponse, JobResponse, RetentionPolicy, RetentionPreviewResponse
 from app.modules.host_actions.service import confirm_proposal, create_proposal, get_proposal, list_audit_events, list_backups, reject_proposal
 from app.modules.identity.dependencies import AuthContext, get_auth_context, require_csrf, require_permission
 
@@ -26,7 +27,7 @@ def _proposal(item: HostActionProposal) -> ActionProposalResponse:
 
 
 def _backup(item: BackupRecord) -> BackupResponse:
-    return BackupResponse(id=item.id, relative_path=item.relative_path, size_bytes=item.size_bytes, sha256=item.sha256, status=item.status, integrity_result=item.integrity_result, created_at=item.created_at, verified_at=item.verified_at, encryption_status=item.encryption_status, encrypted_size_bytes=item.encrypted_size_bytes, replication_status=item.replication_status, replicated_at=item.replicated_at, replication_error_code=item.replication_error_code, restored_at=item.restored_at)
+    return BackupResponse(id=item.id, relative_path=item.relative_path, size_bytes=item.size_bytes, sha256=item.sha256, status=item.status, integrity_result=item.integrity_result, created_at=item.created_at, verified_at=item.verified_at, encryption_status=item.encryption_status, encrypted_size_bytes=item.encrypted_size_bytes, replication_status=item.replication_status, replicated_at=item.replicated_at, replication_error_code=item.replication_error_code, restored_at=item.restored_at, pruned_at=item.pruned_at)
 
 
 def _job(item: Job) -> JobResponse:
@@ -95,6 +96,15 @@ def reject(proposal_id: str, request: Request, db: OrmSession = Depends(get_db),
 def backups(db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context)) -> list[BackupResponse]:
     require_permission("system.backups.read", context)
     return [_backup(item) for item in list_backups(db, context.user.id)]
+
+
+@router.get("/backups/retention-preview", response_model=RetentionPreviewResponse)
+def retention_preview(settings: Settings = Depends(get_settings), db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context)) -> RetentionPreviewResponse:
+    """Read-only preview of what the configured retention policy would prune."""
+    require_permission("system.backups.read", context)
+    records = list_backups(db, context.user.id)
+    to_prune, retained = retention_policy(records, retention_count=settings.backup_retention_count, retention_days=settings.backup_retention_days)
+    return RetentionPreviewResponse(policy=RetentionPolicy(count=settings.backup_retention_count, days=settings.backup_retention_days), to_prune=[_backup(item) for item in to_prune], retained=[_backup(item) for item in retained])
 
 
 @router.get("/jobs/{job_id}", response_model=JobResponse)

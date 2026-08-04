@@ -4,6 +4,15 @@ All notable NexusOS changes are recorded here. Version `1.0.0` is a private, loc
 
 ## [Unreleased]
 
+### Milestone 13 backup retention and lifecycle policy
+
+- Added policy-driven retention cleanup through the confirmed `maintenance.retention_cleanup` action: keeps the newest `BACKUP_RETENTION_COUNT` (default 7) verified backups and everything younger than `BACKUP_RETENTION_DAYS` (default 30), always retains the newest backup, deletes only digest-matched local artifacts (and encrypted off-host artifacts when the destination is configured), soft-deletes records, and audits every prune.
+- Added `BACKUP_RETENTION_COUNT`, `BACKUP_RETENTION_DAYS`, and `BACKUP_REPLICATION_KEY_PREVIOUS` environment settings with bounds and key-difference validation.
+- Added the read-only `GET /api/v1/system/backups/retention-preview` endpoint and the Maintenance workspace lifecycle panel with a prune preview.
+- Added the confirmed high-risk `maintenance.rotate_encryption_key` action that re-encrypts every replicated artifact from the previous key to the current key in bounded authenticated chunks with atomic replace, staging cleanup, and idempotent retries.
+- Added migration `0011_backup_lifecycle` with `backup_records.pruned_at`; pruned records are excluded from the backup listing.
+- Added backend tests for retention boundaries, last-backup protection, digest-safe pruning, path confinement, fail-closed encrypted pruning, rotation idempotency, the preview endpoint, and both proposal pipelines.
+
 ### Milestone 12 restore and recovery automation
 
 - Added confirmation-gated restore from verified NexusOS backup artifacts through the existing proposal/confirm worker pipeline (risk `high`, input limited to `backup_id`).

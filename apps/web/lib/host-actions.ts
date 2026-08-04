@@ -1,7 +1,7 @@
 import { authenticatedFetch } from "./auth";
 
 export type ActionCatalogItem = {
-  key: "maintenance.create_backup" | "maintenance.verify_backup" | "maintenance.integrity_check" | "maintenance.restore_backup";
+  key: "maintenance.create_backup" | "maintenance.verify_backup" | "maintenance.integrity_check" | "maintenance.restore_backup" | "maintenance.retention_cleanup" | "maintenance.rotate_encryption_key";
   title: string;
   description: string;
   risk_level: "low" | "medium" | "high";
@@ -40,6 +40,18 @@ export type Backup = {
   replicated_at: string | null;
   replication_error_code: string | null;
   restored_at: string | null;
+  pruned_at: string | null;
+};
+
+export type RetentionPolicy = {
+  count: number;
+  days: number;
+};
+
+export type RetentionPreview = {
+  policy: RetentionPolicy;
+  to_prune: Backup[];
+  retained: Backup[];
 };
 
 export type DeploymentStatus = {
@@ -99,6 +111,18 @@ export async function listBackups(): Promise<Backup[]> {
 
 export function restoreProposalFor(backupId: string): { action_key: ActionCatalogItem["key"]; input: { backup_id: string } } {
   return { action_key: "maintenance.restore_backup", input: { backup_id: backupId } };
+}
+
+export function retentionCleanupProposalFor(): { action_key: ActionCatalogItem["key"]; input: Record<string, never> } {
+  return { action_key: "maintenance.retention_cleanup", input: {} };
+}
+
+export function rotationProposalFor(): { action_key: ActionCatalogItem["key"]; input: Record<string, never> } {
+  return { action_key: "maintenance.rotate_encryption_key", input: {} };
+}
+
+export async function readRetentionPreview(): Promise<RetentionPreview> {
+  return parse<RetentionPreview>(await authenticatedFetch("/api/v1/system/backups/retention-preview", { cache: "no-store" }));
 }
 
 export async function readDeploymentStatus(): Promise<DeploymentStatus> {

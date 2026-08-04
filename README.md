@@ -28,7 +28,7 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 - 🔔 **Notifications** — persistent in-app alerts plus optional email and push (ntfy) delivery for reminders
 - 📈 **System telemetry** — read-only Raspberry Pi health and resource overview
 - 🔐 **Security boundaries** — user-owned data, sessions, CSRF protection, permissions, confirmation workflows, and audit events
-- 🛠️ **Safe maintenance** — explicit-confirmation SQLite backups, integrity checks, and confirmation-gated restore without arbitrary host control
+- 🛠️ **Safe maintenance** — explicit-confirmation SQLite backups, integrity checks, restore, retention cleanup, and encryption key rotation without arbitrary host control
 - 🌓 **Responsive dashboard** — accessible loading/error states and theme switching
 - 🐳 **ARM64 deployment** — non-root Docker Compose services for local and Pi use
 
@@ -44,11 +44,11 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 | Item | Status |
 | --- | --- |
-| **Current milestone** | Milestone 12 — Restore and recovery automation ✅ |
+| **Current milestone** | Milestone 13 — Backup retention & lifecycle ✅ |
 | **Current version** | `1.0.1` — local-first release |
 | **Next milestone** | Milestone 11 (part 2) — Calendar, media, finance, and plugin boundary |
 
-NexusOS v1.0 is ready for private, local-first Raspberry Pi use. Milestone 10 adds an opt-in hardened LAN deployment with internal TLS, systemd startup, encrypted replication, and recovery procedures. Milestone 11 (part 1) adds outbound email and push notification channels so task reminders reach you outside the dashboard. Milestone 12 adds confirmation-gated restore from verified local and encrypted off-host backups, closing the recovery loop; calendar, media, and finance integrations remain. Target-Pi builds, restore drills, and real SMTP/ntfy endpoints still require operational validation. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
+NexusOS v1.0 is ready for private, local-first Raspberry Pi use. Milestone 10 adds an opt-in hardened LAN deployment with internal TLS, systemd startup, encrypted replication, and recovery procedures. Milestone 11 (part 1) adds outbound email and push notification channels so task reminders reach you outside the dashboard. Milestone 12 adds confirmation-gated restore from verified local and encrypted off-host backups. Milestone 13 adds policy-driven backup retention with last-backup protection and confirmation-gated encryption key rotation, completing the recovery lifecycle; calendar, media, and finance integrations remain. Target-Pi builds, restore drills, and real SMTP/ntfy endpoints still require operational validation. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
 
 ## Technology stack
 

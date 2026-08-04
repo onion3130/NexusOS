@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     docker_socket_path: str = Field(default="", validation_alias="DOCKER_SOCKET_PATH")
     backup_replication_destination: Path | None = Field(default=None, validation_alias="BACKUP_REPLICATION_DESTINATION")
     backup_encryption_key: SecretStr | None = Field(default=None, validation_alias="BACKUP_ENCRYPTION_KEY")
+    backup_retention_count: int = Field(default=7, validation_alias="BACKUP_RETENTION_COUNT")
+    backup_retention_days: int = Field(default=30, validation_alias="BACKUP_RETENTION_DAYS")
+    backup_replication_key_previous: SecretStr | None = Field(default=None, validation_alias="BACKUP_REPLICATION_KEY_PREVIOUS")
     notification_email_enabled: bool = Field(default=False, validation_alias="NOTIFICATION_EMAIL_ENABLED")
     notification_email_smtp_host: str | None = Field(default=None, validation_alias="NOTIFICATION_EMAIL_SMTP_HOST")
     notification_email_smtp_port: int = Field(default=587, validation_alias="NOTIFICATION_EMAIL_SMTP_PORT")
@@ -162,6 +165,22 @@ class Settings(BaseSettings):
             raise ValueError("must be between 16384 and 8388608 bytes")
         return value
 
+    @field_validator("backup_retention_count")
+    @classmethod
+    def validate_retention_count(cls, value: int) -> int:
+        """Bound the number of verified backups always retained."""
+        if not 1 <= value <= 100:
+            raise ValueError("must be between 1 and 100")
+        return value
+
+    @field_validator("backup_retention_days")
+    @classmethod
+    def validate_retention_days(cls, value: int) -> int:
+        """Bound the retention window in days."""
+        if not 1 <= value <= 3650:
+            raise ValueError("must be between 1 and 3650 days")
+        return value
+
     @field_validator("task_worker_interval_seconds")
     @classmethod
     def validate_worker_interval(cls, value: int) -> int:
@@ -237,21 +256,28 @@ class Settings(BaseSettings):
             raise ValueError("must be an absolute path")
         return path
 
-    @field_validator("backup_encryption_key", mode="before")
+    @field_validator("backup_encryption_key")
     @classmethod
-    def validate_backup_key(cls, value: SecretStr | str | None) -> SecretStr | None:
+    def validate_backup_key(cls, value: SecretStr | None) -> SecretStr | None:
         """Require a 256-bit hexadecimal key when backup encryption is configured."""
         if value is None:
             return None
-        raw = value.get_secret_value().strip() if isinstance(value, SecretStr) else value.strip()
+        raw = value.get_secret_value().strip()
         if not raw:
             return None
-        if len(raw) != 64:
-            raise ValueError("must be a 64-character hexadecimal AES-256 key")
-        try:
-            bytes.fromhex(raw)
-        except ValueError as exc:
-            raise ValueError("must be a 64-character hexadecimal AES-256 key") from exc
+        _require_hex_key(raw, "backup encryption key")
+        return SecretStr(raw.lower())
+
+    @field_validator("backup_replication_key_previous")
+    @classmethod
+    def validate_backup_key_previous(cls, value: SecretStr | None) -> SecretStr | None:
+        """Require a 256-bit hexadecimal key when a rotation source key is set."""
+        if value is None:
+            return None
+        raw = value.get_secret_value().strip()
+        if not raw:
+            return None
+        _require_hex_key(raw, "backup replication previous key")
         return SecretStr(raw.lower())
 
     @model_validator(mode="after")
@@ -261,6 +287,11 @@ class Settings(BaseSettings):
         key = self.backup_encryption_key
         if (destination is None) != (key is None):
             raise ValueError("backup replication requires both BACKUP_REPLICATION_DESTINATION and BACKUP_ENCRYPTION_KEY")
+        previous = self.backup_replication_key_previous
+        if previous is not None and key is None:
+            raise ValueError("BACKUP_REPLICATION_KEY_PREVIOUS requires BACKUP_ENCRYPTION_KEY")
+        if previous is not None and key is not None and previous.get_secret_value().lower() == key.get_secret_value().lower():
+            raise ValueError("BACKUP_REPLICATION_KEY_PREVIOUS must differ from BACKUP_ENCRYPTION_KEY")
         return self
 
     @model_validator(mode="after")
@@ -329,6 +360,16 @@ class Settings(BaseSettings):
             if not self.ai_base_url or not self.ai_model or not self.ai_api_key or not self.ai_api_key.get_secret_value().strip():
                 raise ValueError("active AI provider requires AI_BASE_URL, AI_MODEL, and AI_API_KEY")
         return self
+
+
+def _require_hex_key(raw: str, label: str) -> None:
+    """Require a 64-character lowercase-safe hexadecimal AES-256 key."""
+    if len(raw) != 64:
+        raise ValueError(f"{label} must be a 64-character hexadecimal AES-256 key")
+    try:
+        bytes.fromhex(raw)
+    except ValueError as exc:
+        raise ValueError(f"{label} must be a 64-character hexadecimal AES-256 key") from exc
 
 
 def _parse_cors_origins(value: str) -> list[str]:

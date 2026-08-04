@@ -410,3 +410,4 @@ class BackupRecord(Base):
     replicated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     replication_error_code: Mapped[str | None] = mapped_column(String(96), nullable=True)
     restored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    pruned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)

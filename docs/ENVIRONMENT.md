@@ -27,6 +27,9 @@
 | `BACKUP_REPLICATION_HOST_PATH` | optional | empty | no | Hardened Compose host path mounted as the replication destination |
 | `BACKUP_REPLICATION_DESTINATION` | optional | empty | no | Absolute runtime destination for encrypted backup artifacts; hardened Compose sets `/var/lib/nexus/replication` |
 | `BACKUP_ENCRYPTION_KEY` | conditional | empty | yes | 64-character hexadecimal AES-256 key; required with replication destination |
+| `BACKUP_RETENTION_COUNT` | optional | `7` | no | Newest verified backups always retained, 1–100 |
+| `BACKUP_RETENTION_DAYS` | optional | `30` | no | Retention window in days, 1–3650 |
+| `BACKUP_REPLICATION_KEY_PREVIOUS` | optional | empty | yes | Previous AES-256 key for the confirmed rotation action; must differ from the current key and is removed after rotation |
 | `NOTIFICATION_EMAIL_ENABLED` | optional | `false` | no | Enable the outbound SMTP email channel |
 | `NOTIFICATION_EMAIL_SMTP_HOST` | conditional | empty | no | SMTP relay host; required when email is enabled |
 | `NOTIFICATION_EMAIL_SMTP_PORT` | conditional | `587` | no | SMTP port, 1–65535 |
@@ -42,6 +45,8 @@
 | `NOTIFICATION_DELIVERY_BATCH_SIZE` | optional | `20` | no | Outbound delivery batch size, 1–100 |
 
 Milestone 10 adds optional encrypted backup replication through the bounded worker. Replication activates only when both `BACKUP_REPLICATION_DESTINATION` and `BACKUP_ENCRYPTION_KEY` are configured; the destination must be outside `DATA_DIR`. In the hardened Compose profile, set `BACKUP_REPLICATION_HOST_PATH` to a host-mounted off-host/NFS destination and let the overlay provide the container destination. The key is never returned or logged. The v1.0 release uses the existing bounded worker and SQLite data volume for fixed backup/integrity actions. Milestones 9 and 10 add optional workspace-view and encrypted-replication settings. Docker inspection is disabled when `DOCKER_SOCKET_PATH` is empty. Neither workspace setting grants browser access or introduces a new secret, but a Docker socket remains a powerful host-control boundary. Backups are stored beneath `DATA_DIR/backups`; configure the Milestone 10 destination and key pair for encrypted off-host replication.
+
+Milestone 13 adds backup retention and key rotation. Retention cleanup (a confirmed Maintenance action) keeps the newest `BACKUP_RETENTION_COUNT` verified backups and everything younger than `BACKUP_RETENTION_DAYS`; the newest verified backup is always retained and pruning is digest-checked and audited. Key rotation re-encrypts every replicated artifact from `BACKUP_REPLICATION_KEY_PREVIOUS` to the current `BACKUP_ENCRYPTION_KEY`; the previous key must differ from the current key, is never returned or logged, and should be removed from the environment after the rotation completes.
 
 Milestone 11 adds optional outbound notification channels. Email activates only when `NOTIFICATION_EMAIL_ENABLED=true` with `NOTIFICATION_EMAIL_SMTP_HOST`, `NOTIFICATION_EMAIL_FROM`, and `NOTIFICATION_EMAIL_TO` configured; the SMTP user and password must be configured together. Push activates only when `NOTIFICATION_PUSH_ENABLED=true` with an absolute `NOTIFICATION_PUSH_URL` and ntfy-safe `NOTIFICATION_PUSH_TOPIC`. Push URLs must not embed credentials or target loopback, link-local, multicast, reserved, or metadata hosts; private LAN addresses are allowed for self-hosted ntfy servers. Passwords and tokens are never returned or logged. The dedicated worker delivers reminders through every enabled channel with bounded batches, leases, and a three-attempt retry limit.
 

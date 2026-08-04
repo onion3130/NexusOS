@@ -87,7 +87,8 @@ def get_proposal(db: OrmSession, user_id: str, proposal_id: str) -> HostActionPr
 
 
 def list_backups(db: OrmSession, user_id: str) -> list[BackupRecord]:
-    return list(db.scalars(select(BackupRecord).where(BackupRecord.user_id == user_id).order_by(BackupRecord.created_at.desc()).limit(100)))
+    """Return the current user's non-pruned backup records, newest first."""
+    return list(db.scalars(select(BackupRecord).where(BackupRecord.user_id == user_id, BackupRecord.status != "deleted").order_by(BackupRecord.created_at.desc()).limit(100)))
 
 
 def list_audit_events(db: OrmSession, user_id: str) -> list[AuditEvent]:

@@ -72,6 +72,9 @@ def process_host_actions(
     database_url: str,
     replication_destination=None,
     encryption_key: str | None = None,
+    retention_count: int = 7,
+    retention_days: int = 30,
+    previous_encryption_key: str | None = None,
     now: datetime | None = None,
     batch_size: int = 10,
 ) -> int:
@@ -149,6 +152,9 @@ def process_host_actions(
                 operation_id=job.id,
                 replication_destination=replication_destination,
                 encryption_key=encryption_key,
+                retention_count=retention_count,
+                retention_days=retention_days,
+                previous_encryption_key=previous_encryption_key,
             )
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             result = None

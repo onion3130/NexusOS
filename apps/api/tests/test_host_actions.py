@@ -46,6 +46,8 @@ def test_catalog_is_allowlisted_and_proposal_does_not_execute(client) -> None:
         "maintenance.verify_backup",
         "maintenance.integrity_check",
         "maintenance.restore_backup",
+        "maintenance.retention_cleanup",
+        "maintenance.rotate_encryption_key",
     }
     restore = client.post(
         "/api/v1/system/actions/proposals",

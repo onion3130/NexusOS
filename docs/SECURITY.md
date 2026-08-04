@@ -50,7 +50,8 @@
 - Backup files are created only beneath `DATA_DIR/backups`; clients cannot supply a path or filename.
 - Backup metadata includes a SHA-256 digest and SQLite `integrity_check` result. When configured, off-host artifacts use bounded AES-256-GCM chunks with unique nonces and authenticated sequence/size metadata; backup contents and encryption keys are never returned by the API.
 - Restore is enabled only through the same proposal/confirmation pipeline and runs solely in the worker. The source must be an owned backup with `status == "verified"`; the worker creates a verified safety backup of the live database first, stages the source (decrypting off-host artifacts in bounded authenticated chunks), re-verifies SHA-256 and `integrity_check` before replacing anything, and swaps atomically with rollback to the safety backup on failure. Client input is limited to `backup_id`; no paths, commands, or destinations are accepted. A successful restore requires an API/worker restart, which the API and UI surface explicitly.
-- Backup deletion, retention cleanup, and public object-storage upload are not enabled. Directory replication is operator-mounted, opt-in, encrypted, and never accepts a client-selected destination.
+- Retention cleanup is enabled only through the same proposal/confirmation pipeline and runs solely in the worker. It accepts no input; the policy comes from `BACKUP_RETENTION_COUNT` / `BACKUP_RETENTION_DAYS`, the newest verified backup is always retained, and a local artifact is deleted only when its digest still matches the trusted record (tampered material is reported and kept). Encrypted off-host artifacts are pruned only when the replication destination is configured, and every prune is a soft-delete with an audit row. Manual backup deletion, per-backup selection, and public object-storage upload are not enabled. Directory replication is operator-mounted, opt-in, encrypted, and never accepts a client-selected destination.
+- Key rotation is enabled only through a high-risk confirmed action. Both keys are environment-only (`BACKUP_REPLICATION_KEY_PREVIOUS` and `BACKUP_ENCRYPTION_KEY`), must differ, never cross the API or database, and artifacts are re-encrypted in bounded authenticated chunks with atomic replace and staging cleanup; an interrupted rotation is idempotent.
 - The worker remains non-root with no published port, no Docker socket, and no privileged host mount.
 
 ## Input and data safety
@@ -76,7 +77,7 @@
 
 - Idempotency keys cover task, reminder, category, tag, notification, and assistant approval mutations; callers must reuse the same key when retrying a request, and payload mismatches are rejected.
 - Standard error envelopes and request IDs remain future hardening.
-- Retention cleanup, key rotation, backup-before-migration orchestration, production monitoring, and image pinning remain deployment work. The hardened profile supplies opt-in TLS, systemd startup, resource limits, and encrypted directory replication.
+- Backup-before-migration orchestration, production monitoring, and image pinning remain deployment work. The hardened profile supplies opt-in TLS, systemd startup, resource limits, and encrypted directory replication.
 
 ## Change checklist
 
@@ -88,4 +89,4 @@ Before merging a feature:
 4. Define timeout, retry, lease, deduplication, and redaction behavior.
 5. Run backend tests, frontend typecheck/build, Compose validation, secret scanning, and `git diff --check`.
 6. Review the complete diff and staged file list.
-7. Treat the configured AES-256 key as unrecoverable secret material: rotate only through an explicit operator migration and retain the old key until all required artifacts are re-encrypted.
+7. Treat the configured AES-256 key as unrecoverable secret material: rotate only through the confirmed rotation action (set `BACKUP_REPLICATION_KEY_PREVIOUS`, run the action, then remove it) and keep the old key until all artifacts are re-encrypted.
