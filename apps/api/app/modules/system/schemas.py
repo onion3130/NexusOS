@@ -102,6 +102,25 @@ class AdminStatusCard(BaseModel):
     detail: str
 
 
+class NimStatus(BaseModel):
+    """Redacted NVIDIA NIM setup state for the owner UI."""
+
+    configured: bool
+    source: Literal["browser", "environment", "none"]
+    model: str | None = None
+    embeddings_enabled: bool = False
+    restart_required: bool = False
+
+
+class NimSetupRequest(BaseModel):
+    """Bounded browser setup payload; the API never echoes the key."""
+
+    api_key: str = Field(min_length=20, max_length=512)
+    model: str = Field(min_length=1, max_length=160)
+    embeddings_enabled: bool = False
+    embedding_model: str | None = Field(default=None, max_length=160)
+
+
 class AdminStatusResponse(BaseModel):
     """Redacted administrative status without secrets or host paths."""
 
@@ -112,6 +131,7 @@ class AdminStatusResponse(BaseModel):
     ai_provider: AdminStatusCard
     storage: AdminStatusCard
     embedding_provider: AdminStatusCard
+    nvidia_nim: NimStatus = Field(default_factory=lambda: NimStatus(configured=False, source="none"))
 
 
 class SystemOverviewResponse(BaseModel):

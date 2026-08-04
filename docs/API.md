@@ -17,6 +17,16 @@ Returns the authenticated user's configured assistant provider state, label, mod
 
 #### `GET /api/v1/system/admin/status`
 
+Returns redacted owner status, including whether NVIDIA NIM is configured by the browser, environment, or not at all. Credentials and provider URLs are never returned.
+
+#### `POST /api/v1/system/admin/nvidia-nim`
+
+Owner-only, CSRF-protected setup endpoint. Accepts `{ "api_key", "model", "embeddings_enabled", "embedding_model" }`, encrypts the key into the server data volume, clears the in-process settings cache, and returns redacted status only. It does not store the key in SQLite or expose it in the response.
+
+#### `DELETE /api/v1/system/admin/nvidia-nim`
+
+Owner-only, CSRF-protected endpoint that removes browser-managed NIM configuration and returns redacted status. Environment-provided NIM configuration is not modified.
+
 Returns redacted owner-only status cards for system readiness, the configured chat AI provider, optional embedding provider, SQLite storage, application version, and migration head. A configured provider means validated server settings are present; the endpoint does not probe provider reachability or claim that a remote service is healthy. It requires `admin.manage_users` and never returns credentials, provider URLs, database URLs, filesystem paths, or environment values. AI configuration remains server-side and environment-driven; this endpoint is read-only.
 
 The existing health, identity, system, and conversation routes remain as documented in the previous milestone. The assistant gateway is server-configured, provider credentials remain server-side, and `AI_PROVIDER=disabled` remains safe. When `AI_PROVIDER=nvidia_nim`, the Assistant uses NVIDIA's OpenAI-compatible chat endpoint with `NVIDIA_API_KEY` and `AI_MODEL` supplied only to the API/worker environment. Grounded responses can retrieve owned notes through bounded lexical, semantic, or hybrid retrieval when the request enables grounding and the authenticated user has the required note permissions. Retrieved material is untrusted context and responses expose server-derived source provenance.

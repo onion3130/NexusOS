@@ -69,5 +69,5 @@ Milestone 11 adds Calendar, Finance, Media, and the optional out-of-process plug
 - Provider keys are required only when AI is enabled.
 - Worker settings are bounded to preserve Raspberry Pi resource use.
 - External source uploads are stored beneath `DATA_DIR/sources`; source ingestion is bounded by the worker and does not require a separate search service.
-- Future integration credentials use Docker secrets or an approved encrypted credential boundary, not ordinary settings rows. The admin panel reports only whether configured provider settings are valid; it does not edit or reveal environment secrets.
+- Future integration credentials use Docker secrets or an approved encrypted credential boundary, not ordinary settings rows. The owner admin panel can configure hosted NVIDIA NIM through the authenticated same-origin API: the key is encrypted into `DATA_DIR/runtime/nvidia-nim.enc` using the server JWT secret, never stored in SQLite, browser storage, logs, or API responses. Browser-managed setup takes precedence over environment defaults until disabled; restart the API and worker after changes.
 - Channel credentials are required only when the corresponding channel is enabled.

@@ -4,6 +4,12 @@ All notable NexusOS changes are recorded here. NexusOS releases use Semantic Ver
 
 ## [Unreleased]
 
+### NVIDIA NIM browser setup
+
+- Added an owner-only System status setup form for connecting hosted NVIDIA NIM with an API key and model.
+- Encrypts browser-managed NIM settings under the private data volume using a key derived from the server JWT secret; keys never enter SQLite, browser storage, logs, or API responses.
+- Added redacted source/status reporting, disable support, CSRF/permission enforcement, audit events, and restart guidance for the API and worker.
+
 ### External source ingestion
 
 NexusOS v1.5.0 adds bounded external source ingestion and source-aware grounding while preserving the local-first security model.

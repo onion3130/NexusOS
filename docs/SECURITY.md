@@ -5,7 +5,7 @@
 
 ## Runtime boundaries
 
-- The browser never receives provider keys, database credentials, Docker socket access, or unrestricted host paths. Admin status returns only allowlisted state/value/detail fields and never raw environment values.
+- The browser never receives provider keys, database credentials, Docker socket access, or unrestricted host paths. Admin status returns only allowlisted state/value/detail fields and never raw environment values. The owner-only NVIDIA NIM setup form sends the key over the authenticated same-origin API, encrypts it at rest beneath the private data volume using a key derived from the server JWT secret, and never stores or echoes the plaintext key.
 - The API is the authorization boundary; frontend visibility is not authorization. The owner-only admin status panel requires `admin.manage_users` server-side, and the frontend condition is only a presentation optimization.
 - Task and note services filter every owned entity by the authenticated user.
 - FTS5 results are joined back to canonical notes with user and deletion filters; derived chunks carry a direct user boundary.
@@ -27,7 +27,7 @@
 - Embeddings are disabled by default and can be enabled only through server configuration.
 - Embedding vectors are user-scoped derived data; vector payloads, provider credentials, and raw upstream responses never leave the server or appear in logs.
 - Semantic and hybrid retrieval require `notes.semantic`, enforce note/chunk ownership, exclude deleted notes, and fall back to lexical results when the provider or index is unavailable.
-- Provider endpoints are validated as HTTP(S) URLs without credentials and are subject to bounded request/response and timeout policies.
+- Provider endpoints are validated as HTTP(S) URLs without credentials and are subject to bounded request/response and timeout policies. Browser-managed NIM always uses the hosted NVIDIA API Catalog endpoints; the browser cannot choose an arbitrary provider URL.
 
 
 - Notes require `notes.read` for reads/search, `notes.write` for create/update/archive/restore, and `notes.delete` for soft deletion.

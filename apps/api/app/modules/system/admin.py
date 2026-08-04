@@ -8,6 +8,7 @@ from pathlib import Path
 
 from app import __version__
 from app.core.config import Settings
+from app.core.runtime_config import has_runtime_nim, read_runtime_nim
 from app.db.session import CURRENT_MIGRATION_HEAD, database_status
 from app.modules.system.schemas import AdminStatusCard, AdminStatusResponse, AssistantProviderStatus
 
@@ -76,6 +77,7 @@ def collect_admin_status(settings: Settings) -> AdminStatusResponse:
     database_ready, database_reason = database_status(settings)
     storage, storage_ready = _storage_status(settings, database_ready, database_reason)
     system_ready = storage_ready and database_ready
+    runtime_nim = read_runtime_nim(settings.data_dir, settings.jwt_secret.get_secret_value())
     return AdminStatusResponse(
         version=__version__,
         migration_head=CURRENT_MIGRATION_HEAD,
@@ -84,4 +86,5 @@ def collect_admin_status(settings: Settings) -> AdminStatusResponse:
         ai_provider=_provider_status(settings),
         storage=storage,
         embedding_provider=_embedding_status(settings),
+        nvidia_nim={"configured": runtime_nim is not None or settings.ai_provider == "nvidia_nim", "source": "browser" if runtime_nim is not None else ("environment" if settings.ai_provider == "nvidia_nim" else "none"), "model": runtime_nim.model if runtime_nim is not None else (settings.ai_model if settings.ai_provider == "nvidia_nim" else None), "embeddings_enabled": runtime_nim.embeddings_enabled if runtime_nim is not None else settings.embedding_provider == "nvidia_nim", "restart_required": runtime_nim is not None},
     )

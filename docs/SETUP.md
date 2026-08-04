@@ -51,7 +51,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`, sign in, and select Notes, Search, or Assistant. To use NVIDIA NIM in Assistant, set `AI_PROVIDER=nvidia_nim`, a supported `AI_MODEL`, and `NVIDIA_API_KEY` in the API/worker environment, then restart the stack. In Assistant, enable **Use my notes** and choose lexical, semantic, or hybrid retrieval; retrieved-source links open the owned note in the Notes workspace. Assistant task writes require a configured provider and explicit confirmation; note search/read and grounded retrieval are read-only, and grounding is skipped when AI is disabled.
+Open `http://localhost:3000` (or the Pi's LAN address), sign in as the owner, and use **System status → Connect NIM** to enter an NVIDIA API Catalog key and model. The key is sent only to the authenticated API, encrypted beneath the data volume, and never returned or stored in SQLite. Restart the API and worker after saving so both processes load the configuration. Alternatively, configure NIM through `AI_PROVIDER=nvidia_nim`, a supported `AI_MODEL`, and `NVIDIA_API_KEY` in the API/worker environment, then restart the stack. In Assistant, enable **Use my notes** and choose lexical, semantic, or hybrid retrieval; retrieved-source links open the owned note in the Notes workspace. Assistant task writes require a configured provider and explicit confirmation; note search/read and grounded retrieval are read-only, and grounding is skipped when AI is disabled.
 
 ## Full Compose stack
 

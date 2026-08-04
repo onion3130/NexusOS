@@ -21,7 +21,7 @@
 | `nexus-proxy` | Hardened profile | ARM64 Caddy TLS/routing boundary; absent from default profile |
 | `nexus-ai` | Opt-in placeholder profile | Optional future local/provider boundary |
 
-The worker shares the API's SQLite data mount and read-only `/var/lib/nexus/plugins` mount, publishes no host port, and runs `python -m app.worker`. Run exactly one worker in the current deployment topology. If hosted NVIDIA NIM is enabled, the API and worker receive the server-side `NVIDIA_API_KEY` only through the private environment contract; never expose it to the web container or browser. Plugin code is trusted operator-installed code; use a separate VM/container boundary for untrusted extensions.
+The worker shares the API's SQLite data mount and read-only `/var/lib/nexus/plugins` mount, publishes no host port, and runs `python -m app.worker`. Run exactly one worker in the current deployment topology. If hosted NVIDIA NIM is enabled, the API and worker receive the server-side credential through the private environment contract or the encrypted browser-managed runtime file; never expose it to the web container or browser. From the owner System status panel, enter the NIM key and model, then restart `nexus-api` and `nexus-worker` so both processes reload the encrypted configuration. Plugin code is trusted operator-installed code; use a separate VM/container boundary for untrusted extensions.
 
 ## Development deployment
 

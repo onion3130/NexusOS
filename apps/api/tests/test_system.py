@@ -10,6 +10,7 @@ from app.core.config import Settings, get_settings
 from app.db.models import User
 from app.db.session import get_session_factory
 from app.modules.system.admin import _provider_status
+from app.core.runtime_config import runtime_path
 from app.modules.identity.service import bootstrap_owner
 from app.modules.system.adapters.network import read_interfaces
 from app.modules.system.adapters.procfs import read_memory, read_uptime
@@ -106,6 +107,36 @@ def test_configured_provider_status_is_redacted() -> None:
     assert "server-only-nvidia-key" not in card.model_dump_json()
     assert "integrate.api.nvidia.com" not in card.model_dump_json()
     assert "reachability is checked when a message is sent" in card.detail
+
+
+def test_browser_nvidia_nim_setup_is_encrypted_redacted_and_disableable(client) -> None:
+    """Owner setup stores NIM outside the database and never returns the key."""
+    _bootstrap_owner()
+    login = client.post("/api/v1/auth/login", json={"username": "owner", "password": "correct horse battery staple"})
+    assert login.status_code == 200
+    api_key = "nvapi-" + "s" * 40
+    csrf = client.cookies.get("nexus_csrf")
+    response = client.post("/api/v1/system/admin/nvidia-nim", headers={"X-CSRF-Token": csrf}, json={"api_key": api_key, "model": "meta/llama-3.1-8b-instruct", "embeddings_enabled": False})
+    assert response.status_code == 200, response.text
+    assert response.json()["nvidia_nim"] == {"configured": True, "source": "browser", "model": "meta/llama-3.1-8b-instruct", "embeddings_enabled": False, "restart_required": True}
+    assert api_key not in response.text
+    settings = get_settings()
+    encrypted = runtime_path(settings.data_dir)
+    assert encrypted.is_file()
+    assert api_key.encode() not in encrypted.read_bytes()
+    disabled = client.delete("/api/v1/system/admin/nvidia-nim", headers={"X-CSRF-Token": csrf})
+    assert disabled.status_code == 200
+    assert disabled.json()["nvidia_nim"]["source"] == "none"
+    assert not encrypted.exists()
+
+
+def test_browser_nvidia_nim_setup_requires_csrf_and_admin(client) -> None:
+    """Provider setup cannot be called without the cookie CSRF boundary."""
+    _bootstrap_owner()
+    login = client.post("/api/v1/auth/login", json={"username": "owner", "password": "correct horse battery staple"})
+    assert login.status_code == 200
+    response = client.post("/api/v1/system/admin/nvidia-nim", json={"api_key": "nvapi-" + "s" * 40, "model": "meta/llama-3.1-8b-instruct"}, headers={"X-CSRF-Token": "wrong"})
+    assert response.status_code == 403
 
 
 def test_admin_status_denies_a_user_without_admin_permission(client) -> None:

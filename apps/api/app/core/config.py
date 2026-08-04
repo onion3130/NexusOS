@@ -13,6 +13,8 @@ from urllib.parse import urlsplit
 from pydantic import Field, SecretStr, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.runtime_config import read_runtime_nim
+
 Environment = Literal["development", "test", "production"]
 _PLACEHOLDER_MARKERS = (
     "your_",
@@ -474,6 +476,20 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_active_provider(self) -> "Settings":
         """Require server-side provider configuration only when AI is enabled."""
+        runtime_nim = read_runtime_nim(self.data_dir, self.jwt_secret.get_secret_value())
+        if runtime_nim is not None:
+            self.ai_provider = "nvidia_nim"
+            self.ai_model = runtime_nim.model
+            self.ai_api_key = runtime_nim.api_key
+            if runtime_nim.embeddings_enabled:
+                self.embedding_provider = "nvidia_nim"
+                self.embedding_model = runtime_nim.embedding_model
+                self.embedding_api_key = runtime_nim.api_key
+            else:
+                self.embedding_provider = "disabled"
+                self.embedding_base_url = None
+                self.embedding_model = None
+                self.embedding_api_key = None
         if self.ai_provider == "nvidia_nim":
             self.ai_api_key = self.ai_api_key if _usable_secret(self.ai_api_key) else self.nvidia_api_key
             self.ai_base_url = self.ai_base_url or "https://integrate.api.nvidia.com/v1/chat/completions"
