@@ -11,7 +11,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session as OrmSession, selectinload
 
 from app.core.config import Settings
-from app.db.models import AssistantMessage, AssistantModelRun, AssistantToolCall, Conversation, Job
+from app.db.models import AssistantMessage, AssistantModelRun, AssistantSourceReference, AssistantToolCall, Conversation, Job, Note, NoteChunk
 from app.modules.identity.service import add_audit_event
 from app.modules.assistant.gateway import ModelGateway
 from app.modules.assistant.schemas import (
@@ -24,7 +24,10 @@ from app.modules.assistant.schemas import (
     ModelRunResponse,
     SendMessageResponse,
     ToolCallResponse,
+    SourceReference,
+    GroundingOptions,
 )
+from app.modules.assistant.context import GroundingContext, build_grounding_context
 from app.modules.assistant.tools.registry import ToolRegistry
 
 
@@ -33,9 +36,39 @@ def _approval_key(user_id: str, operation: str, key: str) -> str:
     return hashlib.sha256(f"{user_id}:{operation}:{key}".encode("utf-8")).hexdigest()
 
 
-def _message_response(message: AssistantMessage) -> MessageResponse:
-    """Convert a persisted message to a safe API response."""
-    return MessageResponse(id=message.id, role=message.role, content=message.content, sequence=message.sequence, created_at=message.created_at)
+def _source_responses(db: OrmSession, message: AssistantMessage, user_id: str) -> list[SourceReference]:
+    """Return only provenance whose canonical note and chunk belong together and to the user."""
+    rows = db.execute(
+        select(AssistantSourceReference)
+        .join(Note, Note.id == AssistantSourceReference.source_id)
+        .join(NoteChunk, NoteChunk.id == AssistantSourceReference.chunk_id)
+        .where(
+            AssistantSourceReference.message_id == message.id,
+            AssistantSourceReference.user_id == user_id,
+            Note.user_id == user_id,
+            NoteChunk.user_id == user_id,
+            NoteChunk.note_id == Note.id,
+            NoteChunk.id == AssistantSourceReference.chunk_id,
+        )
+        .order_by(AssistantSourceReference.rank)
+    ).scalars().all()
+    return [SourceReference.model_validate({
+        "source_type": item.source_type,
+        "source_id": item.source_id,
+        "chunk_id": item.chunk_id,
+        "title": item.title,
+        "source_version": item.source_version,
+        "retrieval_mode": item.retrieval_mode,
+        "rank": item.rank,
+        "content_hash": item.content_hash,
+        "lexical_score": item.lexical_score,
+        "semantic_score": item.semantic_score,
+    }) for item in rows]
+
+
+def _message_response(db: OrmSession, user_id: str, message: AssistantMessage) -> MessageResponse:
+    """Convert a persisted message and ownership-validated sources to a safe response."""
+    return MessageResponse(id=message.id, role=message.role, content=message.content, sequence=message.sequence, created_at=message.created_at, sources=_source_responses(db, message, user_id))
 
 
 def _summary(db: OrmSession, conversation: Conversation) -> ConversationSummary:
@@ -66,9 +99,11 @@ def get_conversation(db: OrmSession, user_id: str, conversation_id: str) -> Conv
 
 def conversation_response(db: OrmSession, conversation: Conversation) -> ConversationResponse:
     """Return a conversation with bounded ordered messages."""
-    messages = db.scalars(select(AssistantMessage).where(AssistantMessage.conversation_id == conversation.id).order_by(AssistantMessage.sequence).limit(200)).all()
+    messages = db.scalars(select(AssistantMessage).where(AssistantMessage.conversation_id == conversation.id).order_by(AssistantMessage.sequence).limit(200)).unique().all()
+    for message in messages:
+        _ = message.source_references
     summary = _summary(db, conversation)
-    return ConversationResponse(**summary.model_dump(), messages=[_message_response(item) for item in messages])
+    return ConversationResponse(**summary.model_dump(), messages=[_message_response(db, conversation.user_id, item) for item in messages])
 
 
 async def send_message(
@@ -79,6 +114,7 @@ async def send_message(
     gateway: ModelGateway,
     tools: ToolRegistry,
     permissions: set[str],
+    grounding_options: GroundingOptions,
 ) -> SendMessageResponse:
     """Persist input, call the gateway outside a transaction, and persist results."""
     clean_content = content.strip()
@@ -94,6 +130,9 @@ async def send_message(
     try:
         history = list(reversed(previous)) + [user_message]
         gateway_messages = [GatewayMessage(role=item.role, content=item.content) for item in history]
+        grounding = await build_grounding_context(db, settings, conversation.user_id, clean_content, permissions, grounding_options) if settings.ai_provider != "disabled" else GroundingContext(message=None, sources=[])
+        if grounding.message is not None:
+            gateway_messages.insert(0, grounding.message)
         completion = await gateway.complete(gateway_messages, tools.definitions(permissions))
     except Exception as exc:
         db.rollback()
@@ -181,15 +220,44 @@ async def send_message(
         model_run_id=model_run.id,
     )
     db.add(assistant_message)
+    db.flush()
+    for source in grounding.sources if 'grounding' in locals() else []:
+        db.add(AssistantSourceReference(
+            message_id=assistant_message.id,
+            conversation_id=conversation.id,
+            user_id=conversation.user_id,
+            source_type=source.source_type,
+            source_id=source.source_id,
+            chunk_id=source.chunk_id,
+            title=source.title,
+            source_version=source.source_version,
+            retrieval_mode=source.retrieval_mode,
+            rank=source.rank,
+            content_hash=source.content_hash,
+            lexical_score=source.lexical_score,
+            semantic_score=source.semantic_score,
+        ))
     conversation.updated_at = datetime.now(UTC)
     db.commit()
     db.refresh(assistant_message)
     return SendMessageResponse(
-        user_message=_message_response(user_message),
-        assistant_message=_message_response(assistant_message),
+        user_message=_message_response(db, conversation.user_id, user_message),
+        assistant_message=_message_response(db, conversation.user_id, assistant_message),
         model_run=ModelRunResponse(id=model_run.id, provider=model_run.provider, model=model_run.model, status=model_run.status, latency_ms=model_run.latency_ms),
         tool_calls=tool_responses,
     )
+
+
+def message_sources(db: OrmSession, user_id: str, conversation_id: str, message_id: str):
+    """Return owned source provenance for one assistant message."""
+    from app.modules.assistant.schemas import AssistantSourcesResponse
+    message = db.scalar(select(AssistantMessage).where(AssistantMessage.id == message_id, AssistantMessage.conversation_id == conversation_id, AssistantMessage.role == "assistant"))
+    if message is None:
+        return None
+    conversation = db.scalar(select(Conversation).where(Conversation.id == conversation_id, Conversation.user_id == user_id))
+    if conversation is None:
+        return None
+    return AssistantSourcesResponse(message_id=message.id, sources=_source_responses(db, message, user_id))
 
 
 def approve_tool_call(db: OrmSession, user_id: str, tool_call_id: str, permissions: set[str], tools: ToolRegistry, idempotency_key: str | None = None) -> tuple[AssistantToolCall | None, dict[str, object] | None]:

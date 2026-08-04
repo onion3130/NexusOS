@@ -1,6 +1,6 @@
 # NexusOS development setup
 
-**Status:** v1.3 NVIDIA NIM provider support — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, optional embeddings, calendar, finance, media, confirmation-gated host maintenance, verified SQLite backups, encrypted directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, outbound email/push notification channels, audited out-of-process plugins, and audit history are available. Autonomous memory remains deferred.
+**Status:** v1.4 grounded assistant notes (unreleased) — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, optional embeddings, grounded assistant responses with note provenance, calendar, finance, media, confirmation-gated host maintenance, verified SQLite backups, encrypted directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, outbound email/push notification channels, audited out-of-process plugins, and audit history are available. Autonomous memory remains deferred.
 
 ## Prerequisites
 
@@ -51,7 +51,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`, sign in, and select Notes or Search. The notification center is available in the authenticated top bar. Assistant task writes require a configured provider and explicit confirmation; note search/read tools are read-only and the assistant remains safely unavailable when AI is disabled.
+Open `http://localhost:3000`, sign in, and select Notes, Search, or Assistant. In Assistant, enable **Use my notes** and choose lexical, semantic, or hybrid retrieval; retrieved-source links open the owned note in the Notes workspace. Assistant task writes require a configured provider and explicit confirmation; note search/read and grounded retrieval are read-only, and grounding is skipped when AI is disabled.
 
 ## Full Compose stack
 

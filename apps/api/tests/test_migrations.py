@@ -32,7 +32,7 @@ def test_legacy_v1_database_upgrades_and_reupgrades_current_head(tmp_path) -> No
         )
     command.upgrade(config, "head")
     with engine.connect() as connection:
-        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0016_embeddings"
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0017_assistant_grounding"
         permissions = {
             row[0]
             for row in connection.execute(
@@ -46,7 +46,7 @@ def test_legacy_v1_database_upgrades_and_reupgrades_current_head(tmp_path) -> No
     command.downgrade(config, "0011_backup_lifecycle")
     command.upgrade(config, "head")
     with engine.connect() as connection:
-        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0016_embeddings"
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0017_assistant_grounding"
         assert connection.execute(
             text("SELECT COUNT(*) FROM role_permissions rp JOIN roles r ON r.id = rp.role_id JOIN permissions p ON p.id = rp.permission_id WHERE r.key = 'owner' AND p.key IN ('calendar.read', 'finance.read', 'media.read', 'plugins.read', 'notes.semantic')")
         ).scalar() == 5
@@ -60,7 +60,7 @@ def test_schema_upgrade_downgrade_upgrade(tmp_path) -> None:
 
     command.upgrade(config, "head")
     engine = create_engine(database_url)
-    assert {"users", "roles", "permissions", "sessions", "audit_events", "conversations", "messages", "model_runs", "tool_calls", "task_categories", "tags", "task_series", "tasks", "task_tags", "reminders", "notifications", "notification_channel_deliveries", "jobs", "notes", "note_tags", "note_search_documents", "note_chunks", "notes_fts", "calendar_categories", "calendar_events", "calendar_event_reminders", "finance_accounts", "finance_categories", "finance_transactions", "media_items", "plugins", "plugin_runs"}.issubset(inspect(engine).get_table_names())
+    assert {"users", "roles", "permissions", "sessions", "audit_events", "conversations", "messages", "model_runs", "tool_calls", "task_categories", "tags", "task_series", "tasks", "task_tags", "reminders", "notifications", "notification_channel_deliveries", "jobs", "notes", "note_tags", "note_search_documents", "note_chunks", "notes_fts", "calendar_categories", "calendar_events", "calendar_event_reminders", "finance_accounts", "finance_categories", "finance_transactions", "media_items", "plugins", "plugin_runs", "assistant_source_references"}.issubset(inspect(engine).get_table_names())
     columns = {column["name"] for column in inspect(engine).get_columns("backup_records")}
     assert {"encryption_status", "encrypted_relative_path", "encrypted_size_bytes", "encrypted_sha256", "replication_status", "replicated_at", "replication_error_code", "restored_at", "pruned_at"}.issubset(columns)
 

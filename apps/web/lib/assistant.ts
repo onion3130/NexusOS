@@ -8,12 +8,32 @@ export type ConversationSummary = {
   message_count: number;
 };
 
+export type GroundingOptions = {
+  enabled: boolean;
+  mode: "lexical" | "semantic" | "hybrid";
+  limit: number;
+};
+
+export type SourceReference = {
+  source_type: "note";
+  source_id: string;
+  chunk_id: string;
+  title: string;
+  source_version: number;
+  retrieval_mode: "lexical" | "semantic" | "hybrid";
+  rank: number;
+  content_hash: string | null;
+  lexical_score: number | null;
+  semantic_score: number | null;
+};
+
 export type Message = {
   id: string;
   role: "user" | "assistant" | "tool";
   content: string;
   sequence: number;
   created_at: string;
+  sources: SourceReference[];
 };
 
 export type Conversation = ConversationSummary & {
@@ -79,10 +99,10 @@ export async function rejectToolCall(id: string): Promise<void> {
   if (!response.ok) throw new Error(`Rejection failed with ${response.status}`);
 }
 
-export async function sendMessage(id: string, content: string): Promise<AssistantResult> {
+export async function sendMessage(id: string, content: string, grounding: GroundingOptions = { enabled: true, mode: "hybrid", limit: 6 }): Promise<AssistantResult> {
   return parse<AssistantResult>(await authenticatedFetch(`/api/v1/conversations/${encodeURIComponent(id)}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ content, grounding }),
   }));
 }

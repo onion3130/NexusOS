@@ -46,11 +46,11 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 | Item | Status |
 | --- | --- |
-| **Current milestone** | v1.3 — NVIDIA NIM provider support ✅ |
+| **Current milestone** | v1.4 — grounded assistant notes ✅ (unreleased) |
 | **Current version** | `1.3.2` — NVIDIA NIM, migration, and Docker health fixes |
-| **Next milestone** | v1.4 — grounded assistant memory and external source ingestion |
+| **Next milestone** | v1.5 — external source ingestion and source lifecycle management |
 
-NexusOS v1.3 adds optional NVIDIA NIM chat and embeddings through the existing bounded OpenAI-compatible gateway while preserving provider-neutral retrieval, lexical fallback, and the private, local-first Raspberry Pi architecture. NIM is disabled by default and requires explicit server configuration. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
+NexusOS v1.4 adds grounded assistant responses over owned notes with bounded retrieval, source provenance, and retrieved-source navigation while preserving provider-neutral retrieval, lexical fallback, and the private, local-first Raspberry Pi architecture. NVIDIA NIM remains optional and disabled by default. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
 
 ## Technology stack
 

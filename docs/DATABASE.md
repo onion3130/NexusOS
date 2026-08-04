@@ -1,7 +1,7 @@
 # NexusOS database
 
-**Current milestone:** v1.3 — NVIDIA NIM provider support (v1.3.2 patch)
-**Current status:** Identity, assistant, task, notes, lexical search/retrieval, optional embeddings, calendar, finance, media, plugin registry/run history, host-action proposals, backup metadata, restore markers, retention pruning markers, workspace permissions, encrypted replication metadata, and outbound notification channel deliveries are implemented through Alembic revisions `0001_identity` through `0016_embeddings`.
+**Current milestone:** v1.4 — grounded assistant notes (unreleased)
+**Current status:** Identity, assistant, task, notes, lexical search/retrieval, optional embeddings, calendar, finance, media, plugin registry/run history, host-action proposals, backup metadata, restore markers, retention pruning markers, workspace permissions, encrypted replication metadata, and outbound notification channel deliveries are implemented through Alembic revisions `0001_identity` through `0017_assistant_grounding`.
 **Last updated:** 2026-08-04
 
 ## Current database state
@@ -28,6 +28,7 @@ The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys
 - `0014_media` adds the derived media index and media permissions; thumbnails remain rebuildable files beneath `DATA_DIR`.
 - `0015_plugins` adds registered plugin manifests, bounded run history, and plugin permissions. Plugin code and artifacts remain outside the database.
 - `0016_embeddings` adds optional provider-scoped serialized vectors for versioned note chunks and the `notes.semantic` permission. Vectors are private derived data and can be rebuilt from canonical chunks.
+- `0017_assistant_grounding` adds user-scoped, server-derived `assistant_source_references` for bounded provenance attached to grounded assistant messages. The table stores source identifiers and retrieval metadata, not provider payloads or unrestricted note content.
 
 ## Milestone 7 tables
 

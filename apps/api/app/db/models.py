@@ -139,7 +139,31 @@ class AssistantMessage(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     conversation: Mapped[Conversation] = relationship(back_populates="messages")
     model_run: Mapped[AssistantModelRun | None] = relationship(back_populates="messages")
+    source_references: Mapped[list[AssistantSourceReference]] = relationship(back_populates="message", cascade="all, delete-orphan")
     __table_args__ = (UniqueConstraint("conversation_id", "sequence", name="uq_messages_conversation_sequence"),)
+
+
+class AssistantSourceReference(Base):
+    """Derived provenance for sources used in one assistant response."""
+
+    __tablename__ = "assistant_source_references"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    message_id: Mapped[str] = mapped_column(ForeignKey("messages.id", ondelete="CASCADE"), index=True)
+    conversation_id: Mapped[str] = mapped_column(ForeignKey("conversations.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    source_type: Mapped[str] = mapped_column(String(24))
+    source_id: Mapped[str] = mapped_column(ForeignKey("notes.id", ondelete="CASCADE"), index=True)
+    chunk_id: Mapped[str] = mapped_column(ForeignKey("note_chunks.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(160))
+    source_version: Mapped[int] = mapped_column(Integer)
+    retrieval_mode: Mapped[str] = mapped_column(String(16))
+    rank: Mapped[int] = mapped_column(Integer)
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    lexical_score: Mapped[float | None] = mapped_column(nullable=True)
+    semantic_score: Mapped[float | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+    message: Mapped[AssistantMessage] = relationship(back_populates="source_references")
+    __table_args__ = (UniqueConstraint("message_id", "chunk_id", name="uq_assistant_source_message_chunk"),)
 
 
 class AssistantToolCall(Base):

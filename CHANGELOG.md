@@ -2,6 +2,17 @@
 
 All notable NexusOS changes are recorded here. NexusOS releases use Semantic Versioning; private, local-first Raspberry Pi deployment remains the supported operating model.
 
+## [Unreleased]
+
+### Grounded assistant notes
+
+- Added bounded lexical, semantic, and hybrid note grounding for assistant responses.
+- Added explicit untrusted-source context boundaries, note permissions, disabled-provider safeguards, and prompt-injection-safe escaping.
+- Added persisted, user-scoped source provenance and ownership-checked source metadata endpoints.
+- Added Assistant controls for enabling note grounding, selecting retrieval mode, and opening cited notes.
+- Added migration `0017_assistant_grounding` and security, migration, and ownership coverage.
+- External document ingestion, autonomous memory extraction, and model-written notes remain deferred.
+
 ## [1.3.2] — 2026-08-04
 
 NexusOS v1.3.2 is a Docker healthcheck patch for the ARM64 web container.

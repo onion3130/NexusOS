@@ -1,7 +1,7 @@
 # NexusOS architecture
 
-**Current milestone:** v1.3 — NVIDIA NIM provider support (v1.3.2 patch)
-**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
+**Current milestone:** v1.4 — grounded assistant notes (unreleased)
+**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service with grounded note context, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-04
 
 NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an external SSD. The browser, API, persistence, worker, provider, and future host-action boundaries remain separate.
@@ -16,7 +16,7 @@ NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an exte
 - `apps/api/app/modules/plugins`: validated manifests, approved-directory discovery, secret-free JSON-stdio subprocess broker, bounded run history, and capability/risk enforcement.
 - `apps/api/app/worker.py`: dedicated bounded SQLite reminder, confirmed host-action, replication, notification-delivery, media-rescan, and embedding worker.
 - `apps/api/app/db`: SQLAlchemy engine/session and all persisted models.
-- `apps/api/migrations`: explicit Alembic migration history through `0016_embeddings`.
+- `apps/api/migrations`: explicit Alembic migration history through `0017_assistant_grounding`.
 - `apps/web`: authenticated Next.js shell with overview, assistant, tasks, notifications, and notification settings.
 - `docker-compose.yml`: ARM64 development topology with API, web, and real worker services; proxy and optional AI remain placeholders.
 
@@ -109,7 +109,7 @@ Milestone 9 exposes live read-only metadata beneath server-configured approved r
 
 ## Notes and retrieval architecture
 
-Notes are canonical user-authored sources. A derived search projection feeds SQLite FTS5, while deterministic versioned chunks provide provenance for RAG. Optional provider-scoped embeddings are generated asynchronously and stored as bounded serialized vectors; hybrid retrieval combines lexical and semantic scores while retaining lexical fallback. Search and retrieval always join through owned canonical notes. Assistant note tools are read-only and return bounded, explicitly source-labeled content; retrieved text is untrusted context and cannot grant tool permissions.
+Notes are canonical user-authored sources. A derived search projection feeds SQLite FTS5, while deterministic versioned chunks provide provenance for RAG. Optional provider-scoped embeddings are generated asynchronously and stored as bounded serialized vectors; hybrid retrieval combines lexical and semantic scores while retaining lexical fallback. Search and retrieval always join through owned canonical notes. Assistant note tools are read-only and return bounded, explicitly source-labeled content. Grounded assistant requests assemble a bounded, explicitly delimited untrusted context and persist source provenance on the assistant message; retrieved text cannot grant tool permissions.
 
 ## Deferred scope
 

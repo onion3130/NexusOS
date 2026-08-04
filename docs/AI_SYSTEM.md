@@ -1,7 +1,7 @@
 # NexusOS AI system
 
-**Current milestone:** v1.3 — NVIDIA NIM provider support (v1.3.2 patch)
-**Status:** The bounded assistant gateway, conversation storage, provider normalization, hosted NVIDIA NIM configuration, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, optional embeddings, semantic/hybrid retrieval, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Autonomous memory, external ingestion, streaming, and privileged host control remain deferred.
+**Current milestone:** v1.4 — grounded assistant notes (unreleased)
+**Status:** The bounded assistant gateway, conversation storage, provider normalization, hosted NVIDIA NIM configuration, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, optional embeddings, semantic/hybrid retrieval, grounded note context with source provenance, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Autonomous memory, external ingestion, streaming, and privileged host control remain deferred.
 **Last updated:** 2026-08-04
 
 ## Current behavior
@@ -75,13 +75,14 @@ No tool may execute arbitrary shell text, SQL, Docker commands, filesystem paths
 
 Milestone 7 introduced lexical, provider-neutral retrieval results containing source type, source ID, chunk ID, title, excerpt, source version, update time, and bounded metadata. v1.2 adds optional provider-neutral embeddings for those chunks, bounded serialized-vector similarity, hybrid scoring, stale-content detection, and lexical fallback. Semantic retrieval is read-only and disabled unless explicitly configured. NVIDIA NIM can supply chat and embeddings through the same OpenAI-compatible boundary, with hosted endpoints defaulted safely when `nvidia_nim` is selected. No autonomous memory extraction or model-written note is enabled.
 
-If retrieved note text is later added to model context, it must be explicitly delimited as untrusted user-authored reference material. It cannot alter system instructions or bypass confirmation-gated task actions.
+Grounded assistant requests now add bounded retrieved note chunks to model context as escaped, explicitly delimited untrusted user-authored reference material. The request requires `notes.read`; semantic and hybrid modes require `notes.semantic`; grounding is skipped when chat AI is disabled. Source provenance is persisted with the assistant message and exposed as metadata-only citations. Retrieved content cannot alter system instructions or bypass confirmation-gated task actions.
 
 ## Deferred AI work
 
 - Streaming responses
 - Provider health dashboards
 - Autonomous semantic memory and model-written notes
+- External document ingestion and file sources
 - Autonomous memory and model-written notes
 - Additional integrations
 - Privileged host control, assistant-triggered restore, cloud/object-storage replication, and autonomous memory

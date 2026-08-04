@@ -1,6 +1,6 @@
 # NexusOS API
 
-**Current milestone:** v1.3 — NVIDIA NIM provider support (v1.3.2 patch)
+**Current milestone:** v1.4 — grounded assistant notes (unreleased)
 **Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, optional embeddings, calendar, finance, media, confirmation-gated maintenance actions, verified SQLite backups, automated restore, retention cleanup, encryption key rotation, audit visibility, read-only workspace views, outbound email/push notification channels, and the out-of-process plugin boundary are implemented. Streaming remains planned.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-04
@@ -11,7 +11,7 @@ All browser-authenticated mutations require the readable CSRF cookie value in th
 
 ### Health, identity, system, and assistant
 
-The existing health, identity, system, and conversation routes remain as documented in the previous milestone. The assistant gateway is server-configured, provider credentials remain server-side, and `AI_PROVIDER=disabled` remains safe.
+The existing health, identity, system, and conversation routes remain as documented in the previous milestone. The assistant gateway is server-configured, provider credentials remain server-side, and `AI_PROVIDER=disabled` remains safe. Grounded responses can retrieve owned notes through bounded lexical, semantic, or hybrid retrieval when the request enables grounding and the authenticated user has the required note permissions. Retrieved material is untrusted context and responses expose server-derived source provenance.
 
 ### Productivity routes
 
@@ -85,6 +85,10 @@ Soft-deletes an owned note and removes it from normal search visibility.
 
 Performs bounded SQLite FTS5 lexical search over owned note titles, content, and tags. Results include source type, source ID, chunk ID, excerpt, score, tags, and source version. Archived notes are excluded unless `include_archived=true`.
 
+#### `GET /api/v1/conversations/{conversation_id}/messages/{message_id}/sources`
+
+Returns bounded, server-derived source provenance for one owned assistant message. The endpoint returns note source and chunk identifiers, title, version, retrieval mode, rank, and bounded scores; it never returns arbitrary note content or provider payloads. Conversation and message ownership are enforced.
+
 #### `GET /api/v1/notes/{id}/chunks`
 
 Returns current-version deterministic retrieval chunks for one owned note.
@@ -124,6 +128,16 @@ Sends one bounded test message through every enabled channel and returns per-cha
 Requeues outbound channel deliveries for one owned notification and returns the updated record. Requires CSRF and the `notifications.write` permission.
 
 The dedicated worker converts due reminders into notifications using a deterministic reminder deduplication key, then enqueues one pending delivery row per enabled channel. A separate bounded worker cycle claims, delivers, retries (max three attempts), and audits each channel with processing leases. A channel disabled after enqueueing is skipped rather than sent. It runs separately from the API in Compose.
+
+### Grounded assistant responses
+
+#### `POST /api/v1/conversations/{conversation_id}/messages`
+
+Accepts `content` plus optional bounded `grounding` controls (`enabled`, `mode=lexical|semantic|hybrid`, and `limit`). Grounding requires `notes.read`; semantic and hybrid retrieval additionally require `notes.semantic`. Retrieved note material is explicitly delimited as untrusted reference context, and the response persists server-derived source provenance. Grounding is skipped when `AI_PROVIDER=disabled`.
+
+#### `GET /api/v1/conversations/{conversation_id}/messages/{message_id}/sources`
+
+Returns bounded source provenance for one owned assistant message, including note/chunk identifiers, title, source version, retrieval mode, rank, and bounded scores. It never returns arbitrary provider payloads or bypasses note ownership.
 
 ### Assistant task actions
 
@@ -238,7 +252,7 @@ Returns the current user's bounded host-action proposal, confirmation, rejection
 - Cookie-authenticated mutations require CSRF validation.
 - CORS allows `PATCH` in addition to existing methods.
 - Database migrations are explicit; startup never mutates schema.
-- Readiness verifies the current Alembic head `0016_embeddings` and the notes FTS5 table.
+- Readiness verifies the current Alembic head `0017_assistant_grounding` and the notes FTS5 table.
 - Notifications are persistent records; optional outbound email/push channels are server-configured and delivery is worker-side only.
 - No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, or provider URLs from a client.
 - Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf. Restore is the highest-risk action and additionally requires a verified source, a fresh safety backup, staged digest/integrity verification, and an atomic swap. Retention cleanup accepts no input and prunes only per the server policy with last-backup protection; key rotation accepts no input and uses only environment-configured keys.

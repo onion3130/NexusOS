@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session as OrmSession
 from app.core.config import Settings, get_settings
 from app.db.session import get_db
 from app.modules.assistant.gateway import gateway_from_settings
-from app.modules.assistant.schemas import AssistantError, ConversationCreate, ConversationResponse, ConversationSummary, SendMessageRequest, SendMessageResponse
+from app.modules.assistant.schemas import AssistantError, AssistantSourcesResponse, ConversationCreate, ConversationResponse, ConversationSummary, SendMessageRequest, SendMessageResponse
 from app.modules.assistant.service import approve_tool_call, conversation_response, create_conversation, get_conversation, list_conversations, reject_tool_call, send_message
 from app.modules.assistant.tools.registry import ToolRegistry
 from app.modules.workspace_views.service import WorkspaceViewService
@@ -46,12 +46,23 @@ def get_one(conversation_id: str, db: OrmSession = Depends(get_db), context: Aut
     return conversation_response(db, _owned_or_404(db, context, conversation_id))
 
 
+@router.get("/{conversation_id}/messages/{message_id}/sources", response_model=AssistantSourcesResponse)
+def sources(conversation_id: str, message_id: str, db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context)) -> AssistantSourcesResponse:
+    """Return bounded provenance for one owned assistant message."""
+    from app.modules.assistant.service import message_sources
+    _owned_or_404(db, context, conversation_id)
+    result = message_sources(db, context.user.id, conversation_id, message_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+    return result
+
+
 @router.post("/{conversation_id}/messages", response_model=SendMessageResponse)
 async def message(conversation_id: str, payload: SendMessageRequest, db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context), settings: Settings = Depends(get_settings)) -> SendMessageResponse:
     """Send one bounded message through the configured assistant gateway."""
     conversation = _owned_or_404(db, context, conversation_id)
     try:
-        return await send_message(db, settings, conversation, payload.content, gateway_from_settings(settings), ToolRegistry(SystemService(settings.data_dir), db, context.user.id, WorkspaceViewService(settings), settings), set(permission_names(context.user)))
+        return await send_message(db, settings, conversation, payload.content, gateway_from_settings(settings), ToolRegistry(SystemService(settings.data_dir), db, context.user.id, WorkspaceViewService(settings), settings), set(permission_names(context.user)), payload.grounding)
     except AssistantError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.code) from exc
     except Exception as exc:

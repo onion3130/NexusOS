@@ -1,7 +1,7 @@
 # NexusOS roadmap
 
-**Current milestone:** v1.3 — NVIDIA NIM provider support (v1.3.2 patch)
-**Next milestone:** v1.4 — grounded assistant memory and external source ingestion
+**Current milestone:** v1.4 — grounded assistant notes (unreleased)
+**Next milestone:** v1.5 — external source ingestion and source lifecycle management
 **Last updated:** 2026-08-04
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
@@ -231,6 +231,23 @@ Known limitations:
 - Target Raspberry Pi ARM64 provider latency and sustained worker-load validation remain operational checks.
 - Autonomous memory, external ingestion, and model-written notes remain future scope.
 
+## v1.4 grounded assistant notes
+
+Implemented:
+
+- Bounded lexical, semantic, and hybrid retrieval of the authenticated user's owned notes during assistant requests.
+- Explicitly delimited and escaped untrusted source context that cannot authorize tools or override assistant policy.
+- Permission enforcement for `notes.read` and `notes.semantic`, with grounding skipped safely when chat AI is disabled.
+- Persisted user-scoped source provenance through migration `0017_assistant_grounding`.
+- Assistant retrieval controls and accessible retrieved-source links that open the owned Notes workspace.
+- Backend migration, ownership, prompt-injection, permission, disabled-provider, and frontend build coverage.
+
+Known limitations:
+
+- Sources are server-derived retrieved-source references, not claims that the model cited or quoted each source.
+- External document ingestion, autonomous memory extraction, model-written notes, and streaming remain deferred.
+- The v1.4 feature is unreleased; the current production tag remains v1.3.2 until a release is created.
+
 ## v1.3 provider integration — NVIDIA NIM
 
 Implemented and validated in v1.3.0:
@@ -245,7 +262,7 @@ Known limitations:
 
 - Hosted NIM requires outbound HTTPS and operator credentials; real quota/latency testing remains deployment-specific.
 - Private and loopback provider targets remain rejected by design; this release does not claim self-hosted NIM execution on the Pi.
-- Grounded assistant memory and external source ingestion remain the next milestone.
+- External source ingestion and source lifecycle management are the next milestone.
 
 ## Approval rule
 

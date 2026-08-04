@@ -1,6 +1,6 @@
 # NexusOS security baseline
 
-**Status:** v1.2 semantic retrieval foundation is implemented alongside the v1.0/v1.1 local-first security boundaries; public-internet deployment remains out of scope.
+**Status:** v1.4 grounded assistant notes are implemented alongside the local-first security boundaries; public-internet deployment remains out of scope.
 **Last updated:** 2026-08-04
 
 ## Runtime boundaries
@@ -25,7 +25,9 @@
 - Note mutations require CSRF for cookie-authenticated clients, payload-bound idempotency, ownership checks, and audit events.
 - Search queries are bounded, parameterized, and normalized; raw FTS5 syntax is not exposed.
 - Note content is rendered as text and is never trusted HTML.
-- Retrieved note content is untrusted source material and cannot change system instructions, permissions, or tool authorization.
+- Retrieved note content is untrusted source material, escaped before context assembly, explicitly delimited, bounded by source count and context size, and cannot change system instructions, permissions, or tool authorization.
+- Grounding requires `notes.read`; semantic and hybrid modes require `notes.semantic`. Grounding is skipped when chat AI is disabled, so a disabled deployment does not contact an embedding provider unexpectedly.
+- Assistant source provenance is derived server-side, user-scoped, and exposes metadata only; the source endpoint verifies conversation/message ownership.
 
 ## Task and assistant mutation controls
 

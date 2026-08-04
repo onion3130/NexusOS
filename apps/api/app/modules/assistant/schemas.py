@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 from pydantic.fields import FieldInfo
 
-MessageRole = Literal["user", "assistant", "tool"]
+MessageRole = Literal["system", "user", "assistant", "tool"]
 ModelRunStatus = Literal["started", "succeeded", "failed", "disabled"]
 ToolCallStatus = Literal["proposed", "validated", "processing", "executed", "rejected", "failed"]
 
@@ -29,14 +29,45 @@ class ConversationSummary(BaseModel):
     message_count: int
 
 
+class GroundingOptions(BaseModel):
+    """Bounded per-request controls for note grounding."""
+
+    enabled: bool = True
+    mode: Literal["lexical", "semantic", "hybrid"] = "hybrid"
+    limit: int = Field(default=6, ge=1, le=8)
+
+
+class SourceReference(BaseModel):
+    """Server-owned provenance metadata for one grounded source."""
+
+    source_type: Literal["note"]
+    source_id: str
+    chunk_id: str
+    title: str
+    source_version: int
+    retrieval_mode: Literal["lexical", "semantic", "hybrid"]
+    rank: int
+    content_hash: str | None = None
+    lexical_score: float | None = None
+    semantic_score: float | None = None
+
+
 class MessageResponse(BaseModel):
-    """A persisted conversation message."""
+    """A persisted conversation message with optional grounded sources."""
 
     id: str
     role: MessageRole
     content: str
     sequence: int
     created_at: datetime
+    sources: list[SourceReference] = Field(default_factory=list)
+
+
+class AssistantSourcesResponse(BaseModel):
+    """Bounded source references for one owned assistant message."""
+
+    message_id: str
+    sources: list[SourceReference] = Field(default_factory=list)
 
 
 class ToolCallResponse(BaseModel):
@@ -68,9 +99,10 @@ class ConversationResponse(ConversationSummary):
 
 
 class SendMessageRequest(BaseModel):
-    """Bounded user message input."""
+    """Bounded user message input and grounding controls."""
 
     content: str = Field(min_length=1, max_length=4000)
+    grounding: GroundingOptions = Field(default_factory=GroundingOptions)
 
     @field_validator("content")
     @classmethod
