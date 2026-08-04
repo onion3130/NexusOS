@@ -34,10 +34,12 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 ## Screenshots
 
-> **Screenshot placeholder:** replace this mockup with a real product capture when the public dashboard showcase is ready.
+<p align="center">
+  <img src="docs/assets/nexus-dashboard-overview.png" alt="NexusOS dashboard overview" width="100%">
+</p>
 
 <p align="center">
-  <img src="docs/assets/dashboard-placeholder.svg" alt="NexusOS dashboard screenshot placeholder" width="100%">
+  <img src="docs/assets/nexus-dashboard-system.png" alt="NexusOS Raspberry Pi 5 system overview" width="100%">
 </p>
 
 ## Project status
