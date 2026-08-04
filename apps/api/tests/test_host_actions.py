@@ -45,7 +45,21 @@ def test_catalog_is_allowlisted_and_proposal_does_not_execute(client) -> None:
         "maintenance.create_backup",
         "maintenance.verify_backup",
         "maintenance.integrity_check",
+        "maintenance.restore_backup",
     }
+    restore = client.post(
+        "/api/v1/system/actions/proposals",
+        json={"action_key": "maintenance.restore_backup", "input": {"backup_id": "not-a-real-id"}},
+        headers={"X-CSRF-Token": _csrf(client), "Idempotency-Key": "restore-input"},
+    )
+    assert restore.status_code == 201
+    assert restore.json()["risk_level"] == "high"
+    unsafe = client.post(
+        "/api/v1/system/actions/proposals",
+        json={"action_key": "maintenance.restore_backup", "input": {"path": "/etc", "backup_id": "x"}},
+        headers={"X-CSRF-Token": _csrf(client), "Idempotency-Key": "restore-unsafe"},
+    )
+    assert unsafe.status_code == 422
     response = client.post(
         "/api/v1/system/actions/proposals",
         json={"action_key": "maintenance.create_backup", "input": {"command": "rm -rf /"}},

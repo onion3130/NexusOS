@@ -1,7 +1,7 @@
 # NexusOS API
 
-**Current milestone:** Milestone 11 — integrations and plugins
-**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, confirmation-gated maintenance actions, verified SQLite backups, audit visibility, read-only workspace views, and outbound email/push notification channels are implemented. Restore replication, embeddings, streaming, and calendar/media/finance integrations remain planned.
+**Current milestone:** Milestone 12 — restore and recovery automation
+**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, confirmation-gated maintenance actions, verified SQLite backups, automated restore, audit visibility, read-only workspace views, and outbound email/push notification channels are implemented. Embeddings, streaming, and calendar/media/finance integrations remain planned.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-04
 
@@ -172,7 +172,7 @@ Returns bounded authenticated operational metadata: whether encrypted replicatio
 
 #### `GET /api/v1/system/actions`
 
-Returns the server-owned allowlist of enabled maintenance actions. The current catalog contains database backup creation, backup verification, and live database integrity checking. It never exposes arbitrary executables, filesystem paths, Docker operations, reboot, shutdown, package management, or systemd controls.
+Returns the server-owned allowlist of enabled maintenance actions. The current catalog contains database backup creation, backup verification, live database integrity checking, and database restore from a verified backup. It never exposes arbitrary executables, filesystem paths, Docker operations, reboot, shutdown, package management, or systemd controls.
 
 #### `POST /api/v1/system/actions/proposals`
 
@@ -192,7 +192,11 @@ Rejects a proposal without creating a job or invoking an executor.
 
 #### `GET /api/v1/system/backups`
 
-Lists verified/failed backup metadata owned by the current user. It returns relative NexusOS paths, size, SHA-256, status, integrity result, and timestamps; it never returns file contents or arbitrary paths.
+Lists verified/failed backup metadata owned by the current user. It returns relative NexusOS paths, size, SHA-256, status, integrity result, timestamps, and (after a restore) the `restored_at` marker; it never returns file contents or arbitrary paths.
+
+#### `POST /api/v1/system/actions/proposals` with `maintenance.restore_backup`
+
+Proposes restoring the live database from one owned, verified backup. The only accepted input is `{"backup_id": "<id>"}`. Confirmation queues a durable worker job that: creates a verified safety backup of the current database (rollback guarantee), stages the restore source (the local verified backup, or the decrypted off-host artifact when `BACKUP_REPLICATION_DESTINATION` and `BACKUP_REPLICATION_KEY` are configured), re-verifies SHA-256 and SQLite integrity before touching anything, records a restore marker and restore audit row inside the staged database, swaps it in atomically, and cleans stale WAL/SHM/journal sidecars. A successful restore requires an API/worker restart afterward; the proposal result and the Maintenance UI state this explicitly. The restored backup's `restored_at` is set through the restore itself (the pre-restore database is superseded).
 
 #### `GET /api/v1/system/jobs/{id}`
 
@@ -208,10 +212,10 @@ Returns the current user's bounded host-action proposal, confirmation, rejection
 - Cookie-authenticated mutations require CSRF validation.
 - CORS allows `PATCH` in addition to existing methods.
 - Database migrations are explicit; startup never mutates schema.
-- Readiness verifies the current Alembic head `0009_notification_channels` and the notes FTS5 table.
+- Readiness verifies the current Alembic head `0010_restore` and the notes FTS5 table.
 - Notifications are persistent records; optional outbound email/push channels are server-configured and delivery is worker-side only.
 - No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, or provider URLs from a client.
-- Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf.
+- Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf. Restore is the highest-risk action and additionally requires a verified source, a fresh safety backup, staged digest/integrity verification, and an atomic swap.
 
 ## Planned API groups
 

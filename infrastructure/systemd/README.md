@@ -20,6 +20,6 @@ The unit waits for Docker and uses `RequiresMountsFor=/var/lib/nexus/data`. Add 
 2. Stop the unit with `sudo systemctl stop nexus.service`.
 3. Keep the previous Git revision available; update the checkout and run explicit migrations with the API image.
 4. Start the unit and verify proxy, API readiness, worker health, and the Maintenance status panel.
-5. Roll back the checkout and database only through the documented operator recovery procedure if readiness or migration validation fails.
+5. Roll back the checkout and database through the confirmation-gated in-app restore action or the documented operator procedure if readiness or migration validation fails.
 
-Restore is not a browser or assistant action. Preserve the existing database before any manual restore, verify the encrypted artifact with the configured key, restore through an operator-controlled offline procedure, run `PRAGMA integrity_check`, then apply migrations deliberately.
+Restore is a confirmation-gated Maintenance action (risk `high`) that runs only in the worker after explicit user confirmation: it creates a verified safety backup of the current database, stages the chosen verified backup (local or decrypted encrypted off-host artifact when the replication key is configured), re-verifies SHA-256 and `PRAGMA integrity_check`, swaps it in atomically, and requires an API/worker restart. The assistant cannot trigger restore. For offline recovery without the API, preserve the existing database, verify the encrypted artifact with the configured key, restore through an operator-controlled procedure, run `PRAGMA integrity_check`, then apply migrations deliberately.

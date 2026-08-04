@@ -1,7 +1,7 @@
 import { authenticatedFetch } from "./auth";
 
 export type ActionCatalogItem = {
-  key: "maintenance.create_backup" | "maintenance.verify_backup" | "maintenance.integrity_check";
+  key: "maintenance.create_backup" | "maintenance.verify_backup" | "maintenance.integrity_check" | "maintenance.restore_backup";
   title: string;
   description: string;
   risk_level: "low" | "medium" | "high";
@@ -39,6 +39,7 @@ export type Backup = {
   replication_status: string | null;
   replicated_at: string | null;
   replication_error_code: string | null;
+  restored_at: string | null;
 };
 
 export type DeploymentStatus = {
@@ -94,6 +95,10 @@ export async function readProposal(id: string): Promise<ActionProposal> {
 
 export async function listBackups(): Promise<Backup[]> {
   return parse<Backup[]>(await authenticatedFetch("/api/v1/system/backups", { cache: "no-store" }));
+}
+
+export function restoreProposalFor(backupId: string): { action_key: ActionCatalogItem["key"]; input: { backup_id: string } } {
+  return { action_key: "maintenance.restore_backup", input: { backup_id: backupId } };
 }
 
 export async function readDeploymentStatus(): Promise<DeploymentStatus> {

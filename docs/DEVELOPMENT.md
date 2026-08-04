@@ -1,7 +1,7 @@
 # NexusOS development
 
-**Current milestone:** Milestone 11 — integrations and plugins (outbound notification channels)
-**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, confirmation-gated host maintenance, read-only workspace views, encrypted directory replication, and outbound email/push notification channels are implemented. Restore, memory, RAG, and privileged host control remain deferred.
+**Current milestone:** Milestone 12 — restore and recovery automation
+**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, confirmation-gated host maintenance, confirmation-gated restore, read-only workspace views, encrypted directory replication, and outbound email/push notification channels are implemented. Memory, RAG, and privileged host control remain deferred.
 **Last updated:** 2026-08-04
 
 Read this document with [`README.md`](../README.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`API.md`](API.md), [`DATABASE.md`](DATABASE.md), [`AI_SYSTEM.md`](AI_SYSTEM.md), [`SECURITY.md`](SECURITY.md), and [`ROADMAP.md`](ROADMAP.md) before changing code.
@@ -29,6 +29,10 @@ Backend:
 - `app/api/routes/notifications.py`: authenticated settings, test-send, and resend routes.
 - `migrations/versions/0009_notification_channels.py`: per-channel delivery rows and the notification settings permission.
 - `tests/test_notification_channels.py`: adapter, config, worker, lease, ownership, redaction, and route coverage.
+- `app/modules/host_actions/restore.py`: confirmation-gated restore with safety backup, staging, digest/integrity verification, and atomic swap.
+- `app/modules/backup_replication/encryption.py`: `decrypt_file()` bounded authenticated AES-GCM chunk decryption.
+- `migrations/versions/0010_restore.py`: reversible `backup_records.restored_at` migration.
+- `tests/test_restore.py`: local/encrypted restore, tamper, source resolution, safety-backup failure, ownership, and proposal flow coverage.
 - `app/modules/workspace_views/`: approved-root Files, Projects, Git, and optional Docker adapters.
 - `app/api/routes/workspace_views.py`: authenticated read-only workspace routes.
 - `tests/test_workspace_views.py`: adapter, permission, authentication, and redaction coverage.
@@ -68,7 +72,7 @@ python -m alembic heads
 python -m alembic check  # may report pre-existing SQLite FTS5/legacy-index model drift; upgrade and migration tests remain authoritative
 ```
 
-The current expected migration head is `0009_notification_channels`. The readiness check also requires the SQLite FTS5 notes index.
+The current expected migration head is `0010_restore`. The readiness check also requires the SQLite FTS5 notes index.
 
 ## Frontend validation
 
@@ -127,7 +131,7 @@ The API, web, and worker target `linux/arm64`, use non-root runtime users, share
 - Assistant task writes require permissions, typed validation, expiry, explicit approval, and audit events.
 - Task deletion is soft deletion.
 - No provider key, token, backup encryption key, arbitrary command, filesystem path, Docker socket, privileged host operation, or SQL reaches the browser or task/host-action service.
-- Host actions are proposed, explicitly confirmed, queued, fixed-adapter executed, and audited; backups remain on the configured data volume.
+- Host actions are proposed, explicitly confirmed, queued, fixed-adapter executed, and audited; backups remain on the configured data volume, and restore is confirmation-gated, verified, and atomic with a safety-backup rollback.
 - Workspace views use server-configured roots, bounded adapters, sanitized output, and no browser-controlled paths or commands.
 
 ## Definition of done

@@ -157,23 +157,32 @@ def process_host_actions(
             result = None
             error_code = "host_action_failed"
         if result is not None:
-            proposal.status = "succeeded"
-            proposal.completed_at = current
-            proposal.error_code = None
-            job.status = "completed"
-            job.payload_json = json.dumps(
-                {"proposal_id": proposal.id, "result": result}, separators=(",", ":")
-            )[:16000]
-            job.locked_until = None
-            job.completed_at = current
-            add_audit_event(
-                db,
-                action="host_action.execute",
-                result="success",
-                actor_user_id=proposal.user_id,
-                target=proposal.id,
-                metadata={"action": proposal.action_key, "job_id": job.id},
-            )
+            if result.get("restart_required"):
+                # The live database was atomically replaced by the restore
+                # adapter. The proposal/job rows now belong to the superseded
+                # pre-restore database, and the adapter wrote its own restore
+                # audit row inside the restored database before the swap, so
+                # no ORM completion writes are attempted against the replaced
+                # file (they would target rows that no longer exist).
+                db.commit()
+            else:
+                proposal.status = "succeeded"
+                proposal.completed_at = current
+                proposal.error_code = None
+                job.status = "completed"
+                job.payload_json = json.dumps(
+                    {"proposal_id": proposal.id, "result": result}, separators=(",", ":")
+                )[:16000]
+                job.locked_until = None
+                job.completed_at = current
+                add_audit_event(
+                    db,
+                    action="host_action.execute",
+                    result="success",
+                    actor_user_id=proposal.user_id,
+                    target=proposal.id,
+                    metadata={"action": proposal.action_key, "job_id": job.id},
+                )
         elif job.attempts < MAX_ATTEMPTS:
             proposal.status = "queued"
             proposal.error_code = error_code

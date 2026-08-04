@@ -1,7 +1,7 @@
 # NexusOS deployment
 
-**Current milestone:** Milestone 11 — integrations and plugins (outbound notification channels)
-**Status:** Hardened Compose/systemd/proxy configuration, encrypted off-host directory replication, bounded worker recovery, Maintenance deployment status, and outbound email/push notification channels are implemented. Target-Pi image, TLS trust, full restore-drill validation, and real SMTP/ntfy endpoint checks remain required operator checks.
+**Current milestone:** Milestone 12 — restore and recovery automation
+**Status:** Hardened Compose/systemd/proxy configuration, encrypted off-host directory replication, confirmation-gated restore, bounded worker recovery, Maintenance deployment status, and outbound email/push notification channels are implemented. Target-Pi image, TLS trust, restore-drill validation, and real SMTP/ntfy endpoint checks remain required operator checks.
 **Last updated:** 2026-08-03
 
 ## Target hardware
@@ -62,11 +62,13 @@ Docker metadata is disabled by default. If it is required for a trusted local de
 
 ## Safe maintenance behavior
 
-Maintenance actions are never direct shell commands. The UI or assistant creates an expiring proposal; the authenticated user must review and explicitly confirm it. Confirmation queues one durable job. The worker executes only the fixed SQLite backup, backup verification, or integrity-check adapter and writes audit metadata.
+Maintenance actions are never direct shell commands. The UI or assistant creates an expiring proposal; the authenticated user must review and explicitly confirm it. Confirmation queues one durable job. The worker executes only the fixed SQLite backup, backup verification, integrity-check, or restore adapter and writes audit metadata.
 
 Backups are stored beneath `${DATA_DIR}/db/backups` through the shared `/var/lib/nexus/data/backups` mount. They are hot SQLite backups, SHA-256 hashed, and checked with `PRAGMA integrity_check`. When both replication settings are configured, the worker encrypts each verified artifact in bounded AES-256-GCM chunks and writes it atomically beneath the operator-mounted `BACKUP_REPLICATION_DESTINATION`. The API exposes metadata only.
 
-Do not treat these backups as a complete disaster-recovery system yet: restore drills, retention, key rotation, and backup-before-migration automation remain operator deployment work. Replication is disabled unless both destination and key are configured. To recover manually, stop API and worker, preserve the existing database, copy a verified backup over the database path using an operator-controlled procedure, then run `PRAGMA integrity_check` and `alembic upgrade head` before restarting. Never expose restore as an AI or browser action.
+Restore is an explicit, confirmation-gated maintenance action (risk `high`). From the Maintenance workspace (or through the same proposal/confirm API flow), select one verified backup and confirm. The worker then creates a verified safety backup of the current database (rollback guarantee), stages the chosen source (the local verified backup, or the decrypted off-host artifact when `BACKUP_REPLICATION_DESTINATION` and `BACKUP_REPLICATION_KEY` are configured on the restoring host), re-verifies SHA-256 and integrity before touching anything, records a restore marker and audit row inside the staged database, swaps it in atomically, and cleans stale WAL/SHM/journal sidecars. NexusOS must be restarted after a successful restore; the UI and API result state this explicitly. Restore never accepts client paths, commands, or destinations.
+
+Do not treat these backups as a complete disaster-recovery system yet: restore drills on the target Pi, retention, key rotation, and backup-before-migration automation remain operator deployment work. Replication is disabled unless both destination and key are configured.
 
 ## Reminder worker behavior
 
@@ -96,8 +98,8 @@ curl http://127.0.0.1:8000/api/v1/health/ready
 docker compose --env-file .env down
 ```
 
-Also test a due reminder, worker restart, notification deduplication, outbound email/push delivery and retry exhaustion, test-send and resend routes, note creation/update/search, FTS5 rebuild behavior, proposal-without-execution, confirmation queueing, backup integrity, worker restart recovery, and healthcheck timing under representative Pi load. In production, set `NOTIFICATION_EMAIL_*` and/or `NOTIFICATION_PUSH_*` per the environment contract; the worker delivers reminders through the enabled channels with bounded batches and retries. Docker is unavailable in the current environment, so image builds, proxy startup, systemd boot, and restore-drill checks remain external validation rather than local claims. The local Alembic upgrade succeeds; `alembic check` currently reports pre-existing SQLite FTS5 virtual-table/legacy-index model drift outside Milestone 10. Confirm the target Python runtime includes SQLite FTS5.
+Also test a due reminder, worker restart, notification deduplication, outbound email/push delivery and retry exhaustion, test-send and resend routes, note creation/update/search, FTS5 rebuild behavior, proposal-without-execution, confirmation queueing, backup integrity, a local and an encrypted-artifact restore with restart, worker restart recovery, and healthcheck timing under representative Pi load. In production, set `NOTIFICATION_EMAIL_*` and/or `NOTIFICATION_PUSH_*` per the environment contract; the worker delivers reminders through the enabled channels with bounded batches and retries. Docker is unavailable in the current environment, so image builds, proxy startup, systemd boot, and restore-drill checks remain external validation rather than local claims. The local Alembic upgrade succeeds; `alembic check` currently reports pre-existing SQLite FTS5 virtual-table/legacy-index model drift outside Milestone 10. Confirm the target Python runtime includes SQLite FTS5.
 
 ## Recovery and production gate
 
-The SSD is primary runtime storage, not a backup. Before production use, configure encrypted replication, perform a restore drill from an empty data directory, install the systemd unit, validate the internal CA trust path, and document retention/key-rotation policy. Production monitoring and rollback automation remain operational follow-up work.
+The SSD is primary runtime storage, not a backup. Before production use, configure encrypted replication, perform a restore drill (including a restore from an empty data directory using an encrypted off-host artifact), install the systemd unit, validate the internal CA trust path, and document retention/key-rotation policy. Production monitoring and rollback automation remain operational follow-up work.

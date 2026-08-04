@@ -4,6 +4,15 @@ All notable NexusOS changes are recorded here. Version `1.0.0` is a private, loc
 
 ## [Unreleased]
 
+### Milestone 12 restore and recovery automation
+
+- Added confirmation-gated restore from verified NexusOS backup artifacts through the existing proposal/confirm worker pipeline (risk `high`, input limited to `backup_id`).
+- Added a worker-side restore adapter: verified safety backup of the live database first (rollback guarantee), server-side source resolution (local verified backup or encrypted off-host artifact), staged SHA-256 plus `PRAGMA integrity_check` re-verification before replacement, restore marker and audit row recorded inside the staged database, atomic `os.replace` swap, stale WAL/SHM/journal cleanup, and rollback to the safety backup on swap failure.
+- Added `decrypt_file()` to the backup-replication module for bounded, authenticated AES-256-GCM chunk decryption that returns the plaintext SHA-256 digest for cross-checking against trusted backup metadata.
+- Added migration `0010_restore` with `backup_records.restored_at`.
+- Added the Restore section to the Maintenance workspace with a high-risk confirmation modal, job progress, and success/failure states; successful restore requires an API/worker restart, surfaced in the UI and API result.
+- Added backend tests for local and encrypted restore, digest tampering, source resolution, safety-backup failure, ownership, and the proposal pipeline.
+
 ### Milestone 11 (part 1) notification channels
 
 - Added outbound-only notification channel delivery: bounded SMTP email and ntfy-compatible HTTPS push with timeouts, truncated payloads, and no inbound listeners.

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.db.models import BackupRecord
 from app.modules.host_actions.backups import create_backup, verify_backup
+from app.modules.host_actions.restore import RestoreError, restore_backup
 from app.modules.backup_replication.replicator import queue_replication
 
 
@@ -46,4 +47,13 @@ def execute_action(
         if result != "ok":
             raise ValueError("database_integrity_failed")
         return {"status": "ok", "integrity_result": "ok"}
+    if action_key == "maintenance.restore_backup":
+        backup_id = action_input.get("backup_id")
+        record = db.get(BackupRecord, backup_id)
+        if record is None or record.user_id != user_id:
+            raise ValueError("backup_not_found")
+        try:
+            return restore_backup(data_dir, database_url, record, db, operation_id=operation_id, replication_destination=replication_destination, encryption_key=encryption_key)
+        except RestoreError as exc:
+            raise ValueError(str(exc)) from exc
     raise ValueError("action_not_allowed")

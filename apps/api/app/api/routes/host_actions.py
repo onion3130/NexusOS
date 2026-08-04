@@ -26,7 +26,7 @@ def _proposal(item: HostActionProposal) -> ActionProposalResponse:
 
 
 def _backup(item: BackupRecord) -> BackupResponse:
-    return BackupResponse(id=item.id, relative_path=item.relative_path, size_bytes=item.size_bytes, sha256=item.sha256, status=item.status, integrity_result=item.integrity_result, created_at=item.created_at, verified_at=item.verified_at, encryption_status=item.encryption_status, encrypted_size_bytes=item.encrypted_size_bytes, replication_status=item.replication_status, replicated_at=item.replicated_at, replication_error_code=item.replication_error_code)
+    return BackupResponse(id=item.id, relative_path=item.relative_path, size_bytes=item.size_bytes, sha256=item.sha256, status=item.status, integrity_result=item.integrity_result, created_at=item.created_at, verified_at=item.verified_at, encryption_status=item.encryption_status, encrypted_size_bytes=item.encrypted_size_bytes, replication_status=item.replication_status, replicated_at=item.replicated_at, replication_error_code=item.replication_error_code, restored_at=item.restored_at)
 
 
 def _job(item: Job) -> JobResponse:

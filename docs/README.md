@@ -28,6 +28,7 @@ This directory contains the detailed design, setup, development, deployment, sec
 - [Milestone 9 workspace views](ROADMAP.md#milestone-9-complete--files-projects-git-and-docker-views) — read-only Files, Projects, Git, and Docker scope
 - [Milestone 10 deployment hardening](ROADMAP.md#milestone-10-deployment-hardening) — hardened LAN proxy, systemd, encrypted replication, and recovery gate
 - [Milestone 11 notification channels](ROADMAP.md#milestone-11-part-1-complete--outbound-notification-channels) — outbound email and push delivery for reminders
+- [Milestone 12 restore and recovery](ROADMAP.md#milestone-12-complete--restore-and-recovery-automation) — confirmation-gated restore from verified local and encrypted off-host backups
 
 ## Community
 

@@ -1,7 +1,7 @@
 # NexusOS roadmap
 
-**Current milestone:** Milestone 11 — integrations and plugins (outbound notification channels)
-**Next milestone:** Milestone 12 — calendar, media, finance, and plugin boundary
+**Current milestone:** Milestone 12 — restore and recovery automation
+**Next milestone:** Milestone 11 (part 2) — calendar, media, finance, and plugin boundary
 **Last updated:** 2026-08-04
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
@@ -25,7 +25,8 @@ Milestone 6 is implemented within its approved scope. NexusOS now has an authent
 | 8. Safe host actions | Complete | Confirmation-gated maintenance actions, audit events, verified SQLite backups, and recovery documentation |
 | 9. Files, projects, Git, Docker views | Complete | Approved roots, repository/project metadata, sanitized Docker read operations |
 | 10. Deployment hardening | Complete | Hardened LAN proxy, systemd startup, encrypted replication, resource limits, and recovery gate |
-| 11. Integrations and plugins | In progress | Outbound email and push notification channels implemented; calendar/media/finance ports and out-of-process plugin boundary remain |
+| 11. Integrations and plugins | Part 1 complete | Outbound email and push notification channels implemented; calendar/media/finance ports and out-of-process plugin boundary remain (part 2) |
+| 12. Restore and recovery automation | Complete | Confirmation-gated restore from verified local and encrypted off-host backup artifacts with safety backup, staging, digest/integrity verification, and atomic swap |
 
 ## Milestone 6 complete — tasks, reminders, and notifications
 
@@ -134,6 +135,24 @@ Known limitations:
 - The current adapter targets an operator-mounted destination directory; object-storage providers remain future integrations.
 - Restore remains an operator-controlled procedure and requires a real Pi restore drill.
 - Certificate trust installation, Docker image builds, cold-boot behavior, retention, key rotation, and production monitoring require target-environment validation.
+
+## Milestone 12 complete — restore and recovery automation
+
+Implemented:
+
+- Reversible Alembic migration `0010_restore` adding `backup_records.restored_at`.
+- A new `maintenance.restore_backup` catalogued action (risk `high`) accepting only a `backup_id`; server-side resolution of the restore source never accepts client paths.
+- `decrypt_file()` in the backup-replication module: authenticated bounded AES-GCM chunk decryption that validates framing and returns the plaintext SHA-256 digest for cross-checking against trusted backup metadata.
+- A worker-side restore adapter that first creates a verified safety backup of the live database (rollback guarantee), stages the restore source (local verified backup, or decrypted off-host artifact), re-verifies SHA-256 plus `PRAGMA integrity_check` before anything is replaced, records a restore marker and restore audit row inside the staged database, swaps atomically with `os.replace`, cleans stale WAL/SHM/journal sidecars, and fails safe back to the safety backup.
+- Restore runs only in the worker after the standard propose → confirm flow; the assistant cannot trigger it and completion is audited.
+- The Maintenance workspace lists verified backups with a Restore action behind a high-risk confirmation modal (path, size, hash, dates, restart warning) with job progress and success/failure states.
+- Backend tests covering local restore, encrypted-artifact restore, digest tampering, source resolution, safety-backup failure, ownership, and the proposal/confirmation pipeline.
+
+Known limitations:
+
+- A restore replaces the live database and requires an API/worker restart afterward; the UI and API surface this requirement explicitly.
+- Restoring an encrypted artifact requires `BACKUP_REPLICATION_DESTINATION` and `BACKUP_REPLICATION_KEY` to be configured on the restoring host.
+- Restore drills on the target Raspberry Pi remain required operational validation.
 
 ## Milestone 11 — integrations and plugins
 

@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-ActionKey = Literal["maintenance.create_backup", "maintenance.verify_backup", "maintenance.integrity_check"]
+ActionKey = Literal["maintenance.create_backup", "maintenance.verify_backup", "maintenance.integrity_check", "maintenance.restore_backup"]
 ProposalStatus = Literal["proposed", "confirmed", "queued", "processing", "succeeded", "failed", "rejected", "expired"]
 RiskLevel = Literal["low", "medium", "high"]
 
@@ -61,6 +61,7 @@ class BackupResponse(BaseModel):
     replication_status: str | None = None
     replicated_at: datetime | None = None
     replication_error_code: str | None = None
+    restored_at: datetime | None = None
 
 
 class JobResponse(BaseModel):

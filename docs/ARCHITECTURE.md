@@ -1,6 +1,6 @@
 # NexusOS architecture
 
-**Current milestone:** Milestone 11 — integrations and plugins
+**Current milestone:** Milestone 12 — restore and recovery automation
 **Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-04
 
@@ -12,10 +12,10 @@ NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an exte
 - `apps/api/app/modules/tasks`: task service, schemas, recurrence calculator, and reminder dispatcher.
 - `apps/api/app/modules/notifications`: channel settings, outbound email/push adapters, enqueue/resend service, and bounded delivery worker.
 - `apps/api/app/modules/notes`: canonical notes, SQLite FTS5 search, deterministic chunks, and source-aware retrieval.
-- `apps/api/app/modules/host_actions`: typed action catalog, proposal lifecycle, SQLite backups, fixed executor, and worker processing.
+- `apps/api/app/modules/host_actions`: typed action catalog, proposal lifecycle, SQLite backups, confirmation-gated restore, fixed executor, and worker processing.
 - `apps/api/app/worker.py`: dedicated bounded SQLite reminder, confirmed host-action, replication, and notification-delivery worker.
 - `apps/api/app/db`: SQLAlchemy engine/session and all persisted models.
-- `apps/api/migrations`: explicit Alembic migration history through `0009_notification_channels`.
+- `apps/api/migrations`: explicit Alembic migration history through `0010_restore`.
 - `apps/web`: authenticated Next.js shell with overview, assistant, tasks, notifications, and notification settings.
 - `docker-compose.yml`: ARM64 development topology with API, web, and real worker services; proxy and optional AI remain placeholders.
 
@@ -36,7 +36,7 @@ FastAPI
   └── notifications service -> channel settings -> email (SMTP) / push (ntfy) outbound adapters
 
 Dedicated worker -> SQLite reminder claims -> notifications -> enqueued channel deliveries
-Dedicated worker -> confirmed host-action claims -> verified backup/integrity results
+Dedicated worker -> confirmed host-action claims -> verified backup/integrity/restore results
 Dedicated worker -> encrypted backup replication claims with leases/retries
 Dedicated worker -> outbound channel delivery claims with leases/retries -> email/push
 
@@ -72,7 +72,9 @@ The notifications module is outbound-only. The reminder worker enqueues one `not
 
 Host operations are represented as typed, expiring proposals. Creating a proposal is inert. An authenticated user with `system.host_actions` must explicitly confirm it, after which one durable job is queued. The worker claims the job and invokes only a server-owned adapter. Proposal, confirmation, rejection, success, and failure transitions are audit events.
 
-The current catalog provides database backup creation, backup verification, and SQLite integrity checking. Backups use Python's SQLite online backup API, fixed `DATA_DIR/backups` storage, SHA-256 metadata, and integrity checks. Optional replication uses bounded AES-256-GCM chunks and an operator-mounted destination adapter. Restore, reboot, shutdown, systemd control, package management, Docker control, and arbitrary commands remain excluded from the assistant and browser.
+The current catalog provides database backup creation, backup verification, SQLite integrity checking, and database restore. Backups use Python's SQLite online backup API, fixed `DATA_DIR/backups` storage, SHA-256 metadata, and integrity checks. Optional replication uses bounded AES-256-GCM chunks and an operator-mounted destination adapter; `decrypt_file()` authenticates each chunk in memory-bounded reads and returns the plaintext digest for cross-verification.
+
+Restore is the highest-risk catalogued action and runs only in the worker after the standard propose → confirm flow. The worker first creates a verified safety backup of the live database (rollback guarantee), stages the source (a local verified backup, or a decrypted off-host artifact when the replication key is configured), re-verifies SHA-256 and SQLite integrity before anything is replaced, records a restore marker and audit row inside the staged database, swaps it in atomically, and cleans stale sidecars. A successful restore requires an API/worker restart. Reboot, shutdown, systemd control, package management, Docker control, and arbitrary commands remain excluded from the assistant and browser.
 
 ## Assistant action architecture
 
@@ -114,7 +116,7 @@ Not implemented today:
 - External document ingestion and file sources
 - Privileged host actions and service/container control
 - File contents, project execution, Git mutations, and Docker control
-- Automated restore, key rotation, retention policy, production monitoring, and public-internet ingress
+- Key rotation, retention policy, production monitoring, and public-internet ingress
 - Plugin loading and package verification
 
 See [`ROADMAP.md`](ROADMAP.md) and [`DEVELOPMENT.md`](DEVELOPMENT.md).

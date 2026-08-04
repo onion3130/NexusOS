@@ -93,6 +93,70 @@ def encrypt_file(source: Path, destination: Path, raw_key: str) -> tuple[int, st
     return total, digest.hexdigest()
 
 
+def decrypt_file(source: Path, destination: Path, raw_key: str) -> tuple[int, str]:
+    """Authenticate and decrypt one artifact to a staging file in bounded chunks.
+
+    Every chunk is authenticated before any plaintext is written, and the file
+    framing (plaintext size, chunk count) is validated after the last chunk so
+    truncation or tampering is always detected. Returns the plaintext size and
+    its SHA-256 digest for the caller's own verification against trusted
+    backup metadata.
+    """
+    key = _key_bytes(raw_key)
+    AESGCM = _cryptography_backend()
+    cipher = AESGCM(key)
+    total = 0
+    digest = hashlib.sha256()
+    destination.parent.mkdir(mode=0o750, parents=True, exist_ok=True)
+    try:
+        with source.open("rb") as stream, destination.open("wb") as output:
+            if stream.read(len(MAGIC)) != MAGIC:
+                raise EncryptionError("encrypted_backup_invalid")
+            header_size_bytes = stream.read(8)
+            chunk_count_bytes = stream.read(4)
+            if len(header_size_bytes) != 8 or len(chunk_count_bytes) != 4:
+                raise EncryptionError("encrypted_backup_invalid")
+            header_size = int.from_bytes(header_size_bytes, "big")
+            expected_chunks = int.from_bytes(chunk_count_bytes, "big")
+            if header_size < 0 or expected_chunks != ((header_size + CHUNK_SIZE - 1) // CHUNK_SIZE):
+                raise EncryptionError("encrypted_backup_invalid")
+            index = 0
+            while True:
+                size_bytes = stream.read(4)
+                if not size_bytes:
+                    break
+                if len(size_bytes) != 4:
+                    raise EncryptionError("encrypted_backup_invalid")
+                size = int.from_bytes(size_bytes, "big")
+                if not 0 < size <= CHUNK_SIZE:
+                    raise EncryptionError("encrypted_backup_invalid")
+                nonce = stream.read(NONCE_SIZE)
+                ciphertext = stream.read(size + TAG_SIZE)
+                if len(nonce) != NONCE_SIZE or len(ciphertext) != size + TAG_SIZE:
+                    raise EncryptionError("encrypted_backup_invalid")
+                try:
+                    plaintext = cipher.decrypt(nonce, ciphertext, _associated_data(index, size, header_size, expected_chunks))
+                except Exception as exc:
+                    raise EncryptionError("encrypted_backup_invalid") from exc
+                if len(plaintext) != size:
+                    raise EncryptionError("encrypted_backup_invalid")
+                output.write(plaintext)
+                digest.update(plaintext)
+                total += size
+                index += 1
+            if index != expected_chunks or total != header_size:
+                raise EncryptionError("encrypted_backup_invalid")
+            output.flush()
+            os.fsync(output.fileno())
+    except EncryptionError:
+        destination.unlink(missing_ok=True)
+        raise
+    except (OSError, ValueError) as exc:
+        destination.unlink(missing_ok=True)
+        raise EncryptionError("encrypted_backup_invalid") from exc
+    return total, digest.hexdigest()
+
+
 def verify_file(path: Path, raw_key: str) -> tuple[int, str]:
     """Authenticate every encrypted chunk without writing decrypted data."""
     key = _key_bytes(raw_key)

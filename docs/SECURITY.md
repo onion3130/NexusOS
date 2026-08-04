@@ -1,6 +1,6 @@
 # NexusOS security baseline
 
-**Status:** Milestone 10 deployment hardening is implemented as an opt-in LAN profile alongside the v1.0 safe host actions, encrypted backup replication, audit, notes, search, retrieval, tasks, reminders, notifications, and assistant controls; public-internet deployment remains out of scope.
+**Status:** Milestone 10 deployment hardening is implemented as an opt-in LAN profile alongside the v1.0 safe host actions, encrypted backup replication, confirmation-gated restore, audit, notes, search, retrieval, tasks, reminders, notifications, and assistant controls; public-internet deployment remains out of scope.
 **Last updated:** 2026-08-03
 
 ## Runtime boundaries
@@ -49,7 +49,8 @@
 - Worker jobs are durable, bounded, claimable, and audited at proposal, confirmation, rejection, success, and failure transitions.
 - Backup files are created only beneath `DATA_DIR/backups`; clients cannot supply a path or filename.
 - Backup metadata includes a SHA-256 digest and SQLite `integrity_check` result. When configured, off-host artifacts use bounded AES-256-GCM chunks with unique nonces and authenticated sequence/size metadata; backup contents and encryption keys are never returned by the API.
-- Restore through the API/assistant, backup deletion, retention cleanup, and public object-storage upload are not enabled. Directory replication is operator-mounted, opt-in, encrypted, and never accepts a client-selected destination.
+- Restore is enabled only through the same proposal/confirmation pipeline and runs solely in the worker. The source must be an owned backup with `status == "verified"`; the worker creates a verified safety backup of the live database first, stages the source (decrypting off-host artifacts in bounded authenticated chunks), re-verifies SHA-256 and `integrity_check` before replacing anything, and swaps atomically with rollback to the safety backup on failure. Client input is limited to `backup_id`; no paths, commands, or destinations are accepted. A successful restore requires an API/worker restart, which the API and UI surface explicitly.
+- Backup deletion, retention cleanup, and public object-storage upload are not enabled. Directory replication is operator-mounted, opt-in, encrypted, and never accepts a client-selected destination.
 - The worker remains non-root with no published port, no Docker socket, and no privileged host mount.
 
 ## Input and data safety
@@ -75,7 +76,7 @@
 
 - Idempotency keys cover task, reminder, category, tag, notification, and assistant approval mutations; callers must reuse the same key when retrying a request, and payload mismatches are rejected.
 - Standard error envelopes and request IDs remain future hardening.
-- Automated restore, retention cleanup, key rotation, backup-before-migration orchestration, production monitoring, and image pinning remain deployment work. The hardened profile supplies opt-in TLS, systemd startup, resource limits, and encrypted directory replication.
+- Retention cleanup, key rotation, backup-before-migration orchestration, production monitoring, and image pinning remain deployment work. The hardened profile supplies opt-in TLS, systemd startup, resource limits, and encrypted directory replication.
 
 ## Change checklist
 
