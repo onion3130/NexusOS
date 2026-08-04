@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.db.models import BackupRecord
 from app.modules.host_actions.backups import create_backup, verify_backup
+from app.modules.backup_replication.replicator import queue_replication
 
 
 def execute_action(
@@ -20,13 +21,17 @@ def execute_action(
     user_id: str,
     db: OrmSession,
     operation_id: str | None = None,
+    replication_destination: Path | None = None,
+    encryption_key: str | None = None,
 ) -> dict[str, object]:
     """Execute one catalogued operation using fixed Python/SQLite APIs."""
     if action_key == "maintenance.create_backup":
         record = create_backup(data_dir, database_url, user_id, db, operation_id=operation_id)
         if record.status != "verified":
             raise ValueError("backup_verification_failed")
-        return {"backup_id": record.id, "status": record.status, "relative_path": record.relative_path}
+        if replication_destination is not None and encryption_key:
+            queue_replication(db, record)
+        return {"backup_id": record.id, "status": record.status, "relative_path": record.relative_path, "replication_status": record.replication_status}
     if action_key == "maintenance.verify_backup":
         backup_id = action_input.get("backup_id")
         record = db.get(BackupRecord, backup_id)

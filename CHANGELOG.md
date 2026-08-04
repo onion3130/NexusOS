@@ -4,6 +4,13 @@ All notable NexusOS changes are recorded here. Version `1.0.0` is a private, loc
 
 ## [Unreleased]
 
+### Milestone 10 deployment hardening
+
+- Added an opt-in ARM64 hardened Compose overlay with Caddy internal TLS, private upstream routing, direct API/web port removal, and bounded resources.
+- Added Raspberry Pi systemd startup/shutdown orchestration with SSD mount dependency and upgrade/rollback guidance.
+- Added optional AES-256-GCM chunk encryption and operator-mounted off-host backup replication with durable leases, retries, atomic writes, and tamper detection.
+- Added migration `0008_deployment_hardening`, deployment status API, Maintenance replication status, and security-focused tests.
+
 ### Milestone 9 workspace views
 
 - Added authenticated read-only Files, Projects, Git, and Docker metadata workspaces.

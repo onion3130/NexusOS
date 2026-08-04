@@ -24,8 +24,11 @@
 | `TASK_WORKER_BATCH_SIZE` | optional | `50` | no | Reminder batch size, 1–200 |
 | `WORKSPACE_ROOTS` | optional | empty | no | Approved absolute roots or paths relative to `DATA_DIR` for read-only Files, Projects, and Git views |
 | `DOCKER_SOCKET_PATH` | optional | empty | no | Optional Docker Unix socket path; disabled unless explicitly configured and mounted |
+| `BACKUP_REPLICATION_HOST_PATH` | optional | empty | no | Hardened Compose host path mounted as the replication destination |
+| `BACKUP_REPLICATION_DESTINATION` | optional | empty | no | Absolute runtime destination for encrypted backup artifacts; hardened Compose sets `/var/lib/nexus/replication` |
+| `BACKUP_ENCRYPTION_KEY` | conditional | empty | yes | 64-character hexadecimal AES-256 key; required with replication destination |
 
-The v1.0 release uses the existing bounded worker and SQLite data volume for fixed backup/integrity actions. Milestone 9 adds optional `WORKSPACE_ROOTS` and `DOCKER_SOCKET_PATH` settings for read-only workspace views; Docker inspection is disabled when `DOCKER_SOCKET_PATH` is empty. Neither setting grants browser access or introduces a new secret, but a Docker socket remains a powerful host-control boundary. Backups are stored beneath `DATA_DIR/backups` and must still be replicated off-host for production recovery.
+Milestone 10 adds optional encrypted backup replication through the bounded worker. Replication activates only when both `BACKUP_REPLICATION_DESTINATION` and `BACKUP_ENCRYPTION_KEY` are configured; the destination must be outside `DATA_DIR`. In the hardened Compose profile, set `BACKUP_REPLICATION_HOST_PATH` to a host-mounted off-host/NFS destination and let the overlay provide the container destination. The key is never returned or logged. The v1.0 release uses the existing bounded worker and SQLite data volume for fixed backup/integrity actions. Milestones 9 and 10 add optional workspace-view and encrypted-replication settings. Docker inspection is disabled when `DOCKER_SOCKET_PATH` is empty. Neither workspace setting grants browser access or introduces a new secret, but a Docker socket remains a powerful host-control boundary. Backups are stored beneath `DATA_DIR/backups`; configure the Milestone 10 destination and key pair for encrypted off-host replication.
 
 ## Rules
 

@@ -70,6 +70,8 @@ def process_host_actions(
     *,
     data_dir,
     database_url: str,
+    replication_destination=None,
+    encryption_key: str | None = None,
     now: datetime | None = None,
     batch_size: int = 10,
 ) -> int:
@@ -145,6 +147,8 @@ def process_host_actions(
                 user_id=proposal.user_id,
                 db=db,
                 operation_id=job.id,
+                replication_destination=replication_destination,
+                encryption_key=encryption_key,
             )
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             result = None

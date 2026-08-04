@@ -1,0 +1,23 @@
+[Unit]
+Description=NexusOS hardened Docker Compose stack
+Requires=docker.service
+After=docker.service
+RequiresMountsFor=/var/lib/nexus/data
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=nexus
+Group=nexus
+WorkingDirectory=/opt/nexusos
+EnvironmentFile=/opt/nexusos/.env
+ExecStart=/usr/bin/docker compose --env-file /opt/nexusos/.env -f docker-compose.yml -f infrastructure/compose/hardened.yml --profile hardened up
+ExecStop=/usr/bin/docker compose --env-file /opt/nexusos/.env -f docker-compose.yml -f infrastructure/compose/hardened.yml --profile hardened down
+Restart=on-failure
+RestartSec=15
+TimeoutStartSec=600
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

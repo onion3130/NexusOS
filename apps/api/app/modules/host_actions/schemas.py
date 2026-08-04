@@ -56,6 +56,11 @@ class BackupResponse(BaseModel):
     integrity_result: str | None
     created_at: datetime
     verified_at: datetime | None
+    encryption_status: str | None = None
+    encrypted_size_bytes: int | None = None
+    replication_status: str | None = None
+    replicated_at: datetime | None = None
+    replication_error_code: str | None = None
 
 
 class JobResponse(BaseModel):

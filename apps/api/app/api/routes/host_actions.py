@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings, get_settings
 from app.db.models import AuditEvent, BackupRecord, HostActionProposal, Job
-from app.db.session import get_db
+from app.db.session import CURRENT_MIGRATION_HEAD, get_db
 from app.modules.host_actions.catalog import catalog, get_action
 from app.modules.host_actions.schemas import ActionCatalogItem, ActionProposalCreate, ActionProposalResponse, AuditEventResponse, AuditListResponse, BackupResponse, JobResponse
 from app.modules.host_actions.service import confirm_proposal, create_proposal, get_proposal, list_audit_events, list_backups, reject_proposal
@@ -26,7 +26,7 @@ def _proposal(item: HostActionProposal) -> ActionProposalResponse:
 
 
 def _backup(item: BackupRecord) -> BackupResponse:
-    return BackupResponse(id=item.id, relative_path=item.relative_path, size_bytes=item.size_bytes, sha256=item.sha256, status=item.status, integrity_result=item.integrity_result, created_at=item.created_at, verified_at=item.verified_at)
+    return BackupResponse(id=item.id, relative_path=item.relative_path, size_bytes=item.size_bytes, sha256=item.sha256, status=item.status, integrity_result=item.integrity_result, created_at=item.created_at, verified_at=item.verified_at, encryption_status=item.encryption_status, encrypted_size_bytes=item.encrypted_size_bytes, replication_status=item.replication_status, replicated_at=item.replicated_at, replication_error_code=item.replication_error_code)
 
 
 def _job(item: Job) -> JobResponse:
@@ -105,6 +105,13 @@ def job(job_id: str, db: OrmSession = Depends(get_db), context: AuthContext = De
     if item is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return _job(item)
+
+
+@router.get("/deployment")
+def deployment_status(settings: Settings = Depends(get_settings), context: AuthContext = Depends(get_auth_context)) -> dict[str, object]:
+    """Expose bounded operational status without secrets or host paths."""
+    require_permission("system.backups.read", context)
+    return {"replication_configured": settings.backup_replication_destination is not None and settings.backup_encryption_key is not None, "tls_expected": settings.nexus_env == "production", "migration_head": CURRENT_MIGRATION_HEAD}
 
 
 @router.get("/audit", response_model=AuditListResponse)

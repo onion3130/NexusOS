@@ -1,6 +1,6 @@
 # NexusOS security baseline
 
-**Status:** Milestone 9 workspace-view controls are implemented alongside the v1.0 safe host actions, backups, audit, notes, search, retrieval, tasks, reminders, notifications, and assistant controls; public-internet deployment hardening remains deferred.
+**Status:** Milestone 10 deployment hardening is implemented as an opt-in LAN profile alongside the v1.0 safe host actions, encrypted backup replication, audit, notes, search, retrieval, tasks, reminders, notifications, and assistant controls; public-internet deployment remains out of scope.
 **Last updated:** 2026-08-03
 
 ## Runtime boundaries
@@ -48,8 +48,8 @@
 - Proposals expire after ten minutes, are user-scoped, and use idempotency keys to prevent duplicate queues.
 - Worker jobs are durable, bounded, claimable, and audited at proposal, confirmation, rejection, success, and failure transitions.
 - Backup files are created only beneath `DATA_DIR/backups`; clients cannot supply a path or filename.
-- Backup metadata includes a SHA-256 digest and SQLite `integrity_check` result. Backup contents are never returned by the API.
-- Restore through the API/assistant, backup deletion, retention cleanup, encrypted replication, and off-host upload are not enabled.
+- Backup metadata includes a SHA-256 digest and SQLite `integrity_check` result. When configured, off-host artifacts use bounded AES-256-GCM chunks with unique nonces and authenticated sequence/size metadata; backup contents and encryption keys are never returned by the API.
+- Restore through the API/assistant, backup deletion, retention cleanup, and public object-storage upload are not enabled. Directory replication is operator-mounted, opt-in, encrypted, and never accepts a client-selected destination.
 - The worker remains non-root with no published port, no Docker socket, and no privileged host mount.
 
 ## Input and data safety
@@ -68,14 +68,14 @@
 - Sessions are tracked, rotated, revocable, and protected by CSRF for cookies.
 - Production cookies must be Secure and HttpOnly.
 - The worker and API run as non-root ARM64 containers on a private network.
-- Ports remain loopback-only in the development topology.
+- Ports remain loopback-only in the development topology. The hardened profile publishes only the Caddy proxy, uses a read-only proxy filesystem with minimal capabilities, and requires a private hostname plus trusted internal certificate policy.
 - The external SSD is primary storage, not the only backup.
 
 ## Remaining hardening
 
 - Idempotency keys cover task, reminder, category, tag, notification, and assistant approval mutations; callers must reuse the same key when retrying a request, and payload mismatches are rejected.
 - Standard error envelopes and request IDs remain future hardening.
-- Automated restore, encrypted/off-host backup replication, retention cleanup, backup-before-migration orchestration, TLS, systemd, resource limits, monitoring, and image pinning remain deployment work.
+- Automated restore, retention cleanup, key rotation, backup-before-migration orchestration, production monitoring, and image pinning remain deployment work. The hardened profile supplies opt-in TLS, systemd startup, resource limits, and encrypted directory replication.
 
 ## Change checklist
 
@@ -87,3 +87,4 @@ Before merging a feature:
 4. Define timeout, retry, lease, deduplication, and redaction behavior.
 5. Run backend tests, frontend typecheck/build, Compose validation, secret scanning, and `git diff --check`.
 6. Review the complete diff and staged file list.
+7. Treat the configured AES-256 key as unrecoverable secret material: rotate only through an explicit operator migration and retain the old key until all required artifacts are re-encrypted.

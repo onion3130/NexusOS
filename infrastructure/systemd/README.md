@@ -1,12 +1,25 @@
-# Raspberry Pi systemd skeleton
+# Raspberry Pi systemd deployment
 
-The systemd unit is intentionally deferred until the application images and SSD mount policy exist. The eventual unit must:
+`nexus.service` is the opt-in production startup unit for the hardened Compose overlay. Install it only after the repository is placed at `/opt/nexusos`, a dedicated `nexus` service account exists, and the SSD is mounted at `/var/lib/nexus/data`.
 
-- start after Docker and the external SSD mount are ready;
-- use an absolute repository path and a dedicated service account;
-- run `docker compose up -d` and stop with `docker compose down`;
-- restart on failure without masking healthcheck failures;
-- expose no credentials in unit arguments or logs;
-- have a documented upgrade, rollback, and recovery procedure.
+## Install
 
-Do not install a unit generated from this document until the deployment milestone has supplied real images, mount UUIDs, resource limits, and a tested backup/restore procedure.
+```sh
+sudo install -d -o nexus -g nexus /opt/nexusos
+sudo install -o root -g root -m 0644 infrastructure/systemd/nexus.service /etc/systemd/system/nexus.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now nexus.service
+sudo systemctl status nexus.service
+```
+
+The unit waits for Docker and uses `RequiresMountsFor=/var/lib/nexus/data`. Add the `nexus` service account to the host's `docker` group (or use an equivalent rootless Docker socket) before enabling the unit; this is an intentional host-level privilege boundary. The unit runs `docker compose up` in the foreground with `Restart=on-failure` and `RestartSec=15`; each container also keeps Compose's `restart: unless-stopped` policy, and the proxy healthcheck reports service health. Credentials remain in `/opt/nexusos/.env`, never in unit arguments or logs.
+
+## Upgrade and rollback
+
+1. Create and verify a local backup, and confirm the latest encrypted artifact is replicated if configured.
+2. Stop the unit with `sudo systemctl stop nexus.service`.
+3. Keep the previous Git revision available; update the checkout and run explicit migrations with the API image.
+4. Start the unit and verify proxy, API readiness, worker health, and the Maintenance status panel.
+5. Roll back the checkout and database only through the documented operator recovery procedure if readiness or migration validation fails.
+
+Restore is not a browser or assistant action. Preserve the existing database before any manual restore, verify the encrypted artifact with the configured key, restore through an operator-controlled offline procedure, run `PRAGMA integrity_check`, then apply migrations deliberately.

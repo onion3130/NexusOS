@@ -1,6 +1,6 @@
 # NexusOS AI system
 
-**Current milestone:** Milestone 9 — files, projects, Git, and Docker views
+**Current milestone:** Milestone 10 — deployment hardening
 **Status:** The bounded assistant gateway, conversation storage, provider normalization, read-only system/task/note/workspace-view tools, confirmation-gated task mutations, lexical search, source-aware note chunks, and confirmation-gated maintenance proposals are implemented. Embeddings, autonomous memory, semantic RAG, streaming, and privileged host control remain deferred.
 **Last updated:** 2026-08-03
 
@@ -75,6 +75,6 @@ If retrieved note text is later added to model context, it must be explicitly de
 - Semantic source-aware retrieval
 - Memory and RAG
 - Additional integrations
-- Privileged host control, restore, and backup replication
+- Privileged host control, restore, cloud/object-storage replication, and autonomous memory
 
 See [`API.md`](API.md), [`DATABASE.md`](DATABASE.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), and [`ROADMAP.md`](ROADMAP.md).

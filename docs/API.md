@@ -1,6 +1,6 @@
 # NexusOS API
 
-**Current milestone:** Milestone 9 — files, projects, Git, and Docker views
+**Current milestone:** Milestone 10 — deployment hardening
 **Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, confirmation-gated maintenance actions, verified SQLite backups, audit visibility, and read-only workspace views are implemented. Restore replication, embeddings, and streaming remain planned.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-03
@@ -154,6 +154,10 @@ Returns sanitized container names, images, states, selected ports, creation time
 
 ### Safe host-action and maintenance routes
 
+#### `GET /api/v1/system/deployment`
+
+Returns bounded authenticated operational metadata: whether encrypted replication is configured, whether production TLS is expected, and the current migration head. It never returns keys, paths, certificates, or provider details.
+
 #### `GET /api/v1/system/actions`
 
 Returns the server-owned allowlist of enabled maintenance actions. The current catalog contains database backup creation, backup verification, and live database integrity checking. It never exposes arbitrary executables, filesystem paths, Docker operations, reboot, shutdown, package management, or systemd controls.
@@ -192,7 +196,7 @@ Returns the current user's bounded host-action proposal, confirmation, rejection
 - Cookie-authenticated mutations require CSRF validation.
 - CORS allows `PATCH` in addition to existing methods.
 - Database migrations are explicit; startup never mutates schema.
-- Readiness verifies the current Alembic head `0007_workspace_views` and the notes FTS5 table.
+- Readiness verifies the current Alembic head `0008_deployment_hardening` and the notes FTS5 table.
 - Notifications are persistent in-app records only.
 - No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, or provider URLs from a client.
 - Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf.

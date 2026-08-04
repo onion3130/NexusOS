@@ -1,0 +1,18 @@
+# NexusOS hardened LAN proxy.
+# Set NEXUS_HOST to a private DNS name or host name reachable by LAN clients.
+# The internal issuer avoids public ACME dependencies; install Caddy's local
+# root certificate on trusted LAN clients as documented in DEPLOYMENT.md.
+{$NEXUS_HOST} {
+    tls internal
+    handle /healthz {
+        respond 200 "ok"
+    }
+    encode gzip
+    reverse_proxy nexus-web:3000
+    header {
+        Strict-Transport-Security "max-age=31536000"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "same-origin"
+    }
+}

@@ -44,11 +44,11 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 | Item | Status |
 | --- | --- |
-| **Current milestone** | Milestone 9 — Files, projects, Git, and Docker views ✅ |
+| **Current milestone** | Milestone 10 — Deployment hardening ✅ |
 | **Current version** | `1.0.0` — local-first release |
-| **Next milestone** | Milestone 10 — Deployment hardening |
+| **Next milestone** | Milestone 11 — Integrations and plugins |
 
-NexusOS v1.0 is ready for private, local-first Raspberry Pi use. Public internet exposure, off-host encrypted replication, restore drills, and reverse-proxy TLS remain explicitly outside this release. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
+NexusOS v1.0 is ready for private, local-first Raspberry Pi use. Milestone 10 adds an opt-in hardened LAN deployment with internal TLS, systemd startup, encrypted replication, and recovery procedures; target-Pi builds and restore drills remain required operational validation. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
 
 ## Technology stack
 

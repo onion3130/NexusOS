@@ -1,7 +1,7 @@
 # NexusOS development
 
-**Current milestone:** Milestone 9 — files, projects, Git, and Docker views
-**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, confirmation-gated host maintenance, and read-only workspace views are implemented. Restore replication, memory, RAG, and privileged host control remain deferred.
+**Current milestone:** Milestone 10 — deployment hardening
+**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, confirmation-gated host maintenance, read-only workspace views, and encrypted directory replication are implemented. Restore, memory, RAG, and privileged host control remain deferred.
 **Last updated:** 2026-08-03
 
 Read this document with [`README.md`](../README.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`API.md`](API.md), [`DATABASE.md`](DATABASE.md), [`AI_SYSTEM.md`](AI_SYSTEM.md), [`SECURITY.md`](SECURITY.md), and [`ROADMAP.md`](ROADMAP.md) before changing code.
@@ -23,6 +23,8 @@ Backend:
 - `migrations/versions/0005_host_actions.py`: reversible host-action and backup metadata migration.
 - `migrations/versions/0006_v1_hardening.py`: worker claim indexes for bounded SQLite scheduling.
 - `migrations/versions/0007_workspace_views.py`: dedicated read-only workspace permission.
+- `migrations/versions/0008_deployment_hardening.py`: encrypted/off-host backup metadata.
+- `app/modules/backup_replication/`: bounded AES-GCM encryption and destination adapter.
 - `app/modules/workspace_views/`: approved-root Files, Projects, Git, and optional Docker adapters.
 - `app/api/routes/workspace_views.py`: authenticated read-only workspace routes.
 - `tests/test_workspace_views.py`: adapter, permission, authentication, and redaction coverage.
@@ -56,11 +58,12 @@ cd apps/api
 python -m pip install -e '.[test]'
 python -m pytest
 python -m py_compile $(find app migrations tests -name '*.py' -print)
+python -c "import cryptography; print(cryptography.__version__)"
 python -m alembic heads
-python -m alembic check
+python -m alembic check  # may report pre-existing SQLite FTS5/legacy-index model drift; upgrade and migration tests remain authoritative
 ```
 
-The current expected migration head is `0007_workspace_views`. The readiness check also requires the SQLite FTS5 notes index.
+The current expected migration head is `0008_deployment_hardening`. The readiness check also requires the SQLite FTS5 notes index.
 
 ## Frontend validation
 
@@ -118,7 +121,7 @@ The API, web, and worker target `linux/arm64`, use non-root runtime users, share
 - Cookie mutations require CSRF.
 - Assistant task writes require permissions, typed validation, expiry, explicit approval, and audit events.
 - Task deletion is soft deletion.
-- No provider key, token, arbitrary command, filesystem path, Docker socket, privileged host operation, or SQL reaches the browser or task/host-action service.
+- No provider key, token, backup encryption key, arbitrary command, filesystem path, Docker socket, privileged host operation, or SQL reaches the browser or task/host-action service.
 - Host actions are proposed, explicitly confirmed, queued, fixed-adapter executed, and audited; backups remain on the configured data volume.
 - Workspace views use server-configured roots, bounded adapters, sanitized output, and no browser-controlled paths or commands.
 

@@ -95,6 +95,21 @@ def validate(values: dict[str, str]) -> list[str]:
             "SESSION_COOKIE_SECURE=true is required when NEXUS_ENV=production"
         )
 
+    replication_destination = values.get("BACKUP_REPLICATION_DESTINATION", "").strip()
+    replication_key = values.get("BACKUP_ENCRYPTION_KEY", "").strip()
+    if bool(replication_destination) != bool(replication_key):
+        errors.append("BACKUP_REPLICATION_DESTINATION and BACKUP_ENCRYPTION_KEY must be configured together")
+    if replication_destination:
+        if not Path(replication_destination).is_absolute():
+            errors.append("BACKUP_REPLICATION_DESTINATION must be an absolute path")
+    if replication_key:
+        try:
+            bytes.fromhex(replication_key)
+            if len(replication_key) != 64:
+                raise ValueError
+        except ValueError:
+            errors.append("BACKUP_ENCRYPTION_KEY must be a 64-character hexadecimal AES-256 key")
+
     if provider not in {"", "disabled", "none", "local"}:
         provider_key = {
             "nvidia": "NVIDIA_API_KEY",

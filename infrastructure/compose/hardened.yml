@@ -1,0 +1,68 @@
+# NexusOS hardened Raspberry Pi profile.
+# Use with:
+# docker compose --env-file .env -f docker-compose.yml -f infrastructure/compose/hardened.yml --profile hardened up -d
+
+services:
+  nexus-api:
+    ports: !reset []
+    volumes:
+      - "${BACKUP_REPLICATION_HOST_PATH:?Set BACKUP_REPLICATION_HOST_PATH to an off-host/removable mount}:/var/lib/nexus/replication"
+    environment:
+      NEXUS_ENV: production
+      SESSION_COOKIE_SECURE: "true"
+      BACKUP_REPLICATION_DESTINATION: /var/lib/nexus/replication
+    mem_limit: 512m
+    cpus: 1.00
+
+  nexus-web:
+    ports: !reset []
+    mem_limit: 512m
+    cpus: 1.00
+
+  nexus-worker:
+    volumes:
+      - "${BACKUP_REPLICATION_HOST_PATH:?Set BACKUP_REPLICATION_HOST_PATH to an off-host/removable mount}:/var/lib/nexus/replication"
+    environment:
+      BACKUP_REPLICATION_DESTINATION: /var/lib/nexus/replication
+    mem_limit: 256m
+    cpus: 0.50
+
+  nexus-proxy:
+    profiles: ["hardened"]
+    image: caddy:2.11-alpine
+    platform: linux/arm64
+    read_only: true
+    cap_drop: ["ALL"]
+    cap_add: ["NET_BIND_SERVICE"]
+    environment:
+      NEXUS_HOST: ${NEXUS_HOST:?Set NEXUS_HOST to a private LAN hostname}
+      XDG_DATA_HOME: /data
+      XDG_CONFIG_HOME: /config
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - type: tmpfs
+        target: /tmp
+    networks:
+      - nexus-private
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+    depends_on:
+      nexus-web:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.25
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider --no-check-certificate https://127.0.0.1/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  caddy_data:
+  caddy_config:

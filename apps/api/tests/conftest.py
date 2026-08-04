@@ -29,6 +29,8 @@ def configured_app(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         "SESSION_COOKIE_SECURE": "false",
         "CORS_ORIGINS": "http://localhost:3000",
         "AI_PROVIDER": "disabled",
+        "BACKUP_REPLICATION_DESTINATION": "",
+        "BACKUP_ENCRYPTION_KEY": "",
     }
     for key, value in values.items():
         monkeypatch.setenv(key, value)

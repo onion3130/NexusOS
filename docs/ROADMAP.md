@@ -1,7 +1,7 @@
 # NexusOS roadmap
 
-**Current milestone:** Milestone 9 — files, projects, Git, and Docker views
-**Next milestone:** Milestone 10 — deployment hardening
+**Current milestone:** Milestone 10 — deployment hardening
+**Next milestone:** Milestone 11 — integrations and plugins
 **Last updated:** 2026-08-03
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
@@ -24,7 +24,7 @@ Milestone 6 is implemented within its approved scope. NexusOS now has an authent
 | 7. Notes and scoped search | Complete | Notes, tags, SQLite FTS5 search, source-aware retrieval chunks, assistant read tools |
 | 8. Safe host actions | Complete | Confirmation-gated maintenance actions, audit events, verified SQLite backups, and recovery documentation |
 | 9. Files, projects, Git, Docker views | Complete | Approved roots, repository/project metadata, sanitized Docker read operations |
-| 10. Deployment hardening | Planned | Reverse proxy, systemd, SSD operations, backups, restore drill |
+| 10. Deployment hardening | Complete | Hardened LAN proxy, systemd startup, encrypted replication, resource limits, and recovery gate |
 | 11. Integrations and plugins | Planned | Calendar/media/finance ports and out-of-process plugin boundary |
 
 ## Milestone 6 complete — tasks, reminders, and notifications
@@ -118,9 +118,26 @@ Known limitations:
 - Docker health/restart details are intentionally limited to metadata returned by the read-only container listing endpoint.
 - The default Compose topology does not mount the Docker socket; Docker views remain unavailable until an operator creates a separately reviewed socket boundary. A filesystem read-only mount does not limit Docker API capabilities.
 
-## Milestones 10–11 — production and expansion
+## Milestone 10 — deployment hardening
 
-Harden ARM64 deployment with reverse proxy/TLS, systemd startup, resource limits, encrypted backups, restore drills, monitoring, and rollback. Add integrations and plugins only through explicit capability and isolation boundaries.
+Implemented:
+
+- Opt-in hardened Compose overlay with ARM64 Caddy internal TLS, private upstream routing, direct API/web port removal, and bounded service resources.
+- Raspberry Pi systemd unit with Docker/SSD dependencies, startup/shutdown commands, and documented upgrade/rollback procedure.
+- Reversible migration `0008_deployment_hardening` for encrypted/off-host backup metadata.
+- Provider-neutral operator-mounted destination adapter with bounded AES-256-GCM chunk encryption, unique nonces, authenticated metadata, atomic writes, verification, leases, retries, and idempotent job keys.
+- Authenticated deployment status and Maintenance UI replication/encryption visibility.
+- Environment validation requiring the replication destination and 256-bit key as a pair; replication remains disabled by default.
+
+Known limitations:
+
+- The current adapter targets an operator-mounted destination directory; object-storage providers remain future integrations.
+- Restore remains an operator-controlled procedure and requires a real Pi restore drill.
+- Certificate trust installation, Docker image builds, cold-boot behavior, retention, key rotation, and production monitoring require target-environment validation.
+
+## Milestone 11 — integrations and plugins
+
+Add integrations and plugins only through explicit capability, credential, isolation, and out-of-process boundaries.
 
 ## Approval rule
 

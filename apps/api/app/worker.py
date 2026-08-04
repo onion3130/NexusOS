@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.db.session import get_session_factory
 from app.modules.tasks.worker import process_due_reminders
 from app.modules.host_actions.worker import process_host_actions
+from app.modules.backup_replication.replicator import process_replication_jobs
 
 _running = True
 _logger = logging.getLogger(__name__)
@@ -29,7 +30,8 @@ def main() -> int:
         session = get_session_factory()()
         try:
             process_due_reminders(session, batch_size=settings.task_worker_batch_size)
-            process_host_actions(session, data_dir=settings.data_dir, database_url=settings.database_url, batch_size=10)
+            process_host_actions(session, data_dir=settings.data_dir, database_url=settings.database_url, replication_destination=settings.backup_replication_destination, encryption_key=settings.backup_encryption_key.get_secret_value() if settings.backup_encryption_key else None, batch_size=10)
+            process_replication_jobs(session, data_dir=settings.data_dir, destination=settings.backup_replication_destination, encryption_key=settings.backup_encryption_key.get_secret_value() if settings.backup_encryption_key else None, batch_size=2)
         except Exception:
             # A malformed item must not terminate the scheduler. Each module
             # owns durable leases/retries; the process-level restart policy is

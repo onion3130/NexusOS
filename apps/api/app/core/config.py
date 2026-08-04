@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     task_worker_batch_size: int = Field(default=50, validation_alias="TASK_WORKER_BATCH_SIZE")
     workspace_roots: str = Field(default="", validation_alias="WORKSPACE_ROOTS")
     docker_socket_path: str = Field(default="", validation_alias="DOCKER_SOCKET_PATH")
+    backup_replication_destination: Path | None = Field(default=None, validation_alias="BACKUP_REPLICATION_DESTINATION")
+    backup_encryption_key: SecretStr | None = Field(default=None, validation_alias="BACKUP_ENCRYPTION_KEY")
     nvidia_api_key: SecretStr | None = Field(default=None, validation_alias="NVIDIA_API_KEY")
     openai_api_key: SecretStr | None = Field(default=None, validation_alias="OPENAI_API_KEY")
 
@@ -161,6 +163,43 @@ class Settings(BaseSettings):
         if not 1 <= value <= 200:
             raise ValueError("must be between 1 and 200")
         return value
+
+    @field_validator("backup_replication_destination", mode="before")
+    @classmethod
+    def validate_backup_destination(cls, value: Path | str | None) -> Path | None:
+        """Require an absolute operator-owned destination for replication."""
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        path = value if isinstance(value, Path) else Path(value)
+        if not path.is_absolute():
+            raise ValueError("must be an absolute path")
+        return path
+
+    @field_validator("backup_encryption_key", mode="before")
+    @classmethod
+    def validate_backup_key(cls, value: SecretStr | str | None) -> SecretStr | None:
+        """Require a 256-bit hexadecimal key when backup encryption is configured."""
+        if value is None:
+            return None
+        raw = value.get_secret_value().strip() if isinstance(value, SecretStr) else value.strip()
+        if not raw:
+            return None
+        if len(raw) != 64:
+            raise ValueError("must be a 64-character hexadecimal AES-256 key")
+        try:
+            bytes.fromhex(raw)
+        except ValueError as exc:
+            raise ValueError("must be a 64-character hexadecimal AES-256 key") from exc
+        return SecretStr(raw.lower())
+
+    @model_validator(mode="after")
+    def validate_backup_replication(self) -> "Settings":
+        """Require both destination and key before enabling replication."""
+        destination = self.backup_replication_destination
+        key = self.backup_encryption_key
+        if (destination is None) != (key is None):
+            raise ValueError("backup replication requires both BACKUP_REPLICATION_DESTINATION and BACKUP_ENCRYPTION_KEY")
+        return self
 
     @field_validator("ai_base_url")
     @classmethod

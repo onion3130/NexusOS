@@ -6,10 +6,10 @@ This directory contains deployment design and configuration boundaries for Nexus
 
 - The root [`docker-compose.yml`](../docker-compose.yml) is the executable ARM64 development stack.
 - API, web, and the v1.0 reminder/maintenance worker are real non-root services.
-- The proxy remains a placeholder for future TLS/routing.
+- The default profile keeps the proxy as a placeholder; `compose/hardened.yml` supplies an opt-in ARM64 Caddy TLS/routing boundary.
 - The optional AI service remains a placeholder boundary.
 - `compose/README.md` documents future profile splits.
-- `systemd/README.md` documents the deferred Raspberry Pi startup unit.
+- `systemd/README.md` documents the Raspberry Pi startup, upgrade, rollback, and recovery unit.
 - `healthchecks/README.md` documents the liveness/readiness and worker health contracts.
 
 ## Rules

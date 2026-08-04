@@ -1,7 +1,7 @@
 # NexusOS database
 
-**Current milestone:** Milestone 9 — files, projects, Git, and Docker views
-**Current status:** Identity, assistant, task, notes, search/retrieval, host-action proposals, backup metadata, and the workspace view permission are implemented through Alembic revisions `0001_identity`, `0002_assistant`, `0003_tasks_notifications`, `0004_notes_search`, `0005_host_actions`, `0006_v1_hardening`, and `0007_workspace_views`.
+**Current milestone:** Milestone 10 — deployment hardening
+**Current status:** Identity, assistant, task, notes, search/retrieval, host-action proposals, backup metadata, workspace permissions, and encrypted replication metadata are implemented through Alembic revisions `0001_identity`, `0002_assistant`, `0003_tasks_notifications`, `0004_notes_search`, `0005_host_actions`, `0006_v1_hardening`, `0007_workspace_views`, and `0008_deployment_hardening`.
 **Last updated:** 2026-08-03
 
 ## Current database state
@@ -19,6 +19,7 @@ The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys
 - `0005_host_actions` creates expiring host-action proposals and verified backup metadata, and seeds owner permissions for host actions, backups, and audit history.
 - `0006_v1_hardening` adds composite claim indexes for bounded reminder and host-action worker queries.
 - `0007_workspace_views` seeds the dedicated `workspace_views.read` permission; workspace host metadata itself is not persisted.
+- `0008_deployment_hardening` adds encryption and replication metadata to `backup_records`; encrypted artifacts themselves remain outside the application database.
 
 ## Milestone 7 tables
 
@@ -86,5 +87,5 @@ Milestone 9 intentionally adds no host metadata tables. Files, projects, Git, an
 ## Remaining database work
 
 - PostgreSQL compatibility remains a tested future claim, not an assumption.
-- Automated restore, encrypted/off-host backup replication, retention cleanup, last-backup protection, and backup-before-migration orchestration remain deployment work.
+- Automated restore, retention cleanup, key rotation, last-backup protection, and backup-before-migration orchestration remain deployment work.
 - Notification retention cleanup and permanent task deletion remain future policy work.

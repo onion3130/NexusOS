@@ -1,6 +1,6 @@
 # NexusOS architecture
 
-**Current milestone:** Milestone 9 — files, projects, Git, and Docker views
+**Current milestone:** Milestone 10 — deployment hardening
 **Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views service, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-03
 
@@ -14,7 +14,7 @@ NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an exte
 - `apps/api/app/modules/host_actions`: typed action catalog, proposal lifecycle, SQLite backups, fixed executor, and worker processing.
 - `apps/api/app/worker.py`: dedicated bounded SQLite reminder and confirmed host-action worker.
 - `apps/api/app/db`: SQLAlchemy engine/session and all persisted models.
-- `apps/api/migrations`: explicit Alembic migration history through `0007_workspace_views`.
+- `apps/api/migrations`: explicit Alembic migration history through `0008_deployment_hardening`.
 - `apps/web`: authenticated Next.js shell with overview, assistant, tasks, and notification center.
 - `docker-compose.yml`: ARM64 development topology with API, web, and real worker services; proxy and optional AI remain placeholders.
 
@@ -30,10 +30,12 @@ FastAPI
   ├── tasks service -> tasks/categories/tags/reminders/notifications
   ├── notes service -> notes/tags/search projection/retrieval chunks
   ├── host-actions service -> typed proposals -> confirmed job queue -> fixed backup/integrity adapters
-  └── workspace-views service -> approved-root file/project/Git adapters -> optional Docker metadata adapter
+  ├── workspace-views service -> approved-root file/project/Git adapters -> optional Docker metadata adapter
+  └── backup-replication service -> bounded AES-GCM encryption -> operator-mounted destination adapter
 
 Dedicated worker -> SQLite reminder claims -> notifications
 Dedicated worker -> confirmed host-action claims -> verified backup/integrity results
+Dedicated worker -> encrypted backup replication claims with leases/retries
 
 Docker Compose -> private bridge network
   ├── nexus-api
@@ -63,7 +65,7 @@ The worker owns only scheduled reminder delivery. It claims bounded batches, use
 
 Host operations are represented as typed, expiring proposals. Creating a proposal is inert. An authenticated user with `system.host_actions` must explicitly confirm it, after which one durable job is queued. The worker claims the job and invokes only a server-owned adapter. Proposal, confirmation, rejection, success, and failure transitions are audit events.
 
-The current catalog provides database backup creation, backup verification, and SQLite integrity checking. Backups use Python's SQLite online backup API, fixed `DATA_DIR/backups` storage, SHA-256 metadata, and integrity checks. Restore, replication, reboot, shutdown, systemd, package management, Docker, and arbitrary commands are intentionally excluded.
+The current catalog provides database backup creation, backup verification, and SQLite integrity checking. Backups use Python's SQLite online backup API, fixed `DATA_DIR/backups` storage, SHA-256 metadata, and integrity checks. Optional replication uses bounded AES-256-GCM chunks and an operator-mounted destination adapter. Restore, reboot, shutdown, systemd control, package management, Docker control, and arbitrary commands remain excluded from the assistant and browser.
 
 ## Assistant action architecture
 
@@ -105,11 +107,11 @@ Not implemented today:
 - External document ingestion and file sources
 - Privileged host actions and service/container control
 - File contents, project execution, Git mutations, and Docker control
-- Production reverse proxy, systemd, encrypted backups, restore drills, limits, and monitoring
+- Automated restore, key rotation, retention policy, production monitoring, and public-internet ingress
 - Plugin loading and package verification
 
 See [`ROADMAP.md`](ROADMAP.md) and [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Raspberry Pi and operational limits
 
-The API/web/worker images target `linux/arm64` and run non-root. Worker polling, reminder batches, and host-action batches are bounded. Backup work is throttled through SQLite's online backup page size/sleep controls. Compose is release-validated infrastructure; Docker image builds and sustained-load/healthcheck timing must still be smoke-tested on the target Pi before production use. Docker is not available in the current development environment, so local Compose validation is deferred to a Docker-enabled or Pi environment.
+The API/web/worker/proxy images target `linux/arm64` and run with bounded resource policies in the hardened profile. Worker polling, reminder batches, host-action batches, and replication batches are bounded. Backup work is throttled through SQLite's online backup controls and encryption reads 1 MiB chunks. Docker image builds, Caddy internal-CA trust, cold boot, SSD-mount delay, and sustained-load/healthcheck timing must still be smoke-tested on the target Pi. Docker is not available in the current development environment.

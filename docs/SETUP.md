@@ -1,6 +1,6 @@
 # NexusOS development setup
 
-**Status:** v1.0.0 released — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, confirmation-gated host maintenance, verified SQLite backups, and audit history are available. Restore replication, embeddings, and autonomous memory remain deferred.
+**Status:** v1.0.0 released — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, confirmation-gated host maintenance, verified SQLite backups, encrypted directory replication, and audit history are available. Restore, embeddings, and autonomous memory remain deferred.
 
 ## Prerequisites
 
@@ -30,6 +30,8 @@ python -m alembic upgrade head
 python -m app.cli.bootstrap_owner --username owner
 python -m uvicorn app.main:app --reload --port 8000
 ```
+
+For optional encrypted replication, generate a 256-bit key with `openssl rand -hex 32`, set `BACKUP_REPLICATION_DESTINATION` to an absolute operator-mounted destination, and configure both values together. Never commit the key.
 
 Run the worker in another terminal:
 
@@ -69,4 +71,4 @@ cd ../web && npm run typecheck && npm run build
 cd ../.. && git diff --check
 ```
 
-Docker-enabled environments should also validate Compose and ARM64 image builds. Run a due-reminder smoke test and restart the worker to verify notification deduplication.
+Docker-enabled environments should also validate the default and hardened Compose profiles, ARM64 image builds, Caddy internal-CA trust, systemd boot behavior, encrypted replication to the mounted destination, and a restore drill. Run a due-reminder smoke test and restart the worker to verify notification deduplication.

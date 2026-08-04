@@ -34,6 +34,17 @@ export type Backup = {
   integrity_result: string | null;
   created_at: string;
   verified_at: string | null;
+  encryption_status: string | null;
+  encrypted_size_bytes: number | null;
+  replication_status: string | null;
+  replicated_at: string | null;
+  replication_error_code: string | null;
+};
+
+export type DeploymentStatus = {
+  replication_configured: boolean;
+  tls_expected: boolean;
+  migration_head: string;
 };
 
 export type AuditEvent = {
@@ -83,6 +94,10 @@ export async function readProposal(id: string): Promise<ActionProposal> {
 
 export async function listBackups(): Promise<Backup[]> {
   return parse<Backup[]>(await authenticatedFetch("/api/v1/system/backups", { cache: "no-store" }));
+}
+
+export async function readDeploymentStatus(): Promise<DeploymentStatus> {
+  return parse<DeploymentStatus>(await authenticatedFetch("/api/v1/system/deployment", { cache: "no-store" }));
 }
 
 export async function listAuditEvents(): Promise<AuditEvent[]> {
