@@ -25,7 +25,7 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 - ✅ **Task management** — due dates, priorities, categories, tags, recurring schedules, and reminders
 - 📝 **Private notes** — versioned source notes with tags, archive, and soft deletion
 - ⌕ **Scoped search** — local SQLite FTS5 search with source-aware excerpts and retrieval chunks
-- 🔔 **Notifications** — persistent in-app alerts with a dedicated reminder worker
+- 🔔 **Notifications** — persistent in-app alerts plus optional email and push (ntfy) delivery for reminders
 - 📈 **System telemetry** — read-only Raspberry Pi health and resource overview
 - 🔐 **Security boundaries** — user-owned data, sessions, CSRF protection, permissions, confirmation workflows, and audit events
 - 🛠️ **Safe maintenance** — explicit-confirmation SQLite backups, integrity checks, and recovery metadata without arbitrary host control
@@ -44,11 +44,11 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 | Item | Status |
 | --- | --- |
-| **Current milestone** | Milestone 10 — Deployment hardening ✅ |
+| **Current milestone** | Milestone 11 — Notification channels 🚧 |
 | **Current version** | `1.0.0` — local-first release |
-| **Next milestone** | Milestone 11 — Integrations and plugins |
+| **Next milestone** | Milestone 12 — Calendar, media, finance, and plugin boundary |
 
-NexusOS v1.0 is ready for private, local-first Raspberry Pi use. Milestone 10 adds an opt-in hardened LAN deployment with internal TLS, systemd startup, encrypted replication, and recovery procedures; target-Pi builds and restore drills remain required operational validation. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
+NexusOS v1.0 is ready for private, local-first Raspberry Pi use. Milestone 10 adds an opt-in hardened LAN deployment with internal TLS, systemd startup, encrypted replication, and recovery procedures. Milestone 11 (part 1) adds outbound email and push notification channels so task reminders reach you outside the dashboard; calendar, media, and finance integrations remain. Target-Pi builds, restore drills, and real SMTP/ntfy endpoints still require operational validation. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
 
 ## Technology stack
 

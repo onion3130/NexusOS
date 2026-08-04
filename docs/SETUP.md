@@ -1,6 +1,6 @@
 # NexusOS development setup
 
-**Status:** v1.0.0 released — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, confirmation-gated host maintenance, verified SQLite backups, encrypted directory replication, and audit history are available. Restore, embeddings, and autonomous memory remain deferred.
+**Status:** v1.0.0 released — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, confirmation-gated host maintenance, verified SQLite backups, encrypted directory replication, outbound email/push notification channels, and audit history are available. Restore, embeddings, and autonomous memory remain deferred.
 
 ## Prerequisites
 
@@ -32,6 +32,8 @@ python -m uvicorn app.main:app --reload --port 8000
 ```
 
 For optional encrypted replication, generate a 256-bit key with `openssl rand -hex 32`, set `BACKUP_REPLICATION_DESTINATION` to an absolute operator-mounted destination, and configure both values together. Never commit the key.
+
+For optional outbound notification channels, set `NOTIFICATION_EMAIL_ENABLED=true` with an SMTP relay host, sender, and recipient (and paired user/password when the relay requires authentication), and/or `NOTIFICATION_PUSH_ENABLED=true` with an absolute ntfy-compatible URL and topic. Secrets stay server-side; the Notifications workspace shows redacted status and offers a test-send button. `python scripts/validate_env.py --env-file .env` reports incomplete channel configuration.
 
 Run the worker in another terminal:
 

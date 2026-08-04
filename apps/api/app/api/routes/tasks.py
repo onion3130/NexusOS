@@ -10,6 +10,7 @@ from app.db.session import get_db
 from app.modules.identity.dependencies import AuthContext, get_auth_context, require_csrf, require_permission
 from app.modules.tasks.schemas import CategoryCreate, CategoryResponse, NotificationListResponse, NotificationResponse, ReminderInput, ReminderResponse, ReminderUpdate, TagCreate, TagResponse, TaskCreate, TaskListResponse, TaskResponse, TaskUpdate
 from app.modules.tasks.service import add_reminder, complete_task, create_category, create_tag, create_task, delete_category, delete_tag, delete_reminder, delete_task, get_task, list_categories, list_notifications, list_tags, list_tasks, mark_all_notifications_read, mark_notification_read, update_reminder, update_task
+from app.modules.notifications.service import delivery_responses
 
 router = APIRouter(prefix="/api/v1", tags=["tasks"])
 
@@ -182,7 +183,7 @@ def tag_delete(tag_id: str, request: Request, db: OrmSession = Depends(get_db), 
 def notification_list(unread_only: bool = False, limit: int = 50, db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context)) -> NotificationListResponse:
     require_permission("notifications.read", context)
     items, count = list_notifications(db, context.user.id, unread_only, limit)
-    return NotificationListResponse(items=[NotificationResponse(id=item.id, type=item.type, title=item.title, body=item.body, task_id=item.task_id, created_at=item.created_at, read_at=item.read_at) for item in items], unread_count=count)
+    return NotificationListResponse(items=[NotificationResponse(id=item.id, type=item.type, title=item.title, body=item.body, task_id=item.task_id, created_at=item.created_at, read_at=item.read_at, channels=delivery_responses(item)) for item in items], unread_count=count)
 
 
 @router.post("/notifications/{notification_id}/read", status_code=status.HTTP_204_NO_CONTENT)

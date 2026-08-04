@@ -1,9 +1,9 @@
 # NexusOS API
 
-**Current milestone:** Milestone 10 — deployment hardening
-**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, confirmation-gated maintenance actions, verified SQLite backups, audit visibility, and read-only workspace views are implemented. Restore replication, embeddings, and streaming remain planned.
+**Current milestone:** Milestone 11 — integrations and plugins
+**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, confirmation-gated maintenance actions, verified SQLite backups, audit visibility, read-only workspace views, and outbound email/push notification channels are implemented. Restore replication, embeddings, streaming, and calendar/media/finance integrations remain planned.
 **Base path:** `/api/v1`
-**Last updated:** 2026-08-03
+**Last updated:** 2026-08-04
 
 All browser-authenticated mutations require the readable CSRF cookie value in the `X-CSRF-Token` header. Bearer-authenticated clients may use the same routes without cookie CSRF. Mutation routes accept an `Idempotency-Key`; clients must reuse the key when retrying the same operation. Reusing a key with a different payload returns `422`. All feature resources are user-owned and unauthorized resources return `404`.
 
@@ -97,7 +97,7 @@ Returns bounded source-aware lexical retrieval results for future assistant/RAG 
 
 #### `GET /api/v1/notifications`
 
-Returns persistent in-app notifications and the unread count. Supports `unread_only` and bounded `limit` filters.
+Returns persistent in-app notifications and the unread count. Each item includes a bounded `channels` list describing outbound delivery state (`channel`, `status`, `delivered_at`, `error_code`). Supports `unread_only` and bounded `limit` filters.
 
 #### `POST /api/v1/notifications/{id}/read`
 
@@ -107,7 +107,19 @@ Marks one owned notification as read.
 
 Marks all current-user notifications as read.
 
-The dedicated worker converts due reminders into notifications using a deterministic reminder deduplication key. It runs separately from the API in Compose.
+#### `GET /api/v1/notifications/settings`
+
+Returns redacted channel configuration: enabled flags, host/user/from/to fields, endpoint/topic, and boolean credential-presence markers. Requires the `notifications.settings` permission. Secret values are never returned.
+
+#### `POST /api/v1/notifications/settings/test`
+
+Sends one bounded test message through every enabled channel and returns per-channel `ok`/`error_code` results. Requires CSRF for cookies and the `notifications.settings` permission.
+
+#### `POST /api/v1/notifications/{id}/resend`
+
+Requeues outbound channel deliveries for one owned notification and returns the updated record. Requires CSRF and the `notifications.write` permission.
+
+The dedicated worker converts due reminders into notifications using a deterministic reminder deduplication key, then enqueues one pending delivery row per enabled channel. A separate bounded worker cycle claims, delivers, retries (max three attempts), and audits each channel with processing leases. A channel disabled after enqueueing is skipped rather than sent. It runs separately from the API in Compose.
 
 ### Assistant task actions
 
@@ -196,8 +208,8 @@ Returns the current user's bounded host-action proposal, confirmation, rejection
 - Cookie-authenticated mutations require CSRF validation.
 - CORS allows `PATCH` in addition to existing methods.
 - Database migrations are explicit; startup never mutates schema.
-- Readiness verifies the current Alembic head `0008_deployment_hardening` and the notes FTS5 table.
-- Notifications are persistent in-app records only.
+- Readiness verifies the current Alembic head `0009_notification_channels` and the notes FTS5 table.
+- Notifications are persistent records; optional outbound email/push channels are server-configured and delivery is worker-side only.
 - No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, or provider URLs from a client.
 - Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf.
 

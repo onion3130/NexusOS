@@ -4,6 +4,14 @@ All notable NexusOS changes are recorded here. Version `1.0.0` is a private, loc
 
 ## [Unreleased]
 
+### Milestone 11 (part 1) notification channels
+
+- Added outbound-only notification channel delivery: bounded SMTP email and ntfy-compatible HTTPS push with timeouts, truncated payloads, and no inbound listeners.
+- Added per-channel delivery rows through migration `0009_notification_channels`, the `notifications.settings` permission, and a dedicated worker cycle with bounded batches, processing leases, three-attempt retries, and audited terminal failures.
+- Added redacted channel settings, test-send, and resend API routes with CSRF, permission, ownership, and audit boundaries.
+- Added the Notifications workspace with channel status, masked credential state, test controls, and notification-center delivery indicators.
+- Reminders now enqueue one delivery per enabled channel at creation; channels disabled later are skipped, never sent.
+
 ### Milestone 10 deployment hardening
 
 - Added an opt-in ARM64 hardened Compose overlay with Caddy internal TLS, private upstream routing, direct API/web port removal, and bounded resources.

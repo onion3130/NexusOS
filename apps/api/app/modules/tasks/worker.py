@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.db.base import utc_now
 from app.db.models import Notification, Reminder, Task
+from app.modules.notifications.service import enqueue_deliveries
 
 
 def _aware(value: datetime) -> datetime:
@@ -49,11 +50,16 @@ def process_due_reminders(db: OrmSession, *, now: datetime | None = None, batch_
             continue
         dedupe_key = f"reminder:{reminder.id}"
         existing = db.scalar(select(Notification.id).where(Notification.dedupe_key == dedupe_key))
+        created_notification = None
         if existing is None:
-            db.add(Notification(user_id=reminder.user_id, type="task_reminder", title="Task reminder", body=task.title[:240], task_id=task.id, reminder_id=reminder.id, dedupe_key=dedupe_key))
+            created_notification = Notification(user_id=reminder.user_id, type="task_reminder", title="Task reminder", body=task.title[:240], task_id=task.id, reminder_id=reminder.id, dedupe_key=dedupe_key)
+            db.add(created_notification)
+            db.flush()
         reminder.status = "delivered"
         reminder.delivered_at = current
         reminder.locked_until = None
+        if created_notification is not None:
+            enqueue_deliveries(db, created_notification)
         db.commit()
         delivered += 1
     return delivered

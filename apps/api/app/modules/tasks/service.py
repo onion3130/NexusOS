@@ -377,7 +377,7 @@ def delete_tag(db: OrmSession, user_id: str, tag_id: str, idempotency_key: str |
 
 
 def list_notifications(db: OrmSession, user_id: str, unread_only: bool = False, limit: int = 50) -> tuple[list[Notification], int]:
-    statement = select(Notification).where(Notification.user_id == user_id, Notification.dismissed_at.is_(None))
+    statement = select(Notification).options(selectinload(Notification.deliveries)).where(Notification.user_id == user_id, Notification.dismissed_at.is_(None))
     if unread_only:
         statement = statement.where(Notification.read_at.is_(None))
     items = list(db.scalars(statement.order_by(Notification.created_at.desc()).limit(max(1, min(limit, 100)))))

@@ -15,6 +15,7 @@ import { FilesWorkspace } from "./files-workspace";
 import { ProjectsWorkspace } from "./projects-workspace";
 import { GitWorkspace } from "./git-workspace";
 import { DockerWorkspace } from "./docker-workspace";
+import { NotificationSettingsWorkspace } from "./notification-settings";
 import { LockedState, StatusCard } from "./ui/status-card";
 import type { User } from "../lib/auth";
 
@@ -22,6 +23,7 @@ const navigation = [
   { label: "Overview", icon: "◈", available: true },
   { label: "Assistant", icon: "✦", available: true },
   { label: "Tasks", icon: "□", available: true },
+  { label: "Notifications", icon: "♢", available: true },
   { label: "Notes", icon: "▤", available: true },
   { label: "Search", icon: "⌕", available: true },
   { label: "Maintenance", icon: "⚙", available: true },
@@ -41,7 +43,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
   const { toggleTheme } = useTheme();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [activeView, setActiveView] = useState<"overview" | "assistant" | "tasks" | "notes" | "search" | "maintenance" | "files" | "projects" | "git" | "docker">("overview");
+  const [activeView, setActiveView] = useState<"overview" | "assistant" | "tasks" | "notifications" | "notes" | "search" | "maintenance" | "files" | "projects" | "git" | "docker">("overview");
   const [noteToOpen, setNoteToOpen] = useState<string | null>(null);
 
   function viewKey(label: string): typeof activeView {
@@ -101,7 +103,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         <header className="topbar">
           <div className="mobile-topbar-row">
             <button aria-controls="mobile-navigation" aria-expanded={mobileNavOpen} aria-label="Toggle navigation" className="menu-button" onClick={() => setMobileNavOpen((open) => !open)} type="button">☰</button>
-            <div><p className="breadcrumb">Workspace / {activeView === "assistant" ? "Assistant" : activeView === "tasks" ? "Tasks" : activeView === "notes" ? "Notes" : activeView === "search" ? "Search" : activeView === "maintenance" ? "Maintenance" : activeView === "files" ? "Files" : activeView === "projects" ? "Projects" : activeView === "git" ? "Git" : activeView === "docker" ? "Docker" : "Overview"}</p><h1>{activeView === "assistant" ? "Your assistant workspace." : activeView === "tasks" ? "Make progress visible." : activeView === "notes" ? "Capture what matters." : activeView === "search" ? "Find your sources." : activeView === "maintenance" ? "Keep your host healthy." : activeView === "files" ? "See what is changing." : activeView === "projects" ? "Your projects, in one place." : activeView === "git" ? "Review repository status." : activeView === "docker" ? "Inspect your containers." : `Good morning, ${user.username}.`}</h1></div>
+            <div><p className="breadcrumb">Workspace / {activeView === "assistant" ? "Assistant" : activeView === "tasks" ? "Tasks" : activeView === "notifications" ? "Notifications" : activeView === "notes" ? "Notes" : activeView === "search" ? "Search" : activeView === "maintenance" ? "Maintenance" : activeView === "files" ? "Files" : activeView === "projects" ? "Projects" : activeView === "git" ? "Git" : activeView === "docker" ? "Docker" : "Overview"}</p><h1>{activeView === "assistant" ? "Your assistant workspace." : activeView === "tasks" ? "Make progress visible." : activeView === "notifications" ? "Stay in the loop." : activeView === "notes" ? "Capture what matters." : activeView === "search" ? "Find your sources." : activeView === "maintenance" ? "Keep your host healthy." : activeView === "files" ? "See what is changing." : activeView === "projects" ? "Your projects, in one place." : activeView === "git" ? "Review repository status." : activeView === "docker" ? "Inspect your containers." : `Good morning, ${user.username}.`}</h1></div>
           </div>
           <div className="topbar-actions">
             <NotificationCenter />
@@ -111,7 +113,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
           </div>
         </header>
 
-        {activeView === "assistant" ? <AssistantWorkspace /> : activeView === "tasks" ? <TaskWorkspace /> : activeView === "notes" ? <NotesWorkspace initialNoteId={noteToOpen} onSearch={() => setActiveView("search")} /> : activeView === "search" ? <SearchWorkspace onBack={() => setActiveView("notes")} onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }} /> : activeView === "maintenance" ? <MaintenanceWorkspace /> : activeView === "files" ? <FilesWorkspace /> : activeView === "projects" ? <ProjectsWorkspace /> : activeView === "git" ? <GitWorkspace /> : activeView === "docker" ? <DockerWorkspace /> : <>
+        {activeView === "assistant" ? <AssistantWorkspace /> : activeView === "tasks" ? <TaskWorkspace /> : activeView === "notifications" ? <NotificationSettingsWorkspace /> : activeView === "notes" ? <NotesWorkspace initialNoteId={noteToOpen} onSearch={() => setActiveView("search")} /> : activeView === "search" ? <SearchWorkspace onBack={() => setActiveView("notes")} onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }} /> : activeView === "maintenance" ? <MaintenanceWorkspace /> : activeView === "files" ? <FilesWorkspace /> : activeView === "projects" ? <ProjectsWorkspace /> : activeView === "git" ? <GitWorkspace /> : activeView === "docker" ? <DockerWorkspace /> : <>
         <div className="hero-card">
           <div className="hero-copy">
             <span className="status-pill"><span /> NexusOS v1.0 ready</span>

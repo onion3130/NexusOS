@@ -1,8 +1,8 @@
 # NexusOS database
 
-**Current milestone:** Milestone 10 — deployment hardening
-**Current status:** Identity, assistant, task, notes, search/retrieval, host-action proposals, backup metadata, workspace permissions, and encrypted replication metadata are implemented through Alembic revisions `0001_identity`, `0002_assistant`, `0003_tasks_notifications`, `0004_notes_search`, `0005_host_actions`, `0006_v1_hardening`, `0007_workspace_views`, and `0008_deployment_hardening`.
-**Last updated:** 2026-08-03
+**Current milestone:** Milestone 11 — integrations and plugins
+**Current status:** Identity, assistant, task, notes, search/retrieval, host-action proposals, backup metadata, workspace permissions, encrypted replication metadata, and outbound notification channel deliveries are implemented through Alembic revisions `0001_identity`, `0002_assistant`, `0003_tasks_notifications`, `0004_notes_search`, `0005_host_actions`, `0006_v1_hardening`, `0007_workspace_views`, `0008_deployment_hardening`, and `0009_notification_channels`.
+**Last updated:** 2026-08-04
 
 ## Current database state
 
@@ -20,6 +20,7 @@ The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys
 - `0006_v1_hardening` adds composite claim indexes for bounded reminder and host-action worker queries.
 - `0007_workspace_views` seeds the dedicated `workspace_views.read` permission; workspace host metadata itself is not persisted.
 - `0008_deployment_hardening` adds encryption and replication metadata to `backup_records`; encrypted artifacts themselves remain outside the application database.
+- `0009_notification_channels` creates `notification_channel_deliveries` and seeds the `notifications.settings` owner permission.
 
 ## Milestone 7 tables
 
@@ -43,7 +44,8 @@ The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys
 | `tasks` | user | Task occurrences and completion history |
 | `task_tags` | task/tag ownership | Task/tag many-to-many relation |
 | `reminders` | user/task | Scheduled reminder state and worker leases |
-| `notifications` | user | Persistent in-app notification records |
+| `notifications` | user | Persistent notification records |
+| `notification_channel_deliveries` | notification | One pending/delivered/failed row per enabled outbound channel with leases and retry metadata |
 | `jobs` | system | Durable worker job metadata for future expansion |
 
 Task deletion is soft deletion through `deleted_at`. Recurring completion creates one future occurrence while retaining the completed occurrence. Reminder delivery is idempotent through a unique `notifications.dedupe_key`.
@@ -83,6 +85,8 @@ Every user-owned table includes a user boundary directly or through an owned par
 Note content changes increment `content_version`. Current chunks retain the source note ID, version, offsets, content hash, and chunk index. Search results are joined back to canonical notes with user ownership and deletion filters. Search input is normalized into a safe parameterized FTS5 query; raw FTS syntax is not exposed.
 
 Milestone 9 intentionally adds no host metadata tables. Files, projects, Git, and Docker views are live read-only adapter results; only the `workspace_views.read` permission is migration-backed.
+
+Milestone 11 delivery rows are derived from owned notifications and deduplicated by `(notification_id, channel)`. Delivery status is bounded (`pending`, `processing`, `delivered`, `failed`, `skipped`, `cancelled`); channel credentials are never persisted.
 
 ## Remaining database work
 

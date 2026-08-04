@@ -8,6 +8,8 @@ from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.modules.notifications.schemas import ChannelDeliveryResponse
+
 TaskStatus = Literal["open", "in_progress", "completed", "archived"]
 TaskPriority = Literal["low", "normal", "high", "urgent"]
 ReminderStatus = Literal["pending", "processing", "delivered", "cancelled", "failed"]
@@ -222,6 +224,7 @@ class NotificationResponse(BaseModel):
     task_id: str | None
     created_at: datetime
     read_at: datetime | None
+    channels: list[ChannelDeliveryResponse] = []
 
 
 class NotificationListResponse(BaseModel):

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sqlalchemy import Engine, create_engine, event, inspect, text
 
-CURRENT_MIGRATION_HEAD = "0008_deployment_hardening"
+CURRENT_MIGRATION_HEAD = "0009_notification_channels"
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import sessionmaker

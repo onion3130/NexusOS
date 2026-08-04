@@ -263,6 +263,26 @@ class Notification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     dismissed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deliveries: Mapped[list[NotificationChannelDelivery]] = relationship(back_populates="notification", cascade="all, delete-orphan")
+
+
+class NotificationChannelDelivery(Base):
+    """One bounded outbound channel delivery attempt for a persisted notification."""
+
+    __tablename__ = "notification_channel_deliveries"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    notification_id: Mapped[str] = mapped_column(ForeignKey("notifications.id", ondelete="CASCADE"), index=True)
+    channel: Mapped[str] = mapped_column(String(24))
+    status: Mapped[str] = mapped_column(String(24), default="pending", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    notification: Mapped[Notification] = relationship(back_populates="deliveries")
+    __table_args__ = (UniqueConstraint("notification_id", "channel", name="uq_notification_deliveries_notification_channel"),)
 
 
 class Job(Base):

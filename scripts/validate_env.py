@@ -110,6 +110,45 @@ def validate(values: dict[str, str]) -> list[str]:
         except ValueError:
             errors.append("BACKUP_ENCRYPTION_KEY must be a 64-character hexadecimal AES-256 key")
 
+    email_enabled = values.get("NOTIFICATION_EMAIL_ENABLED", "").strip().lower()
+    if email_enabled not in {"", "true", "false"}:
+        errors.append("NOTIFICATION_EMAIL_ENABLED must be either true or false")
+    elif email_enabled == "true":
+        for name in ("NOTIFICATION_EMAIL_SMTP_HOST", "NOTIFICATION_EMAIL_FROM", "NOTIFICATION_EMAIL_TO"):
+            if not values.get(name, "").strip():
+                errors.append(f"{name} is required when NOTIFICATION_EMAIL_ENABLED=true")
+        smtp_port = values.get("NOTIFICATION_EMAIL_SMTP_PORT", "").strip()
+        if smtp_port:
+            try:
+                if not 1 <= int(smtp_port) <= 65535:
+                    raise ValueError
+            except ValueError:
+                errors.append("NOTIFICATION_EMAIL_SMTP_PORT must be an integer between 1 and 65535")
+        smtp_user = values.get("NOTIFICATION_EMAIL_SMTP_USER", "").strip()
+        smtp_password = values.get("NOTIFICATION_EMAIL_SMTP_PASSWORD", "").strip()
+        if bool(smtp_user) != bool(smtp_password):
+            errors.append("NOTIFICATION_EMAIL_SMTP_USER and NOTIFICATION_EMAIL_SMTP_PASSWORD must be configured together")
+        elif smtp_password and is_placeholder(smtp_password):
+            errors.append("NOTIFICATION_EMAIL_SMTP_PASSWORD still contains a placeholder value")
+
+    push_enabled = values.get("NOTIFICATION_PUSH_ENABLED", "").strip().lower()
+    if push_enabled not in {"", "true", "false"}:
+        errors.append("NOTIFICATION_PUSH_ENABLED must be either true or false")
+    elif push_enabled == "true":
+        push_url = values.get("NOTIFICATION_PUSH_URL", "").strip()
+        push_topic = values.get("NOTIFICATION_PUSH_TOPIC", "").strip()
+        if not push_url:
+            errors.append("NOTIFICATION_PUSH_URL is required when NOTIFICATION_PUSH_ENABLED=true")
+        elif not (push_url.startswith("https://") or push_url.startswith("http://")):
+            errors.append("NOTIFICATION_PUSH_URL must be an absolute HTTP(S) URL")
+        if not push_topic:
+            errors.append("NOTIFICATION_PUSH_TOPIC is required when NOTIFICATION_PUSH_ENABLED=true")
+        elif not __import__("re").fullmatch(r"[A-Za-z0-9_-]{1,128}", push_topic):
+            errors.append("NOTIFICATION_PUSH_TOPIC must contain only letters, numbers, dashes, or underscores")
+        push_token = values.get("NOTIFICATION_PUSH_TOKEN", "").strip()
+        if push_token and is_placeholder(push_token):
+            errors.append("NOTIFICATION_PUSH_TOKEN still contains a placeholder value")
+
     if provider not in {"", "disabled", "none", "local"}:
         provider_key = {
             "nvidia": "NVIDIA_API_KEY",

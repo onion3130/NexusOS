@@ -1,21 +1,22 @@
 # NexusOS architecture
 
-**Current milestone:** Milestone 10 — deployment hardening
-**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views service, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
-**Last updated:** 2026-08-03
+**Current milestone:** Milestone 11 — integrations and plugins
+**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
+**Last updated:** 2026-08-04
 
 NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an external SSD. The browser, API, persistence, worker, provider, and future host-action boundaries remain separate.
 
 ## Runtime components
 
-- `apps/api`: FastAPI application with identity, read-only telemetry, workspace views, assistant gateway, tasks, reminders, and notifications.
+- `apps/api`: FastAPI application with identity, read-only telemetry, workspace views, assistant gateway, tasks, reminders, notifications, and outbound channel delivery.
 - `apps/api/app/modules/tasks`: task service, schemas, recurrence calculator, and reminder dispatcher.
+- `apps/api/app/modules/notifications`: channel settings, outbound email/push adapters, enqueue/resend service, and bounded delivery worker.
 - `apps/api/app/modules/notes`: canonical notes, SQLite FTS5 search, deterministic chunks, and source-aware retrieval.
 - `apps/api/app/modules/host_actions`: typed action catalog, proposal lifecycle, SQLite backups, fixed executor, and worker processing.
-- `apps/api/app/worker.py`: dedicated bounded SQLite reminder and confirmed host-action worker.
+- `apps/api/app/worker.py`: dedicated bounded SQLite reminder, confirmed host-action, replication, and notification-delivery worker.
 - `apps/api/app/db`: SQLAlchemy engine/session and all persisted models.
-- `apps/api/migrations`: explicit Alembic migration history through `0008_deployment_hardening`.
-- `apps/web`: authenticated Next.js shell with overview, assistant, tasks, and notification center.
+- `apps/api/migrations`: explicit Alembic migration history through `0009_notification_channels`.
+- `apps/web`: authenticated Next.js shell with overview, assistant, tasks, notifications, and notification settings.
 - `docker-compose.yml`: ARM64 development topology with API, web, and real worker services; proxy and optional AI remain placeholders.
 
 ## Implemented boundary
@@ -31,11 +32,13 @@ FastAPI
   ├── notes service -> notes/tags/search projection/retrieval chunks
   ├── host-actions service -> typed proposals -> confirmed job queue -> fixed backup/integrity adapters
   ├── workspace-views service -> approved-root file/project/Git adapters -> optional Docker metadata adapter
-  └── backup-replication service -> bounded AES-GCM encryption -> operator-mounted destination adapter
+  ├── backup-replication service -> bounded AES-GCM encryption -> operator-mounted destination adapter
+  └── notifications service -> channel settings -> email (SMTP) / push (ntfy) outbound adapters
 
-Dedicated worker -> SQLite reminder claims -> notifications
+Dedicated worker -> SQLite reminder claims -> notifications -> enqueued channel deliveries
 Dedicated worker -> confirmed host-action claims -> verified backup/integrity results
 Dedicated worker -> encrypted backup replication claims with leases/retries
+Dedicated worker -> outbound channel delivery claims with leases/retries -> email/push
 
 Docker Compose -> private bridge network
   ├── nexus-api
@@ -60,6 +63,10 @@ The task module owns:
 - Task mutation audit events
 
 The worker owns only scheduled reminder delivery. It claims bounded batches, uses processing leases for restart recovery, and uses a unique deduplication key to avoid duplicate notifications.
+
+## Notification channel architecture
+
+The notifications module is outbound-only. The reminder worker enqueues one `notification_channel_deliveries` row per enabled channel at notification creation; no inbound listener or webhook exists. A dedicated worker cycle claims pending rows with bounded batches and processing leases, dispatches through the server-configured adapter (SMTP email or ntfy-compatible push), and retries up to three times before a terminal audit failure. A channel disabled between enqueue and processing is skipped. Secrets (SMTP password, push token) live only in server environment configuration, are never persisted, returned, or logged, and push endpoints reject embedded credentials, loopback, link-local, and metadata hosts while permitting private LAN addresses for self-hosted servers. The assistant cannot trigger delivery; notifications follow the same worker pipeline as the API.
 
 ## Safe host-action architecture
 
@@ -102,7 +109,7 @@ Notes are canonical user-authored sources. A derived search projection feeds SQL
 Not implemented today:
 
 - Streaming assistant responses
-- Email, SMS, push, or calendar notification channels
+- SMS and calendar notification channels (email and push are implemented)
 - Embeddings, vector search, and semantic memory extraction
 - External document ingestion and file sources
 - Privileged host actions and service/container control

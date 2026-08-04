@@ -1,8 +1,8 @@
 # NexusOS AI system
 
-**Current milestone:** Milestone 10 — deployment hardening
-**Status:** The bounded assistant gateway, conversation storage, provider normalization, read-only system/task/note/workspace-view tools, confirmation-gated task mutations, lexical search, source-aware note chunks, and confirmation-gated maintenance proposals are implemented. Embeddings, autonomous memory, semantic RAG, streaming, and privileged host control remain deferred.
-**Last updated:** 2026-08-03
+**Current milestone:** Milestone 11 — integrations and plugins
+**Status:** The bounded assistant gateway, conversation storage, provider normalization, read-only system/task/note/workspace-view tools, confirmation-gated task mutations, lexical search, source-aware note chunks, and confirmation-gated maintenance proposals are implemented. Outbound email/push notification delivery is worker-side and deliberately outside the assistant tool registry. Embeddings, autonomous memory, semantic RAG, streaming, and privileged host control remain deferred.
+**Last updated:** 2026-08-04
 
 ## Current behavior
 
@@ -44,6 +44,8 @@ These tools require `workspace_views.read`, share the REST service layer, return
 - `maintenance.request_backup`: creates a user-visible proposal for a database backup; it does not queue or execute the backup. The browser confirmation workflow remains mandatory.
 
 The assistant cannot request arbitrary commands, paths, Docker operations, reboot, shutdown, package management, systemd controls, or restore. Maintenance actions use the same permission and audit boundary as direct API requests.
+
+Outbound notification channel delivery (email/push) is not an assistant tool. The assistant cannot trigger, configure, or test notification channels; delivery is scheduled by the dedicated worker only.
 
 ## Tool-calling lifecycle
 

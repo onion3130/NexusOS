@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ipaddress
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -59,6 +60,19 @@ class Settings(BaseSettings):
     docker_socket_path: str = Field(default="", validation_alias="DOCKER_SOCKET_PATH")
     backup_replication_destination: Path | None = Field(default=None, validation_alias="BACKUP_REPLICATION_DESTINATION")
     backup_encryption_key: SecretStr | None = Field(default=None, validation_alias="BACKUP_ENCRYPTION_KEY")
+    notification_email_enabled: bool = Field(default=False, validation_alias="NOTIFICATION_EMAIL_ENABLED")
+    notification_email_smtp_host: str | None = Field(default=None, validation_alias="NOTIFICATION_EMAIL_SMTP_HOST")
+    notification_email_smtp_port: int = Field(default=587, validation_alias="NOTIFICATION_EMAIL_SMTP_PORT")
+    notification_email_smtp_user: str | None = Field(default=None, validation_alias="NOTIFICATION_EMAIL_SMTP_USER")
+    notification_email_smtp_password: SecretStr | None = Field(default=None, validation_alias="NOTIFICATION_EMAIL_SMTP_PASSWORD")
+    notification_email_from: str | None = Field(default=None, validation_alias="NOTIFICATION_EMAIL_FROM")
+    notification_email_to: str | None = Field(default=None, validation_alias="NOTIFICATION_EMAIL_TO")
+    notification_email_use_tls: bool = Field(default=True, validation_alias="NOTIFICATION_EMAIL_USE_TLS")
+    notification_push_enabled: bool = Field(default=False, validation_alias="NOTIFICATION_PUSH_ENABLED")
+    notification_push_url: str | None = Field(default=None, validation_alias="NOTIFICATION_PUSH_URL")
+    notification_push_topic: str | None = Field(default=None, validation_alias="NOTIFICATION_PUSH_TOPIC")
+    notification_push_token: SecretStr | None = Field(default=None, validation_alias="NOTIFICATION_PUSH_TOKEN")
+    notification_delivery_batch_size: int = Field(default=20, validation_alias="NOTIFICATION_DELIVERY_BATCH_SIZE")
     nvidia_api_key: SecretStr | None = Field(default=None, validation_alias="NVIDIA_API_KEY")
     openai_api_key: SecretStr | None = Field(default=None, validation_alias="OPENAI_API_KEY")
 
@@ -164,6 +178,54 @@ class Settings(BaseSettings):
             raise ValueError("must be between 1 and 200")
         return value
 
+    @field_validator("notification_email_smtp_port")
+    @classmethod
+    def validate_smtp_port(cls, value: int) -> int:
+        """Keep SMTP ports within the valid range."""
+        if not 1 <= value <= 65535:
+            raise ValueError("must be between 1 and 65535")
+        return value
+
+    @field_validator("notification_delivery_batch_size")
+    @classmethod
+    def validate_delivery_batch(cls, value: int) -> int:
+        """Bound one outbound delivery batch for the Pi worker."""
+        if not 1 <= value <= 100:
+            raise ValueError("must be between 1 and 100")
+        return value
+
+    @field_validator("notification_push_url")
+    @classmethod
+    def validate_push_url(cls, value: str | None) -> str | None:
+        """Allow only absolute HTTP(S) push endpoints without embedded credentials."""
+        if value is None or not value.strip():
+            return None
+        normalized = value.strip()
+        parsed = urlsplit(normalized)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.username or parsed.password:
+            raise ValueError("must be an absolute HTTP(S) URL without credentials")
+        hostname = parsed.hostname or ""
+        if hostname.lower() in {"localhost", "localhost.localdomain", "metadata.google.internal"}:
+            raise ValueError("must not target a local or metadata hostname")
+        try:
+            address = ipaddress.ip_address(hostname)
+        except ValueError:
+            address = None
+        if address is not None and any((address.is_loopback, address.is_link_local, address.is_multicast, address.is_reserved, address.is_unspecified)):
+            raise ValueError("must not target a loopback, link-local, multicast, reserved, or unspecified address")
+        return normalized
+
+    @field_validator("notification_push_topic")
+    @classmethod
+    def validate_push_topic(cls, value: str | None) -> str | None:
+        """Bound push topics to the ntfy-safe character set."""
+        if value is None or not value.strip():
+            return None
+        normalized = value.strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", normalized):
+            raise ValueError("must contain only letters, numbers, dashes, or underscores")
+        return normalized
+
     @field_validator("backup_replication_destination", mode="before")
     @classmethod
     def validate_backup_destination(cls, value: Path | str | None) -> Path | None:
@@ -199,6 +261,44 @@ class Settings(BaseSettings):
         key = self.backup_encryption_key
         if (destination is None) != (key is None):
             raise ValueError("backup replication requires both BACKUP_REPLICATION_DESTINATION and BACKUP_ENCRYPTION_KEY")
+        return self
+
+    @model_validator(mode="after")
+    def validate_notification_channels(self) -> "Settings":
+        """Require complete, paired channel configuration only when enabled."""
+        if self.notification_email_enabled:
+            missing = [
+                name
+                for name, value in (
+                    ("NOTIFICATION_EMAIL_SMTP_HOST", self.notification_email_smtp_host),
+                    ("NOTIFICATION_EMAIL_FROM", self.notification_email_from),
+                    ("NOTIFICATION_EMAIL_TO", self.notification_email_to),
+                )
+                if not value or not value.strip()
+            ]
+            if missing:
+                raise ValueError("enabled email channel requires " + ", ".join(missing))
+            user = self.notification_email_smtp_user
+            password = self.notification_email_smtp_password
+            password_value = password.get_secret_value() if password else None
+            if bool(user and user.strip()) != bool(password_value and password_value.strip()):
+                raise ValueError("email SMTP user and password must be configured together")
+            if password_value and any(marker in password_value.lower() for marker in _PLACEHOLDER_MARKERS):
+                raise ValueError("email SMTP password must not contain a placeholder value")
+        if self.notification_push_enabled:
+            missing = [
+                name
+                for name, value in (
+                    ("NOTIFICATION_PUSH_URL", self.notification_push_url),
+                    ("NOTIFICATION_PUSH_TOPIC", self.notification_push_topic),
+                )
+                if not value or not value.strip()
+            ]
+            if missing:
+                raise ValueError("enabled push channel requires " + ", ".join(missing))
+            token = self.notification_push_token
+            if token and token.get_secret_value() and any(marker in token.get_secret_value().lower() for marker in _PLACEHOLDER_MARKERS):
+                raise ValueError("push token must not contain a placeholder value")
         return self
 
     @field_validator("ai_base_url")

@@ -32,6 +32,7 @@ OWNER_PERMISSIONS = (
     ("tasks.delete", "Soft-delete owned tasks"),
     ("notifications.read", "Read owned notifications"),
     ("notifications.write", "Update owned notification state"),
+    ("notifications.settings", "Read notification channel settings and send test messages"),
     ("assistant.task_actions", "Propose and approve assistant task actions"),
     ("notes.read", "Read owned notes and search"),
     ("notes.write", "Create and update owned notes"),

@@ -1,8 +1,8 @@
 # NexusOS roadmap
 
-**Current milestone:** Milestone 10 — deployment hardening
-**Next milestone:** Milestone 11 — integrations and plugins
-**Last updated:** 2026-08-03
+**Current milestone:** Milestone 11 — integrations and plugins (outbound notification channels)
+**Next milestone:** Milestone 12 — calendar, media, finance, and plugin boundary
+**Last updated:** 2026-08-04
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
 
@@ -25,7 +25,7 @@ Milestone 6 is implemented within its approved scope. NexusOS now has an authent
 | 8. Safe host actions | Complete | Confirmation-gated maintenance actions, audit events, verified SQLite backups, and recovery documentation |
 | 9. Files, projects, Git, Docker views | Complete | Approved roots, repository/project metadata, sanitized Docker read operations |
 | 10. Deployment hardening | Complete | Hardened LAN proxy, systemd startup, encrypted replication, resource limits, and recovery gate |
-| 11. Integrations and plugins | Planned | Calendar/media/finance ports and out-of-process plugin boundary |
+| 11. Integrations and plugins | In progress | Outbound email and push notification channels implemented; calendar/media/finance ports and out-of-process plugin boundary remain |
 
 ## Milestone 6 complete — tasks, reminders, and notifications
 
@@ -138,6 +138,29 @@ Known limitations:
 ## Milestone 11 — integrations and plugins
 
 Add integrations and plugins only through explicit capability, credential, isolation, and out-of-process boundaries.
+
+### Milestone 11 (part 1) complete — outbound notification channels
+
+Implemented:
+
+- Reversible Alembic migration `0009_notification_channels` for per-channel delivery rows and the `notifications.settings` permission.
+- Outbound-only channel adapters: bounded SMTP email and ntfy-compatible HTTPS push with timeouts, truncated payloads, and no inbound listeners.
+- Enqueue at reminder-notification creation (one deduplicated row per enabled channel) and a dedicated worker cycle with bounded batches, processing leases, three-attempt retries, and audited terminal failures.
+- Disabled-channel safety: a channel switched off after enqueueing is skipped, never sent.
+- Redacted channel settings, test-send, and resend API routes with CSRF, permissions, ownership, and audit boundaries.
+- Responsive Notifications workspace with channel status, masked credential state, test controls, and notification-center delivery indicators.
+- Backend channel, config, worker, lease, ownership, redaction, and route tests.
+
+Known limitations:
+
+- Channels are configured through server environment variables; a runtime settings persistence layer is deferred to keep the environment-only configuration contract.
+- Email is limited to one recipient; SMTP auth is optional but user/password must be configured together.
+- Push targets a single ntfy-compatible endpoint/topic; object-storage or cloud push providers remain future integrations.
+- Real SMTP relays, self-hosted ntfy servers, and sustained delivery load still require target-environment validation on the Pi.
+
+### Milestone 11 (part 2) — calendar, media, finance, and plugin boundary
+
+Calendar, media, finance, and out-of-process plugin integration remains planned. Add integrations only through explicit capability, credential, isolation, and out-of-process boundaries.
 
 ## Approval rule
 

@@ -1,8 +1,8 @@
 # NexusOS development
 
-**Current milestone:** Milestone 10 — deployment hardening
-**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, confirmation-gated host maintenance, read-only workspace views, and encrypted directory replication are implemented. Restore, memory, RAG, and privileged host control remain deferred.
-**Last updated:** 2026-08-03
+**Current milestone:** Milestone 11 — integrations and plugins (outbound notification channels)
+**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, confirmation-gated host maintenance, read-only workspace views, encrypted directory replication, and outbound email/push notification channels are implemented. Restore, memory, RAG, and privileged host control remain deferred.
+**Last updated:** 2026-08-04
 
 Read this document with [`README.md`](../README.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`API.md`](API.md), [`DATABASE.md`](DATABASE.md), [`AI_SYSTEM.md`](AI_SYSTEM.md), [`SECURITY.md`](SECURITY.md), and [`ROADMAP.md`](ROADMAP.md) before changing code.
 
@@ -25,6 +25,10 @@ Backend:
 - `migrations/versions/0007_workspace_views.py`: dedicated read-only workspace permission.
 - `migrations/versions/0008_deployment_hardening.py`: encrypted/off-host backup metadata.
 - `app/modules/backup_replication/`: bounded AES-GCM encryption and destination adapter.
+- `app/modules/notifications/`: outbound email/push channel adapters, enqueue/resend service, and bounded delivery worker.
+- `app/api/routes/notifications.py`: authenticated settings, test-send, and resend routes.
+- `migrations/versions/0009_notification_channels.py`: per-channel delivery rows and the notification settings permission.
+- `tests/test_notification_channels.py`: adapter, config, worker, lease, ownership, redaction, and route coverage.
 - `app/modules/workspace_views/`: approved-root Files, Projects, Git, and optional Docker adapters.
 - `app/api/routes/workspace_views.py`: authenticated read-only workspace routes.
 - `tests/test_workspace_views.py`: adapter, permission, authentication, and redaction coverage.
@@ -33,7 +37,8 @@ Backend:
 Frontend:
 
 - `components/task-workspace.tsx`: task creation, filtering, completion, deletion, and state handling.
-- `components/notification-center.tsx`: persistent notification polling and read actions.
+- `components/notification-center.tsx`: persistent notification polling, read actions, channel delivery indicators, and resend.
+- `components/notification-settings.tsx`: channel status, masked credential state, and test-send controls.
 - `components/assistant-action-confirmation.tsx`: task mutation confirmation UI.
 - `lib/tasks.ts` and `lib/notifications.ts`: authenticated clients.
 - `components/files-workspace.tsx`, `projects-workspace.tsx`, `git-workspace.tsx`, and `docker-workspace.tsx`: read-only workspace views.
@@ -63,7 +68,7 @@ python -m alembic heads
 python -m alembic check  # may report pre-existing SQLite FTS5/legacy-index model drift; upgrade and migration tests remain authoritative
 ```
 
-The current expected migration head is `0008_deployment_hardening`. The readiness check also requires the SQLite FTS5 notes index.
+The current expected migration head is `0009_notification_channels`. The readiness check also requires the SQLite FTS5 notes index.
 
 ## Frontend validation
 
@@ -93,7 +98,7 @@ cd apps/web
 npm run dev
 ```
 
-The task workspace, Notes/Search workspaces, Maintenance workspace, and read-only Files/Projects/Git/Docker workspaces are available from authenticated navigation. The notification center polls every 30 seconds. Notes use synchronous SQLite FTS5 projection updates and deterministic retrieval chunks. The assistant remains usable in disabled-provider mode for conversations; task mutations require a configured provider and explicit approval, while note tools are read-only.
+The task workspace, Notes/Search workspaces, Maintenance workspace, Notifications workspace, and read-only Files/Projects/Git/Docker workspaces are available from authenticated navigation. The notification center polls every 30 seconds and shows outbound email/push delivery state per item. Notes use synchronous SQLite FTS5 projection updates and deterministic retrieval chunks. The assistant remains usable in disabled-provider mode for conversations; task mutations require a configured provider and explicit approval, while note tools are read-only.
 
 Run the reminder worker separately for local scheduler testing:
 

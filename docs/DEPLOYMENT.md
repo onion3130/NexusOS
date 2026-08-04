@@ -1,7 +1,7 @@
 # NexusOS deployment
 
-**Current milestone:** Milestone 10 — deployment hardening
-**Status:** Hardened Compose/systemd/proxy configuration, encrypted off-host directory replication, bounded worker recovery, and Maintenance deployment status are implemented. Target-Pi image, TLS trust, and full restore-drill validation remain required operator checks.
+**Current milestone:** Milestone 11 — integrations and plugins (outbound notification channels)
+**Status:** Hardened Compose/systemd/proxy configuration, encrypted off-host directory replication, bounded worker recovery, Maintenance deployment status, and outbound email/push notification channels are implemented. Target-Pi image, TLS trust, full restore-drill validation, and real SMTP/ntfy endpoint checks remain required operator checks.
 **Last updated:** 2026-08-03
 
 ## Target hardware
@@ -96,7 +96,7 @@ curl http://127.0.0.1:8000/api/v1/health/ready
 docker compose --env-file .env down
 ```
 
-Also test a due reminder, worker restart, notification deduplication, note creation/update/search, FTS5 rebuild behavior, proposal-without-execution, confirmation queueing, backup integrity, worker restart recovery, and healthcheck timing under representative Pi load. Docker is unavailable in the current environment, so image builds, proxy startup, systemd boot, and restore-drill checks remain external validation rather than local claims. The local Alembic upgrade succeeds; `alembic check` currently reports pre-existing SQLite FTS5 virtual-table/legacy-index model drift outside Milestone 10. Confirm the target Python runtime includes SQLite FTS5.
+Also test a due reminder, worker restart, notification deduplication, outbound email/push delivery and retry exhaustion, test-send and resend routes, note creation/update/search, FTS5 rebuild behavior, proposal-without-execution, confirmation queueing, backup integrity, worker restart recovery, and healthcheck timing under representative Pi load. In production, set `NOTIFICATION_EMAIL_*` and/or `NOTIFICATION_PUSH_*` per the environment contract; the worker delivers reminders through the enabled channels with bounded batches and retries. Docker is unavailable in the current environment, so image builds, proxy startup, systemd boot, and restore-drill checks remain external validation rather than local claims. The local Alembic upgrade succeeds; `alembic check` currently reports pre-existing SQLite FTS5 virtual-table/legacy-index model drift outside Milestone 10. Confirm the target Python runtime includes SQLite FTS5.
 
 ## Recovery and production gate
 
