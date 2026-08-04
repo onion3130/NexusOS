@@ -10,7 +10,7 @@ from app.core.config import Settings, get_settings
 from app.db.models import User
 from app.db.session import get_session_factory
 from app.modules.system.admin import _provider_status
-from app.core.runtime_config import runtime_path
+from app.core.runtime_config import mark_runtime_nim_active, runtime_path
 from app.modules.identity.service import bootstrap_owner
 from app.modules.system.adapters.network import read_interfaces
 from app.modules.system.adapters.procfs import read_memory, read_uptime
@@ -121,6 +121,11 @@ def test_browser_nvidia_nim_setup_is_encrypted_redacted_and_disableable(client) 
     assert response.json()["nvidia_nim"] == {"configured": True, "source": "browser", "model": "meta/llama-3.1-8b-instruct", "embeddings_enabled": False, "restart_required": True}
     assert api_key not in response.text
     settings = get_settings()
+    mark_runtime_nim_active(settings.data_dir)
+    get_settings.cache_clear()
+    refreshed = client.get("/api/v1/system/admin/status")
+    assert refreshed.status_code == 200
+    assert refreshed.json()["nvidia_nim"]["restart_required"] is False
     encrypted = runtime_path(settings.data_dir)
     assert encrypted.is_file()
     assert api_key.encode() not in encrypted.read_bytes()

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from app import __version__
 from app.core.config import Settings
-from app.core.runtime_config import has_runtime_nim, read_runtime_nim
+from app.core.runtime_config import read_runtime_nim, runtime_nim_restart_required
 from app.db.session import CURRENT_MIGRATION_HEAD, database_status
 from app.modules.system.schemas import AdminStatusCard, AdminStatusResponse, AssistantProviderStatus
 
@@ -86,5 +86,5 @@ def collect_admin_status(settings: Settings) -> AdminStatusResponse:
         ai_provider=_provider_status(settings),
         storage=storage,
         embedding_provider=_embedding_status(settings),
-        nvidia_nim={"configured": runtime_nim is not None or settings.ai_provider == "nvidia_nim", "source": "browser" if runtime_nim is not None else ("environment" if settings.ai_provider == "nvidia_nim" else "none"), "model": runtime_nim.model if runtime_nim is not None else (settings.ai_model if settings.ai_provider == "nvidia_nim" else None), "embeddings_enabled": runtime_nim.embeddings_enabled if runtime_nim is not None else settings.embedding_provider == "nvidia_nim", "restart_required": runtime_nim is not None},
+        nvidia_nim={"configured": runtime_nim is not None or settings.ai_provider == "nvidia_nim", "source": "browser" if runtime_nim is not None else ("environment" if settings.ai_provider == "nvidia_nim" else "none"), "model": runtime_nim.model if runtime_nim is not None else (settings.ai_model if settings.ai_provider == "nvidia_nim" else None), "embeddings_enabled": runtime_nim.embeddings_enabled if runtime_nim is not None else settings.embedding_provider == "nvidia_nim", "restart_required": runtime_nim is not None and runtime_nim_restart_required(settings.data_dir)},
     )

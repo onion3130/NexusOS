@@ -16,6 +16,7 @@ from app.modules.notifications.worker import process_notification_deliveries
 from app.modules.media.service import configured_media_roots, process_media_rescans
 from app.modules.embeddings.service import process_embeddings
 from app.modules.sources.service import process_source_ingestion
+from app.core.runtime_config import mark_runtime_nim_active
 
 _running = True
 _logger = logging.getLogger(__name__)
@@ -29,6 +30,7 @@ def _stop(_signum, _frame) -> None:
 def main() -> int:
     """Poll due reminders with bounded batches until shutdown."""
     settings = get_settings()
+    mark_runtime_nim_active(settings.data_dir)
     signal.signal(signal.SIGTERM, _stop)
     signal.signal(signal.SIGINT, _stop)
     while _running:

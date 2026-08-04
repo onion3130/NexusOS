@@ -16,6 +16,8 @@ from pydantic.types import SecretStr
 
 RUNTIME_DIRECTORY = "runtime"
 RUNTIME_FILENAME = "nvidia-nim.enc"
+ACTIVE_FILENAME = "nvidia-nim.active"
+DISABLE_FILENAME = "nvidia-nim.disable"
 _RUNTIME_VERSION = 1
 _AAD = b"nexusos-runtime-nvidia-nim-v1"
 
@@ -112,14 +114,70 @@ def read_runtime_nim(data_dir: Path, jwt_secret: str) -> RuntimeNimConfig | None
         return None
 
 
+def active_runtime_path(data_dir: Path) -> Path:
+    """Return the worker activation marker path."""
+    return data_dir.expanduser().resolve() / RUNTIME_DIRECTORY / ACTIVE_FILENAME
+
+
+def disable_runtime_path(data_dir: Path) -> Path:
+    """Return the pending-disable marker path."""
+    return data_dir.expanduser().resolve() / RUNTIME_DIRECTORY / DISABLE_FILENAME
+
+
+def mark_runtime_nim_active(data_dir: Path) -> None:
+    """Record that the worker loaded the current encrypted configuration."""
+    source = runtime_path(data_dir)
+    marker = active_runtime_path(data_dir)
+    pending_disable = disable_runtime_path(data_dir)
+    if not source.is_file():
+        try:
+            pending_disable.unlink()
+        except FileNotFoundError:
+            pass
+        return
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        pending_disable.unlink()
+    except FileNotFoundError:
+        pass
+    marker.write_text(hashlib.sha256(source.read_bytes()).hexdigest(), encoding="ascii")
+    try:
+        os.chmod(marker, 0o600)
+    except OSError:
+        pass
+
+
+def runtime_nim_restart_required(data_dir: Path) -> bool:
+    """Return whether the worker marker does not match the saved configuration."""
+    source = runtime_path(data_dir)
+    marker = active_runtime_path(data_dir)
+    if not source.is_file():
+        return disable_runtime_path(data_dir).is_file()
+    try:
+        return marker.read_text(encoding="ascii").strip() != hashlib.sha256(source.read_bytes()).hexdigest()
+    except OSError:
+        return True
+
+
 def delete_runtime_nim(data_dir: Path) -> bool:
     """Remove browser-managed NIM settings without touching environment configuration."""
     target = runtime_path(data_dir)
+    marker = active_runtime_path(data_dir)
+    pending_disable = disable_runtime_path(data_dir)
+    removed = False
+    for path in (target, marker):
+        try:
+            path.unlink()
+            removed = True
+        except FileNotFoundError:
+            pass
+    pending_disable.parent.mkdir(parents=True, exist_ok=True)
+    pending_disable.write_text("restart-required", encoding="ascii")
     try:
-        target.unlink()
-        return True
-    except FileNotFoundError:
-        return False
+        os.chmod(pending_disable, 0o600)
+    except OSError:
+        pass
+    return removed
 
 
 def has_runtime_nim(data_dir: Path) -> bool:
