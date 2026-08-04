@@ -26,7 +26,7 @@ def test_schema_upgrade_downgrade_upgrade(tmp_path) -> None:
 
     command.upgrade(config, "head")
     engine = create_engine(database_url)
-    assert {"users", "roles", "permissions", "sessions", "audit_events", "conversations", "messages", "model_runs", "tool_calls", "task_categories", "tags", "task_series", "tasks", "task_tags", "reminders", "notifications", "notification_channel_deliveries", "jobs", "notes", "note_tags", "note_search_documents", "note_chunks", "notes_fts"}.issubset(inspect(engine).get_table_names())
+    assert {"users", "roles", "permissions", "sessions", "audit_events", "conversations", "messages", "model_runs", "tool_calls", "task_categories", "tags", "task_series", "tasks", "task_tags", "reminders", "notifications", "notification_channel_deliveries", "jobs", "notes", "note_tags", "note_search_documents", "note_chunks", "notes_fts", "calendar_categories", "calendar_events", "calendar_event_reminders"}.issubset(inspect(engine).get_table_names())
     columns = {column["name"] for column in inspect(engine).get_columns("backup_records")}
     assert {"encryption_status", "encrypted_relative_path", "encrypted_size_bytes", "encrypted_sha256", "replication_status", "replicated_at", "replication_error_code", "restored_at", "pruned_at"}.issubset(columns)
 

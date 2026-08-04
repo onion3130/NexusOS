@@ -41,6 +41,8 @@ OWNER_PERMISSIONS = (
     ("system.backups.read", "Read owned backup metadata"),
     ("system.audit.read", "Read the current user's host-action audit history"),
     ("workspace_views.read", "Read approved files, projects, Git, and Docker metadata"),
+    ("calendar.read", "Read calendar events and categories"),
+    ("calendar.write", "Create, update, and delete calendar events"),
 )
 
 

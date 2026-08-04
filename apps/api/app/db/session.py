@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sqlalchemy import Engine, create_engine, event, inspect, text
 
-CURRENT_MIGRATION_HEAD = "0011_backup_lifecycle"
+CURRENT_MIGRATION_HEAD = "0012_calendar"
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import sessionmaker

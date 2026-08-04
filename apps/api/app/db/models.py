@@ -411,3 +411,57 @@ class BackupRecord(Base):
     replication_error_code: Mapped[str | None] = mapped_column(String(96), nullable=True)
     restored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     pruned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+
+
+class CalendarCategory(Base):
+    """A user-owned calendar category."""
+
+    __tablename__ = "calendar_categories"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    normalized_name: Mapped[str] = mapped_column(String(64))
+    color: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    events: Mapped[list[CalendarEvent]] = relationship(back_populates="category")
+    __table_args__ = (UniqueConstraint("user_id", "normalized_name", name="uq_calendar_categories_user_name"),)
+
+
+class CalendarEvent(Base):
+    """A user-owned calendar event occurrence."""
+
+    __tablename__ = "calendar_events"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    category_id: Mapped[str | None] = mapped_column(ForeignKey("calendar_categories.id", ondelete="SET NULL"), nullable=True, index=True)
+    title: Mapped[str] = mapped_column(String(160))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    all_day: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    category: Mapped[CalendarCategory | None] = relationship(back_populates="events")
+    reminders: Mapped[list[CalendarEventReminder]] = relationship(back_populates="event", cascade="all, delete-orphan")
+
+
+class CalendarEventReminder(Base):
+    """A calendar event reminder that the worker converts to a notification."""
+
+    __tablename__ = "calendar_event_reminders"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    event_id: Mapped[str] = mapped_column(ForeignKey("calendar_events.id", ondelete="CASCADE"), index=True)
+    scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    offset_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    status: Mapped[str] = mapped_column(String(24), default="pending", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    event: Mapped[CalendarEvent] = relationship(back_populates="reminders")

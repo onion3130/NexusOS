@@ -9,6 +9,7 @@ import time
 from app.core.config import get_settings
 from app.db.session import get_session_factory
 from app.modules.tasks.worker import process_due_reminders
+from app.modules.calendar.worker import process_due_event_reminders
 from app.modules.host_actions.worker import process_host_actions
 from app.modules.backup_replication.replicator import process_replication_jobs
 from app.modules.notifications.worker import process_notification_deliveries
@@ -31,6 +32,7 @@ def main() -> int:
         session = get_session_factory()()
         try:
             process_due_reminders(session, batch_size=settings.task_worker_batch_size)
+            process_due_event_reminders(session, batch_size=settings.task_worker_batch_size)
             process_host_actions(
                 session,
                 data_dir=settings.data_dir,
