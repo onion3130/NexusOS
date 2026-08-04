@@ -31,6 +31,8 @@ def configured_app(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         "AI_PROVIDER": "disabled",
         "BACKUP_REPLICATION_DESTINATION": "",
         "BACKUP_ENCRYPTION_KEY": "",
+        "MEDIA_ROOTS": str(tmp_path / "photos"),
+        "MEDIA_THUMBNAIL_MAX_DIMENSION": "96",
     }
     for key, value in values.items():
         monkeypatch.setenv(key, value)

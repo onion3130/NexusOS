@@ -22,7 +22,7 @@ def test_deployment_status_is_authenticated_and_redacted(client) -> None:
     assert body == {
         "replication_configured": False,
         "tls_expected": False,
-        "migration_head": "0013_finance",
+        "migration_head": "0014_media",
     }
     assert "BACKUP_ENCRYPTION_KEY" not in response.text
     assert str(get_settings().data_dir) not in response.text

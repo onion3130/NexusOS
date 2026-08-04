@@ -448,6 +448,29 @@ class CalendarEvent(Base):
     reminders: Mapped[list[CalendarEventReminder]] = relationship(back_populates="event", cascade="all, delete-orphan")
 
 
+class MediaItem(Base):
+    """A derived, rebuildable index entry for one file in an approved media root."""
+
+    __tablename__ = "media_items"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    root_key: Mapped[str] = mapped_column(String(24))
+    relative_path: Mapped[str] = mapped_column(String(512))
+    file_name: Mapped[str] = mapped_column(String(255))
+    extension: Mapped[str] = mapped_column(String(16), index=True)
+    mime_type: Mapped[str] = mapped_column(String(64), index=True)
+    size_bytes: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(String(64), index=True)
+    width: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    thumbnail_path: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    indexed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    __table_args__ = (UniqueConstraint("root_key", "relative_path", name="uq_media_items_root_path"),)
+
+
 class FinanceAccount(Base):
     """A user-owned finance account (integer-cent ledger)."""
 

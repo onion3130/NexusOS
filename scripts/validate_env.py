@@ -122,6 +122,21 @@ def validate(values: dict[str, str]) -> list[str]:
         elif previous_key.lower() == replication_key.lower():
             errors.append("BACKUP_REPLICATION_KEY_PREVIOUS must differ from BACKUP_ENCRYPTION_KEY")
 
+    thumbnail_dimension = values.get("MEDIA_THUMBNAIL_MAX_DIMENSION", "").strip()
+    if thumbnail_dimension:
+        try:
+            if not 64 <= int(thumbnail_dimension) <= 1024:
+                raise ValueError
+        except ValueError:
+            errors.append("MEDIA_THUMBNAIL_MAX_DIMENSION must be an integer between 64 and 1024")
+    media_index_size = values.get("MEDIA_INDEX_MAX_SIZE_MB", "").strip()
+    if media_index_size:
+        try:
+            if not 1 <= int(media_index_size) <= 1024:
+                raise ValueError
+        except ValueError:
+            errors.append("MEDIA_INDEX_MAX_SIZE_MB must be an integer between 1 and 1024")
+
     retention_count = values.get("BACKUP_RETENTION_COUNT", "").strip()
     if retention_count:
         try:

@@ -45,6 +45,8 @@ OWNER_PERMISSIONS = (
     ("calendar.write", "Create, update, and delete calendar events"),
     ("finance.read", "Read finance accounts and transactions"),
     ("finance.write", "Create, update, and delete finance records"),
+    ("media.read", "Browse the indexed media library"),
+    ("media.write", "Trigger media library rescans"),
 )
 
 

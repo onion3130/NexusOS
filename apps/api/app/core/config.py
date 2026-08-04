@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     task_worker_interval_seconds: int = Field(default=30, validation_alias="TASK_WORKER_INTERVAL_SECONDS")
     task_worker_batch_size: int = Field(default=50, validation_alias="TASK_WORKER_BATCH_SIZE")
     workspace_roots: str = Field(default="", validation_alias="WORKSPACE_ROOTS")
+    media_roots: str = Field(default="", validation_alias="MEDIA_ROOTS")
+    media_thumbnail_max_dimension: int = Field(default=320, validation_alias="MEDIA_THUMBNAIL_MAX_DIMENSION")
+    media_index_max_size_mb: int = Field(default=200, validation_alias="MEDIA_INDEX_MAX_SIZE_MB")
     docker_socket_path: str = Field(default="", validation_alias="DOCKER_SOCKET_PATH")
     backup_replication_destination: Path | None = Field(default=None, validation_alias="BACKUP_REPLICATION_DESTINATION")
     backup_encryption_key: SecretStr | None = Field(default=None, validation_alias="BACKUP_ENCRYPTION_KEY")
@@ -163,6 +166,22 @@ class Settings(BaseSettings):
         """Bound provider response memory use on the Raspberry Pi."""
         if not 16_384 <= value <= 8_388_608:
             raise ValueError("must be between 16384 and 8388608 bytes")
+        return value
+
+    @field_validator("media_thumbnail_max_dimension")
+    @classmethod
+    def validate_thumbnail_dimension(cls, value: int) -> int:
+        """Bound thumbnail memory use on the Raspberry Pi."""
+        if not 64 <= value <= 1024:
+            raise ValueError("must be between 64 and 1024 pixels")
+        return value
+
+    @field_validator("media_index_max_size_mb")
+    @classmethod
+    def validate_media_index_size(cls, value: int) -> int:
+        """Bound the largest file the media indexer will hash."""
+        if not 1 <= value <= 1024:
+            raise ValueError("must be between 1 and 1024 MB")
         return value
 
     @field_validator("backup_retention_count")
