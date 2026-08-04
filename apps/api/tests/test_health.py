@@ -39,7 +39,7 @@ def test_live_endpoint_does_not_require_storage(monkeypatch, tmp_path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "nexus-api",
-        "version": "1.3.0",
+        "version": "1.3.1",
     }
 
 

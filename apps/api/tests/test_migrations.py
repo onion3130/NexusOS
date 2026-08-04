@@ -6,7 +6,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 
 API_ROOT = Path(__file__).resolve().parents[1]
 
@@ -17,6 +17,40 @@ def _config(database_url: str) -> Config:
     config.set_main_option("script_location", str(API_ROOT / "migrations"))
     config.set_main_option("sqlalchemy.url", database_url)
     return config
+
+
+def test_legacy_v1_database_upgrades_and_reupgrades_current_head(tmp_path) -> None:
+    """A v1 database reaches the current head and seeded grants remain valid."""
+    database_url = f"sqlite:///{tmp_path / 'legacy.db'}"
+    config = _config(database_url)
+    command.upgrade(config, "0006_v1_hardening")
+    engine = create_engine(database_url)
+    with engine.begin() as connection:
+        connection.execute(
+            text("INSERT INTO roles (id, key, description) VALUES (:id, 'owner', 'Owner role')"),
+            {"id": "owner-role-for-migration-test"},
+        )
+    command.upgrade(config, "head")
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0016_embeddings"
+        permissions = {
+            row[0]
+            for row in connection.execute(
+                text("SELECT key FROM permissions WHERE key IN ('calendar.read', 'finance.read', 'media.read', 'plugins.read', 'notes.semantic')")
+            )
+        }
+        assert permissions == {"calendar.read", "finance.read", "media.read", "plugins.read", "notes.semantic"}
+        assert connection.execute(
+            text("SELECT COUNT(*) FROM role_permissions rp JOIN roles r ON r.id = rp.role_id JOIN permissions p ON p.id = rp.permission_id WHERE r.key = 'owner' AND p.key IN ('calendar.read', 'finance.read', 'media.read', 'plugins.read', 'notes.semantic')")
+        ).scalar() == 5
+    command.downgrade(config, "0011_backup_lifecycle")
+    command.upgrade(config, "head")
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0016_embeddings"
+        assert connection.execute(
+            text("SELECT COUNT(*) FROM role_permissions rp JOIN roles r ON r.id = rp.role_id JOIN permissions p ON p.id = rp.permission_id WHERE r.key = 'owner' AND p.key IN ('calendar.read', 'finance.read', 'media.read', 'plugins.read', 'notes.semantic')")
+        ).scalar() == 5
+    engine.dispose()
 
 
 def test_schema_upgrade_downgrade_upgrade(tmp_path) -> None:

@@ -29,7 +29,7 @@ def _seed_permission(bind, key: str, description: str) -> None:
         bind.execute(sa.text("INSERT INTO permissions (id, key, description) VALUES (:id, :key, :description)"), {"id": permission_id, "key": key, "description": description})
     owner = bind.execute(sa.text("SELECT id FROM roles WHERE key='owner'")).first()
     if owner:
-        granted = bind.execute(sa.text("SELECT id FROM role_permissions WHERE role_id=:role AND permission_id=:permission"), {"role": owner[0], "permission": permission_id}).first()
+        granted = bind.execute(sa.text("SELECT 1 FROM role_permissions WHERE role_id=:role AND permission_id=:permission"), {"role": owner[0], "permission": permission_id}).first()
         if not granted:
             bind.execute(sa.text("INSERT INTO role_permissions (role_id, permission_id) VALUES (:role, :permission)"), {"role": owner[0], "permission": permission_id})
 

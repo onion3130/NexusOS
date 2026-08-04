@@ -28,6 +28,7 @@ This directory contains the detailed design, setup, development, deployment, sec
 - [v1.1.0 release notes](releases/v1.1.0.md) — integrations and plugin boundary
 - [v1.2.0 release notes](releases/v1.2.0.md) — semantic retrieval foundation
 - [v1.3.0 release notes](releases/v1.3.0.md) — NVIDIA NIM provider support
+- [v1.3.1 release notes](releases/v1.3.1.md) — migration compatibility patch
 - [Plugin boundary](PLUGIN_BOUNDARY.md) — manifest contract and secure subprocess model
 - [Milestone 9 workspace views](ROADMAP.md#milestone-9-complete--files-projects-git-and-docker-views) — read-only Files, Projects, Git, and Docker scope
 - [Milestone 10 deployment hardening](ROADMAP.md#milestone-10-deployment-hardening) — hardened LAN proxy, systemd, encrypted replication, and recovery gate

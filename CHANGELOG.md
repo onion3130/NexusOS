@@ -2,7 +2,16 @@
 
 All notable NexusOS changes are recorded here. NexusOS releases use Semantic Versioning; private, local-first Raspberry Pi deployment remains the supported operating model.
 
-## [1.3.0] — 2026-08-04
+## [1.3.1] — 2026-08-04
+
+NexusOS v1.3.1 is a compatibility patch for upgrading existing v1.0/v1.1 databases to the current schema.
+
+### Migration compatibility
+
+- Fixed permission-seeder queries in migrations `0012_calendar` through `0016_embeddings` to respect the composite `role_permissions` primary key.
+- Added regression coverage for upgrading a legacy `0006_v1_hardening` database through `0016_embeddings`.
+- Preserved all v1.3.0 NVIDIA NIM behavior and security boundaries.
+
 
 NexusOS v1.3.0 adds first-class NVIDIA NIM configuration on top of the existing provider-neutral gateway.
 
@@ -151,5 +160,6 @@ This release is intended for private, local-first use. Docker and Raspberry Pi r
 [1.0.1]: https://github.com/onion3130/NexusOS/releases/tag/v1.0.1
 [1.0.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.0.0
 [1.1.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.1.0
+[1.3.1]: https://github.com/onion3130/NexusOS/releases/tag/v1.3.1
 [1.3.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.3.0
-[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.3.1...HEAD

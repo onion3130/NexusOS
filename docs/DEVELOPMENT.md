@@ -75,7 +75,7 @@ python -m alembic heads
 python -m alembic check  # may report pre-existing SQLite FTS5/legacy-index model drift; upgrade and migration tests remain authoritative
 ```
 
-The current expected migration head is `0016_embeddings`. The readiness check also requires the SQLite FTS5 notes index. Embeddings remain disabled unless an operator configures an approved provider.
+The current expected migration head is `0016_embeddings`. The migration suite also verifies upgrades from the legacy `0006_v1_hardening` head used by earlier deployments. The readiness check also requires the SQLite FTS5 notes index. Embeddings remain disabled unless an operator configures an approved provider.
 
 ## Frontend validation
 
