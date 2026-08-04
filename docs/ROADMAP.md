@@ -1,7 +1,7 @@
 # NexusOS roadmap
 
-**Current milestone:** v1.2 — semantic retrieval foundation
-**Next milestone:** v1.3 — grounded assistant memory and external source ingestion
+**Current milestone:** v1.3 — NVIDIA NIM provider support
+**Next milestone:** v1.4 — grounded assistant memory and external source ingestion
 **Last updated:** 2026-08-04
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
@@ -230,6 +230,22 @@ Known limitations:
 - External embedding providers receive note chunk text only when explicitly enabled.
 - Target Raspberry Pi ARM64 provider latency and sustained worker-load validation remain operational checks.
 - Autonomous memory, external ingestion, and model-written notes remain future scope.
+
+## v1.3 provider integration — NVIDIA NIM
+
+Implemented and validated in v1.3.0:
+
+- Hosted NVIDIA API Catalog defaults for OpenAI-compatible chat completions and embeddings.
+- `NVIDIA_API_KEY` server-side fallback for `AI_PROVIDER=nvidia_nim` and `EMBEDDING_PROVIDER=nvidia_nim`.
+- Explicit model configuration and reviewed public-compatible endpoint overrides.
+- Existing provider target validation, DNS-rebinding-resistant transport, bounded response/output limits, secret redaction, and disabled-by-default behavior preserved.
+- Configuration, missing-credential, environment-validation, Python compilation, backend, and frontend build coverage.
+
+Known limitations:
+
+- Hosted NIM requires outbound HTTPS and operator credentials; real quota/latency testing remains deployment-specific.
+- Private and loopback provider targets remain rejected by design; this release does not claim self-hosted NIM execution on the Pi.
+- Grounded assistant memory and external source ingestion remain the next milestone.
 
 ## Approval rule
 

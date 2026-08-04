@@ -12,25 +12,18 @@
 | `JWT_SECRET` | yes | placeholder only | yes | JWT signing material |
 | `SESSION_COOKIE_SECURE` | yes | `false` | no | Must be true in production |
 | `CORS_ORIGINS` | optional | local origins | no | Credential-safe browser origins |
-| `AI_PROVIDER` | yes | `disabled` | no | Server-side provider policy |
-| `AI_BASE_URL` | optional | empty | no | Approved provider endpoint |
-| `AI_API_KEY` | conditional | placeholder only | yes | Provider credential |
-| `AI_MODEL` | optional | placeholder only | no | Provider model identifier |
+| `AI_PROVIDER` | yes | `disabled` | no | Server-side provider policy (`nvidia_nim` enables NVIDIA NIM defaults) |
+| `AI_BASE_URL` | optional | empty | no | Approved public provider endpoint; hosted NIM defaults to `https://integrate.api.nvidia.com/v1/chat/completions` |
+| `AI_API_KEY` | conditional | placeholder only | yes | Provider credential; NIM may use `NVIDIA_API_KEY` |
+| `AI_MODEL` | optional | placeholder only | no | Provider model identifier, required when AI is enabled |
 | `AI_TIMEOUT_SECONDS` | optional | `20` | no | Bounded provider timeout |
 | `AI_MAX_CONTEXT_MESSAGES` | optional | `20` | no | Context bound |
 | `AI_MAX_OUTPUT_TOKENS` | optional | `512` | no | Output bound |
 | `AI_MAX_RESPONSE_BYTES` | optional | `1048576` | no | Response memory bound |
-| `EMBEDDING_PROVIDER` | optional | `disabled` | no | Optional semantic retrieval provider |
-| `EMBEDDING_BASE_URL` | optional | empty | no | Explicit HTTP(S) embeddings endpoint when enabled |
-| `EMBEDDING_API_KEY` | optional | empty | yes | Server-side embeddings credential |
-| `EMBEDDING_MODEL` | optional | empty | no | Provider embedding model when enabled |
-| `EMBEDDING_TIMEOUT_SECONDS` | optional | `30` | no | Embedding call timeout, 1–120 seconds |
-| `EMBEDDING_BATCH_SIZE` | optional | `8` | no | Bounded embedding worker batch, 1–32 |
-| `EMBEDDING_MAX_CHUNK_LENGTH` | optional | `4000` | no | Maximum text sent per embedding request |
-| `EMBEDDING_PROVIDER` | optional | `disabled` | no | Optional semantic retrieval provider |
-| `EMBEDDING_BASE_URL` | optional | empty | no | Explicit HTTP(S) embeddings endpoint when enabled |
-| `EMBEDDING_API_KEY` | optional | empty | yes | Server-side embeddings credential |
-| `EMBEDDING_MODEL` | optional | empty | no | Provider embedding model when enabled |
+| `EMBEDDING_PROVIDER` | optional | `disabled` | no | Optional semantic retrieval provider (`nvidia_nim` enables the hosted NIM default) |
+| `EMBEDDING_BASE_URL` | optional | empty | no | Explicit public HTTP(S) embeddings endpoint; hosted NIM defaults to `https://integrate.api.nvidia.com/v1/embeddings` |
+| `EMBEDDING_API_KEY` | optional | empty | yes | Server-side embeddings credential; NIM uses `NVIDIA_API_KEY` |
+| `EMBEDDING_MODEL` | optional | empty | no | Provider embedding model, required when embeddings are enabled |
 | `EMBEDDING_TIMEOUT_SECONDS` | optional | `30` | no | Embedding call timeout, 1–120 seconds |
 | `EMBEDDING_BATCH_SIZE` | optional | `8` | no | Bounded embedding worker batch, 1–32 |
 | `EMBEDDING_MAX_CHUNK_LENGTH` | optional | `4000` | no | Maximum text sent per embedding request |

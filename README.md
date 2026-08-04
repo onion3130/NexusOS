@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/onion3130/NexusOS?style=flat-square&label=license" alt="MIT License"></a>
-  <a href="https://github.com/onion3130/NexusOS/releases"><img src="https://img.shields.io/badge/release-v1.2.0-8b5cf6?style=flat-square" alt="NexusOS v1.2.0 release"></a>
+  <a href="https://github.com/onion3130/NexusOS/releases"><img src="https://img.shields.io/badge/release-v1.3.0-8b5cf6?style=flat-square" alt="NexusOS v1.3.0 release"></a>
   <img src="https://img.shields.io/badge/Docker-ARM64--ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker ARM64 ready">
   <img src="https://img.shields.io/badge/Raspberry%20Pi%205-supported-c51a4a?style=flat-square&logo=raspberrypi&logoColor=white" alt="Raspberry Pi 5 supported">
   <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11 or newer">
@@ -46,11 +46,11 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 | Item | Status |
 | --- | --- |
-| **Current milestone** | v1.2 — Semantic retrieval foundation ✅ |
-| **Current version** | `1.2.0` — optional embeddings and hybrid retrieval |
+| **Current milestone** | v1.3 — NVIDIA NIM provider support ✅ |
+| **Current version** | `1.3.0` — NVIDIA NIM chat and embeddings support |
 | **Next milestone** | v1.3 — grounded assistant memory and external source ingestion |
 
-NexusOS v1.2 adds optional provider-neutral embeddings, semantic and hybrid note retrieval, bounded worker processing, and lexical fallback while preserving the private, local-first Raspberry Pi architecture. Embeddings are disabled by default; autonomous memory, external ingestion, and model-written notes remain future work. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
+NexusOS v1.3 adds optional NVIDIA NIM chat and embeddings through the existing bounded OpenAI-compatible gateway while preserving provider-neutral retrieval, lexical fallback, and the private, local-first Raspberry Pi architecture. NIM is disabled by default and requires explicit server configuration. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
 
 ## Technology stack
 

@@ -1,6 +1,6 @@
 # NexusOS API
 
-**Current milestone:** v1.2 — semantic retrieval foundation
+**Current milestone:** v1.3 — NVIDIA NIM provider support
 **Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, optional embeddings, calendar, finance, media, confirmation-gated maintenance actions, verified SQLite backups, automated restore, retention cleanup, encryption key rotation, audit visibility, read-only workspace views, outbound email/push notification channels, and the out-of-process plugin boundary are implemented. Streaming remains planned.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-04

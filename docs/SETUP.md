@@ -1,6 +1,6 @@
 # NexusOS development setup
 
-**Status:** v1.2 semantic retrieval foundation — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, optional embeddings, calendar, finance, media, confirmation-gated host maintenance, verified SQLite backups, encrypted directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, outbound email/push notification channels, audited out-of-process plugins, and audit history are available. Autonomous memory remains deferred.
+**Status:** v1.3 NVIDIA NIM provider support — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, optional embeddings, calendar, finance, media, confirmation-gated host maintenance, verified SQLite backups, encrypted directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, outbound email/push notification channels, audited out-of-process plugins, and audit history are available. Autonomous memory remains deferred.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ cp .env.example .env
 python scripts/validate_env.py --env-file .env
 ```
 
-Replace `JWT_SECRET` with a random value of at least 32 characters. Keep `AI_PROVIDER=disabled` until a provider is intentionally configured. Configure `TASK_WORKER_INTERVAL_SECONDS` and `TASK_WORKER_BATCH_SIZE` only within their documented bounds. Leave `PLUGINS_DIR` empty unless you are deliberately installing trusted operator-approved plugins.
+Replace `JWT_SECRET` with a random value of at least 32 characters. Keep `AI_PROVIDER=disabled` until a provider is intentionally configured. To use hosted NVIDIA NIM, set `AI_PROVIDER=nvidia_nim`, `AI_MODEL` to an NVIDIA-supported chat model, and `NVIDIA_API_KEY`; the hosted chat and embeddings endpoints are defaulted automatically unless you set explicit reviewed public-compatible `AI_BASE_URL` or `EMBEDDING_BASE_URL` values. Configure `TASK_WORKER_INTERVAL_SECONDS` and `TASK_WORKER_BATCH_SIZE` only within their documented bounds. Leave `PLUGINS_DIR` empty unless you are deliberately installing trusted operator-approved plugins.
 
 ## Run the API and worker locally
 

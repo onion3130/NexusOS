@@ -19,6 +19,7 @@ def _configure(monkeypatch, tmp_path) -> None:
         "SESSION_COOKIE_SECURE": "false",
         "CORS_ORIGINS": "http://localhost:3000",
         "AI_PROVIDER": "disabled",
+        "EMBEDDING_PROVIDER": "disabled",
     }
     for key, value in values.items():
         monkeypatch.setenv(key, value)
@@ -38,7 +39,7 @@ def test_live_endpoint_does_not_require_storage(monkeypatch, tmp_path) -> None:
     assert response.json() == {
         "status": "ok",
         "service": "nexus-api",
-        "version": "1.2.0",
+        "version": "1.3.0",
     }
 
 

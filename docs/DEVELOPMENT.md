@@ -1,6 +1,6 @@
 # NexusOS development
 
-**Current milestone:** v1.2 — semantic retrieval foundation
+**Current milestone:** v1.3 — NVIDIA NIM provider support
 **Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, optional semantic/hybrid retrieval, confirmation-gated host maintenance, confirmation-gated restore, retention cleanup, encryption key rotation, read-only workspace views, encrypted directory replication, and outbound email/push notification channels are implemented. Autonomous memory, external ingestion, and privileged host control remain deferred.
 **Last updated:** 2026-08-04
 
@@ -59,7 +59,7 @@ cp .env.example .env
 python scripts/validate_env.py --env-file .env
 ```
 
-Use a random local `JWT_SECRET` of at least 32 characters and keep `AI_PROVIDER=disabled` unless a server-side provider is intentionally configured.
+Use a random local `JWT_SECRET` of at least 32 characters and keep `AI_PROVIDER=disabled` unless a server-side provider is intentionally configured. For hosted NVIDIA NIM validation, use `AI_PROVIDER=nvidia_nim`, `NVIDIA_API_KEY`, and a supported `AI_MODEL`; hosted endpoints are defaulted by the configuration boundary and private targets remain rejected.
 
 ## Backend validation
 

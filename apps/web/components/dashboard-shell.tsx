@@ -149,7 +149,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         </section>
 
         </>}
-        <footer>Local-first. Private by default. <span>NexusOS 1.2.0</span></footer>
+        <footer>Local-first. Private by default. <span>NexusOS 1.3.0</span></footer>
       </section>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} onLogout={signOut} onSearch={() => { setPaletteOpen(false); setActiveView("search"); }} onToggleTheme={() => { toggleTheme(); setPaletteOpen(false); }} />}
     </main>

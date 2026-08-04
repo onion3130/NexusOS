@@ -1,6 +1,6 @@
 # NexusOS deployment
 
-**Current milestone:** v1.2 — semantic retrieval foundation
+**Current milestone:** v1.3 — NVIDIA NIM provider support
 **Status:** Hardened Compose/systemd/proxy configuration, encrypted off-host directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, bounded worker recovery, optional semantic retrieval, Maintenance deployment status, and outbound email/push notification channels are implemented. Target-Pi image, TLS trust, restore-drill validation, and real SMTP/ntfy endpoint checks remain required operator checks.
 **Last updated:** 2026-08-04
 
@@ -21,7 +21,7 @@
 | `nexus-proxy` | Hardened profile | ARM64 Caddy TLS/routing boundary; absent from default profile |
 | `nexus-ai` | Opt-in placeholder profile | Optional future local/provider boundary |
 
-The worker shares the API's SQLite data mount and read-only `/var/lib/nexus/plugins` mount, publishes no host port, and runs `python -m app.worker`. Run exactly one worker in the current deployment topology. Plugin code is trusted operator-installed code; use a separate VM/container boundary for untrusted extensions.
+The worker shares the API's SQLite data mount and read-only `/var/lib/nexus/plugins` mount, publishes no host port, and runs `python -m app.worker`. Run exactly one worker in the current deployment topology. If hosted NVIDIA NIM is enabled, the API and worker receive the server-side `NVIDIA_API_KEY` only through the private environment contract; never expose it to the web container or browser. Plugin code is trusted operator-installed code; use a separate VM/container boundary for untrusted extensions.
 
 ## Development deployment
 

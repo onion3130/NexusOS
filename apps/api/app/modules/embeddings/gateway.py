@@ -78,9 +78,9 @@ class _PinnedTransport(httpx.AsyncBaseTransport):
         try:
             body = bytearray()
             async for chunk in core_response.aiter_stream():
-                body.extend(chunk)
-                if len(body) > self._max_response_bytes:
+                if len(body) + len(chunk) > self._max_response_bytes:
                     raise EmbeddingProviderError()
+                body.extend(chunk)
             if not 200 <= core_response.status < 300:
                 raise EmbeddingProviderError()
             return httpx.Response(status_code=core_response.status, headers=core_response.headers, content=bytes(body), request=request)

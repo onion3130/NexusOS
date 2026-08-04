@@ -2,6 +2,25 @@
 
 All notable NexusOS changes are recorded here. NexusOS releases use Semantic Versioning; private, local-first Raspberry Pi deployment remains the supported operating model.
 
+## [1.3.0] — 2026-08-04
+
+NexusOS v1.3.0 adds first-class NVIDIA NIM configuration on top of the existing provider-neutral gateway.
+
+### NVIDIA NIM support
+
+- Added hosted NVIDIA API Catalog defaults for chat completions and embeddings.
+- Added `NVIDIA_API_KEY` fallback for `AI_PROVIDER=nvidia_nim` and `EMBEDDING_PROVIDER=nvidia_nim`, without exposing credentials to the browser, web container, database, or logs.
+- Preserved explicit custom endpoint configuration for reviewed compatible public providers.
+- Kept bounded timeouts, output/response limits, private-target rejection, DNS-rebinding-resistant transport, and lexical fallback behavior.
+- Added configuration, environment-validation, credential-failure, and hosted-default tests.
+
+### Limitations
+
+- NIM remains disabled by default and requires an operator-provided NVIDIA API key and model identifiers.
+- Hosted NIM requires outbound network access; private and loopback provider targets remain rejected by design, and this release does not claim self-hosted NIM execution on the Pi.
+- NVIDIA NIM runtime latency and quota behavior require operator validation on the target deployment.
+
+
 ## [1.2.0] — 2026-08-04
 
 NexusOS v1.2.0 adds the semantic retrieval foundation for private notes.
@@ -132,4 +151,5 @@ This release is intended for private, local-first use. Docker and Raspberry Pi r
 [1.0.1]: https://github.com/onion3130/NexusOS/releases/tag/v1.0.1
 [1.0.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.0.0
 [1.1.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.1.0
-[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.2.0...HEAD
+[1.3.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.3.0
+[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.3.0...HEAD

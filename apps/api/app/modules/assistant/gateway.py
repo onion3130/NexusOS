@@ -133,9 +133,9 @@ class _PinnedTransport(httpx.AsyncBaseTransport):
         try:
             body = bytearray()
             async for chunk in core_response.aiter_stream():
-                body.extend(chunk)
-                if len(body) > self._max_response_bytes:
+                if len(body) + len(chunk) > self._max_response_bytes:
                     raise ProviderRequestError()
+                body.extend(chunk)
             if not 200 <= core_response.status < 300:
                 raise ProviderRequestError()
             return httpx.Response(

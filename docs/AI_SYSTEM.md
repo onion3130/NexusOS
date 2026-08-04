@@ -1,12 +1,13 @@
 # NexusOS AI system
 
-**Current milestone:** v1.2 — semantic retrieval foundation
-**Status:** The bounded assistant gateway, conversation storage, provider normalization, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, optional embeddings, semantic/hybrid retrieval, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Autonomous memory, external ingestion, streaming, and privileged host control remain deferred.
+**Current milestone:** v1.3 — NVIDIA NIM provider support
+**Status:** The bounded assistant gateway, conversation storage, provider normalization, hosted NVIDIA NIM configuration, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, optional embeddings, semantic/hybrid retrieval, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Autonomous memory, external ingestion, streaming, and privileged host control remain deferred.
 **Last updated:** 2026-08-04
 
 ## Current behavior
 
 - `AI_PROVIDER=disabled` remains the safe default.
+- `AI_PROVIDER=nvidia_nim` uses the hosted NVIDIA API Catalog chat endpoint by default; `NVIDIA_API_KEY` remains server-side and custom public endpoints must be explicitly configured.
 - Provider credentials stay server-side.
 - The gateway normalizes bounded provider requests and responses.
 - The registry exposes only tools allowed by the authenticated user's permissions.
@@ -72,7 +73,7 @@ No tool may execute arbitrary shell text, SQL, Docker commands, filesystem paths
 
 ## Retrieval and memory foundation
 
-Milestone 7 introduced lexical, provider-neutral retrieval results containing source type, source ID, chunk ID, title, excerpt, source version, update time, and bounded metadata. v1.2 adds optional provider-neutral embeddings for those chunks, bounded serialized-vector similarity, hybrid scoring, stale-content detection, and lexical fallback. Semantic retrieval is read-only and disabled unless explicitly configured. No autonomous memory extraction or model-written note is enabled.
+Milestone 7 introduced lexical, provider-neutral retrieval results containing source type, source ID, chunk ID, title, excerpt, source version, update time, and bounded metadata. v1.2 adds optional provider-neutral embeddings for those chunks, bounded serialized-vector similarity, hybrid scoring, stale-content detection, and lexical fallback. Semantic retrieval is read-only and disabled unless explicitly configured. NVIDIA NIM can supply chat and embeddings through the same OpenAI-compatible boundary, with hosted endpoints defaulted safely when `nvidia_nim` is selected. No autonomous memory extraction or model-written note is enabled.
 
 If retrieved note text is later added to model context, it must be explicitly delimited as untrusted user-authored reference material. It cannot alter system instructions or bypass confirmation-gated task actions.
 

@@ -1,6 +1,6 @@
 # NexusOS architecture
 
-**Current milestone:** v1.2 — semantic retrieval foundation
+**Current milestone:** v1.3 — NVIDIA NIM provider support
 **Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-04
 
@@ -36,7 +36,7 @@ FastAPI
   ├── backup-replication service -> bounded AES-GCM encryption -> operator-mounted destination adapter
   ├── notifications service -> channel settings -> email (SMTP) / push (ntfy) outbound adapters
   ├── plugins service -> approved manifest registry -> out-of-process JSON-stdio broker
-  └── embeddings service -> optional provider -> leased worker batches -> serialized vectors
+  └── provider gateway -> optional NVIDIA NIM/OpenAI-compatible chat and embeddings -> bounded worker batches -> serialized vectors
 
 Dedicated worker -> SQLite reminder claims -> notifications -> enqueued channel deliveries
 Dedicated worker -> confirmed host-action claims -> verified backup/integrity/restore results

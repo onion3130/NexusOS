@@ -26,6 +26,14 @@ _PLACEHOLDER_MARKERS = (
 )
 
 
+def _usable_secret(value: SecretStr | None) -> bool:
+    """Return whether an optional secret is present and not a template value."""
+    if value is None:
+        return False
+    secret = value.get_secret_value().strip()
+    return bool(secret) and not any(marker in secret.lower() for marker in _PLACEHOLDER_MARKERS)
+
+
 class Settings(BaseSettings):
     """Validated runtime settings loaded from process environment variables."""
 
@@ -466,12 +474,18 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_active_provider(self) -> "Settings":
         """Require server-side provider configuration only when AI is enabled."""
+        if self.ai_provider == "nvidia_nim":
+            self.ai_api_key = self.ai_api_key if _usable_secret(self.ai_api_key) else self.nvidia_api_key
+            self.ai_base_url = self.ai_base_url or "https://integrate.api.nvidia.com/v1/chat/completions"
+        if self.embedding_provider == "nvidia_nim":
+            self.embedding_api_key = self.embedding_api_key if _usable_secret(self.embedding_api_key) else self.nvidia_api_key
+            self.embedding_base_url = self.embedding_base_url or "https://integrate.api.nvidia.com/v1/embeddings"
         if self.ai_provider != "disabled":
-            if not self.ai_base_url or not self.ai_model or not self.ai_api_key or not self.ai_api_key.get_secret_value().strip():
-                raise ValueError("active AI provider requires AI_BASE_URL, AI_MODEL, and AI_API_KEY")
+            if not self.ai_base_url or not self.ai_model or not _usable_secret(self.ai_api_key):
+                raise ValueError("active AI provider requires AI_BASE_URL, AI_MODEL, and a non-placeholder AI_API_KEY (or NVIDIA_API_KEY for NVIDIA NIM)")
         if self.embedding_provider != "disabled":
-            if not self.embedding_base_url or not self.embedding_model or not self.embedding_api_key or not self.embedding_api_key.get_secret_value().strip():
-                raise ValueError("active embedding provider requires EMBEDDING_BASE_URL, EMBEDDING_MODEL, and EMBEDDING_API_KEY")
+            if not self.embedding_base_url or not self.embedding_model or not _usable_secret(self.embedding_api_key):
+                raise ValueError("active embedding provider requires EMBEDDING_BASE_URL, EMBEDDING_MODEL, and a non-placeholder EMBEDDING_API_KEY (or NVIDIA_API_KEY for NVIDIA NIM)")
         return self
 
 

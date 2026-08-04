@@ -106,6 +106,43 @@ def test_provider_target_rejects_local_addresses() -> None:
     asyncio.run(run())
 
 
+def test_nvidia_nim_uses_hosted_defaults_and_shared_server_key() -> None:
+    """Hosted NIM needs only the provider selector, model, and NVIDIA key."""
+    settings = Settings(
+        NEXUS_ENV="test",
+        TZ="UTC",
+        DATA_DIR=".",
+        DB_TYPE="sqlite",
+        DATABASE_URL="sqlite:///./data/nexus.db",
+        JWT_SECRET="test-secret-that-is-longer-than-thirty-two-characters",
+        SESSION_COOKIE_SECURE=False,
+        CORS_ORIGINS="http://localhost:3000",
+        AI_PROVIDER="nvidia_nim",
+        NVIDIA_API_KEY=SecretStr("nvidia-server-key"),
+        AI_MODEL="meta/llama-3.1-8b-instruct",
+    )
+    assert settings.ai_base_url == "https://integrate.api.nvidia.com/v1/chat/completions"
+    assert settings.ai_api_key is not None
+    assert settings.ai_api_key.get_secret_value() == "nvidia-server-key"
+
+
+def test_nvidia_nim_requires_a_server_key() -> None:
+    """NIM cannot start without a server-side NVIDIA credential."""
+    with pytest.raises(ValueError):
+        Settings(
+            NEXUS_ENV="test",
+            TZ="UTC",
+            DATA_DIR=".",
+            DB_TYPE="sqlite",
+            DATABASE_URL="sqlite:///./data/nexus.db",
+            JWT_SECRET="test-secret-that-is-longer-than-thirty-two-characters",
+            SESSION_COOKIE_SECURE=False,
+            CORS_ORIGINS="http://localhost:3000",
+            AI_PROVIDER="nvidia_nim",
+            AI_MODEL="meta/llama-3.1-8b-instruct",
+        )
+
+
 def test_openai_compatible_normalization_does_not_keep_raw_payload() -> None:
     """Provider normalization returns bounded typed fields and no raw body."""
     settings = Settings(

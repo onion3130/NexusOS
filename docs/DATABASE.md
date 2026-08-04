@@ -1,6 +1,6 @@
 # NexusOS database
 
-**Current milestone:** v1.2 — semantic retrieval foundation
+**Current milestone:** v1.3 — NVIDIA NIM provider support
 **Current status:** Identity, assistant, task, notes, lexical search/retrieval, optional embeddings, calendar, finance, media, plugin registry/run history, host-action proposals, backup metadata, restore markers, retention pruning markers, workspace permissions, encrypted replication metadata, and outbound notification channel deliveries are implemented through Alembic revisions `0001_identity` through `0016_embeddings`.
 **Last updated:** 2026-08-04
 

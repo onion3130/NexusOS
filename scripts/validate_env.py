@@ -77,9 +77,11 @@ def validate(values: dict[str, str]) -> list[str]:
     if embedding_provider not in {"disabled", "openai", "openai_compatible", "nvidia_nim"}:
         errors.append("EMBEDDING_PROVIDER is unsupported")
     if embedding_provider != "disabled":
-        for name in ("EMBEDDING_BASE_URL", "EMBEDDING_MODEL", "EMBEDDING_API_KEY"):
-            if not values.get(name, "").strip():
-                errors.append(f"{name} is required when EMBEDDING_PROVIDER is enabled")
+        if not values.get("EMBEDDING_MODEL", "").strip():
+            errors.append("EMBEDDING_MODEL is required when EMBEDDING_PROVIDER is enabled")
+        embedding_key_name = "NVIDIA_API_KEY" if embedding_provider == "nvidia_nim" else "EMBEDDING_API_KEY"
+        if not values.get(embedding_key_name, "").strip():
+            errors.append(f"{embedding_key_name} is required when EMBEDDING_PROVIDER is enabled")
         embedding_url = values.get("EMBEDDING_BASE_URL", "").strip()
         if embedding_url and not (embedding_url.startswith("https://") or embedding_url.startswith("http://")):
             errors.append("EMBEDDING_BASE_URL must be an absolute HTTP(S) URL")
@@ -235,9 +237,12 @@ def validate(values: dict[str, str]) -> list[str]:
             errors.append("NOTIFICATION_PUSH_TOKEN still contains a placeholder value")
 
     if provider not in {"", "disabled", "none", "local"}:
+        if not values.get("AI_MODEL", "").strip():
+            errors.append("AI_MODEL is required when AI_PROVIDER is enabled")
         provider_key = {
             "nvidia": "NVIDIA_API_KEY",
             "nim": "NVIDIA_API_KEY",
+            "nvidia_nim": "NVIDIA_API_KEY",
             "openai": "OPENAI_API_KEY",
         }.get(provider, "AI_API_KEY")
         api_key = values.get(provider_key, "").strip()
