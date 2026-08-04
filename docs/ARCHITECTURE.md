@@ -1,6 +1,6 @@
 # NexusOS architecture
 
-**Current milestone:** Milestone 11 (part 2) — integrations and plugin boundary
+**Current milestone:** v1.2 — semantic retrieval foundation
 **Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-04
 
@@ -14,9 +14,9 @@ NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an exte
 - `apps/api/app/modules/notes`: canonical notes, SQLite FTS5 search, deterministic chunks, and source-aware retrieval.
 - `apps/api/app/modules/host_actions`: typed action catalog, proposal lifecycle, SQLite backups, confirmation-gated restore, retention cleanup/key rotation, plugin lifecycle actions, fixed executor, and worker processing.
 - `apps/api/app/modules/plugins`: validated manifests, approved-directory discovery, secret-free JSON-stdio subprocess broker, bounded run history, and capability/risk enforcement.
-- `apps/api/app/worker.py`: dedicated bounded SQLite reminder, confirmed host-action, replication, and notification-delivery worker.
+- `apps/api/app/worker.py`: dedicated bounded SQLite reminder, confirmed host-action, replication, notification-delivery, media-rescan, and embedding worker.
 - `apps/api/app/db`: SQLAlchemy engine/session and all persisted models.
-- `apps/api/migrations`: explicit Alembic migration history through `0011_backup_lifecycle`.
+- `apps/api/migrations`: explicit Alembic migration history through `0016_embeddings`.
 - `apps/web`: authenticated Next.js shell with overview, assistant, tasks, notifications, and notification settings.
 - `docker-compose.yml`: ARM64 development topology with API, web, and real worker services; proxy and optional AI remain placeholders.
 
@@ -35,7 +35,8 @@ FastAPI
   ├── workspace-views service -> approved-root file/project/Git adapters -> optional Docker metadata adapter
   ├── backup-replication service -> bounded AES-GCM encryption -> operator-mounted destination adapter
   ├── notifications service -> channel settings -> email (SMTP) / push (ntfy) outbound adapters
-  └── plugins service -> approved manifest registry -> out-of-process JSON-stdio broker
+  ├── plugins service -> approved manifest registry -> out-of-process JSON-stdio broker
+  └── embeddings service -> optional provider -> leased worker batches -> serialized vectors
 
 Dedicated worker -> SQLite reminder claims -> notifications -> enqueued channel deliveries
 Dedicated worker -> confirmed host-action claims -> verified backup/integrity/restore results
@@ -108,7 +109,7 @@ Milestone 9 exposes live read-only metadata beneath server-configured approved r
 
 ## Notes and retrieval architecture
 
-Notes are canonical user-authored sources. A derived search projection feeds SQLite FTS5, while deterministic versioned chunks provide provenance for future RAG. Search and retrieval always join through owned canonical notes. Assistant note tools are read-only and return bounded, explicitly source-labeled content; retrieved text is untrusted context and cannot grant tool permissions.
+Notes are canonical user-authored sources. A derived search projection feeds SQLite FTS5, while deterministic versioned chunks provide provenance for RAG. Optional provider-scoped embeddings are generated asynchronously and stored as bounded serialized vectors; hybrid retrieval combines lexical and semantic scores while retaining lexical fallback. Search and retrieval always join through owned canonical notes. Assistant note tools are read-only and return bounded, explicitly source-labeled content; retrieved text is untrusted context and cannot grant tool permissions.
 
 ## Deferred scope
 
@@ -116,7 +117,7 @@ Not implemented today:
 
 - Streaming assistant responses
 - SMS and calendar notification channels (email and push are implemented)
-- Embeddings, vector search, and semantic memory extraction
+- Autonomous memory extraction and model-written notes
 - External document ingestion and file sources
 - Privileged host actions and service/container control
 - File contents, project execution, Git mutations, and Docker control

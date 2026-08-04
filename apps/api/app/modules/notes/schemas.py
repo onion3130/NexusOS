@@ -130,6 +130,9 @@ class RetrievalResult(BaseModel):
     title: str
     excerpt: str
     score: float
+    lexical_score: float | None = None
+    semantic_score: float | None = None
+    retrieval_mode: Literal["lexical", "semantic", "hybrid"] = "lexical"
     source_version: int
     updated_at: datetime
     metadata: dict[str, object] = Field(default_factory=dict)

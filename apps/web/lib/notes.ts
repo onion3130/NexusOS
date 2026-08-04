@@ -19,9 +19,23 @@ export type SearchResult = {
   title: string;
   excerpt: string;
   score: number;
+  lexical_score?: number | null;
+  semantic_score?: number | null;
+  retrieval_mode?: "lexical" | "semantic" | "hybrid";
   updated_at: string;
   source_version: number;
   tags: string[];
+};
+
+export type EmbeddingStatus = {
+  enabled: boolean;
+  provider: string;
+  model: string | null;
+  dimensions: number | null;
+  pending: number;
+  ready: number;
+  stale: number;
+  failed: number;
 };
 
 type NoteInput = {
@@ -74,4 +88,13 @@ export async function searchNotes(query: string, includeArchived = false, tag?: 
   if (tag) params.set("tag", tag);
   const response = await authenticatedFetch(`/api/v1/search?${params.toString()}`, { cache: "no-store" });
   return (await parse<{ items: SearchResult[] }>(response)).items;
+}
+
+export async function retrieveNotes(query: string, mode: "lexical" | "semantic" | "hybrid", includeArchived = false, limit = 8): Promise<SearchResult[]> {
+  const params = new URLSearchParams({ q: query, mode, include_archived: String(includeArchived), limit: String(limit) });
+  return parse<SearchResult[]>(await authenticatedFetch(`/api/v1/search/retrieve?${params.toString()}`, { cache: "no-store" }));
+}
+
+export async function getEmbeddingStatus(): Promise<EmbeddingStatus> {
+  return parse<EmbeddingStatus>(await authenticatedFetch("/api/v1/search/embeddings/status", { cache: "no-store" }));
 }

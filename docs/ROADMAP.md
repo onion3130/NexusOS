@@ -1,7 +1,7 @@
 # NexusOS roadmap
 
-**Current milestone:** Milestone 11 (part 2) — calendar, media, finance, and plugin boundary
-**Next milestone:** v1.2 — semantic retrieval and memory foundations
+**Current milestone:** v1.2 — semantic retrieval foundation
+**Next milestone:** v1.3 — grounded assistant memory and external source ingestion
 **Last updated:** 2026-08-04
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
@@ -213,6 +213,23 @@ Known limitations:
 - Plugins are trusted operator-installed code, not a complete hostile-code sandbox; use a separate VM/container boundary for untrusted code.
 - Docker and target Raspberry Pi runtime validation remain operator checks in the current environment.
 
+
+## v1.2 semantic retrieval foundation
+
+Implemented and validated in v1.2.0:
+
+- Optional provider-neutral embeddings for existing versioned note chunks.
+- SQLite-safe serialized vectors with bounded Python cosine similarity; native vector extensions remain optional.
+- Leased worker batches with retries, stale-content detection, and lexical fallback.
+- Lexical, semantic, and hybrid retrieval modes with source/version/hash provenance.
+- Read-only assistant retrieval integration; no autonomous memory extraction or model-written notes.
+- Semantic retrieval remains disabled unless the operator explicitly configures an embedding provider.
+
+Known limitations:
+
+- External embedding providers receive note chunk text only when explicitly enabled.
+- Target Raspberry Pi ARM64 provider latency and sustained worker-load validation remain operational checks.
+- Autonomous memory, external ingestion, and model-written notes remain future scope.
 
 ## Approval rule
 

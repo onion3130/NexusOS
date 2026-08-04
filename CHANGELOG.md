@@ -2,6 +2,28 @@
 
 All notable NexusOS changes are recorded here. NexusOS releases use Semantic Versioning; private, local-first Raspberry Pi deployment remains the supported operating model.
 
+## [1.2.0] — 2026-08-04
+
+NexusOS v1.2.0 adds the semantic retrieval foundation for private notes.
+
+### Semantic retrieval
+
+- Added optional provider-neutral embeddings for deterministic, versioned note chunks.
+- Added migration `0016_embeddings` and the `notes.semantic` permission.
+- Added bounded serialized-vector storage and Python cosine similarity without a mandatory native SQLite extension.
+- Added leased worker batches, retry limits, stale-content detection, and provider-disabled safety behavior.
+- Added lexical, semantic, and hybrid retrieval modes with source/version/hash provenance and lexical fallback.
+- Added aggregate embedding status without exposing vectors or credentials.
+- Extended the assistant note search contract with retrieval-mode metadata while preserving lexical behavior by default.
+- Added security, migration, configuration, and vector-boundary tests.
+
+### Limitations
+
+- Embeddings are disabled by default and require explicit server-side provider configuration.
+- External providers receive note chunk text only when enabled by the operator.
+- Autonomous memory extraction, external ingestion, model-written notes, and native vector extensions remain future work.
+
+
 ## [1.1.0] — 2026-08-04
 
 NexusOS v1.1.0 delivers calendar, finance, media, and the security-first out-of-process plugin boundary.
@@ -110,4 +132,4 @@ This release is intended for private, local-first use. Docker and Raspberry Pi r
 [1.0.1]: https://github.com/onion3130/NexusOS/releases/tag/v1.0.1
 [1.0.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.0.0
 [1.1.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.1.0
-[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.2.0...HEAD

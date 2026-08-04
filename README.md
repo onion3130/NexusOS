@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/onion3130/NexusOS?style=flat-square&label=license" alt="MIT License"></a>
-  <a href="https://github.com/onion3130/NexusOS/releases"><img src="https://img.shields.io/badge/release-v1.1.0-8b5cf6?style=flat-square" alt="NexusOS v1.1.0 release"></a>
+  <a href="https://github.com/onion3130/NexusOS/releases"><img src="https://img.shields.io/badge/release-v1.2.0-8b5cf6?style=flat-square" alt="NexusOS v1.2.0 release"></a>
   <img src="https://img.shields.io/badge/Docker-ARM64--ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker ARM64 ready">
   <img src="https://img.shields.io/badge/Raspberry%20Pi%205-supported-c51a4a?style=flat-square&logo=raspberrypi&logoColor=white" alt="Raspberry Pi 5 supported">
   <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11 or newer">
@@ -46,11 +46,11 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 | Item | Status |
 | --- | --- |
-| **Current milestone** | Milestone 11 (part 2) — Integrations & plugin boundary ✅ |
-| **Current version** | `1.1.0` — integrations and plugin boundary |
-| **Next milestone** | v1.2 — semantic retrieval and memory foundations |
+| **Current milestone** | v1.2 — Semantic retrieval foundation ✅ |
+| **Current version** | `1.2.0` — optional embeddings and hybrid retrieval |
+| **Next milestone** | v1.3 — grounded assistant memory and external source ingestion |
 
-NexusOS v1.1.0 is ready for private, local-first Raspberry Pi use. Milestone 10 adds an opt-in hardened LAN deployment with internal TLS, systemd startup, encrypted replication, and recovery procedures. Milestone 11 adds outbound email/push channels, Calendar, Finance, Media, and an audited out-of-process plugin boundary. Milestones 12 and 13 complete confirmation-gated restore, retention cleanup, and encryption key rotation. Target-Pi builds, restore drills, and real SMTP/ntfy endpoints still require operational validation. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
+NexusOS v1.2 adds optional provider-neutral embeddings, semantic and hybrid note retrieval, bounded worker processing, and lexical fallback while preserving the private, local-first Raspberry Pi architecture. Embeddings are disabled by default; autonomous memory, external ingestion, and model-written notes remain future work. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
 
 ## Technology stack
 

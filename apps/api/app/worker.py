@@ -14,6 +14,7 @@ from app.modules.host_actions.worker import process_host_actions
 from app.modules.backup_replication.replicator import process_replication_jobs
 from app.modules.notifications.worker import process_notification_deliveries
 from app.modules.media.service import configured_media_roots, process_media_rescans
+from app.modules.embeddings.service import process_embeddings
 
 _running = True
 _logger = logging.getLogger(__name__)
@@ -48,6 +49,7 @@ def main() -> int:
             process_replication_jobs(session, data_dir=settings.data_dir, destination=settings.backup_replication_destination, encryption_key=settings.backup_encryption_key.get_secret_value() if settings.backup_encryption_key else None, batch_size=2)
             process_notification_deliveries(session, settings=settings, batch_size=settings.notification_delivery_batch_size)
             process_media_rescans(session, data_dir=settings.data_dir, media_roots=configured_media_roots(settings), max_size_bytes=settings.media_index_max_size_mb * 1024 * 1024, max_dimension=settings.media_thumbnail_max_dimension)
+            process_embeddings(session, settings, batch_size=settings.embedding_batch_size)
         except Exception:
             # A malformed item must not terminate the scheduler. Each module
             # owns durable leases/retries; the process-level restart policy is

@@ -1,6 +1,6 @@
 # NexusOS security baseline
 
-**Status:** Milestone 10 deployment hardening is implemented as an opt-in LAN profile alongside the v1.0 safe host actions, encrypted backup replication, confirmation-gated restore, audit, notes, search, retrieval, tasks, reminders, notifications, and assistant controls; public-internet deployment remains out of scope.
+**Status:** v1.2 semantic retrieval foundation is implemented alongside the v1.0/v1.1 local-first security boundaries; public-internet deployment remains out of scope.
 **Last updated:** 2026-08-04
 
 ## Runtime boundaries
@@ -14,6 +14,12 @@
 - Host-action execution uses fixed Python/SQLite adapters. Plugin execution is the separate, non-privileged JSON-stdio broker: no shell, confined approved entrypoints, a minimal secret-free environment, bounded output/time, and Linux resource limits. Plugins are trusted operator-installed code, not a hostile-code sandbox.
 
 ## Notes, search, and retrieval controls
+
+- Embeddings are disabled by default and can be enabled only through server configuration.
+- Embedding vectors are user-scoped derived data; vector payloads, provider credentials, and raw upstream responses never leave the server or appear in logs.
+- Semantic and hybrid retrieval require `notes.semantic`, enforce note/chunk ownership, exclude deleted notes, and fall back to lexical results when the provider or index is unavailable.
+- Provider endpoints are validated as HTTP(S) URLs without credentials and are subject to bounded request/response and timeout policies.
+
 
 - Notes require `notes.read` for reads/search, `notes.write` for create/update/archive/restore, and `notes.delete` for soft deletion.
 - Note mutations require CSRF for cookie-authenticated clients, payload-bound idempotency, ownership checks, and audit events.

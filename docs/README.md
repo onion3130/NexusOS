@@ -26,6 +26,7 @@ This directory contains the detailed design, setup, development, deployment, sec
 - [v1.0.0 release notes](releases/v1.0.0.md) — GitHub-ready release description
 - [v1.0.1 release notes](releases/v1.0.1.md) — Docker packaging patch
 - [v1.1.0 release notes](releases/v1.1.0.md) — integrations and plugin boundary
+- [v1.2 semantic retrieval](AI_SYSTEM.md) — optional embeddings, semantic/hybrid retrieval, and lexical fallback
 - [Plugin boundary](PLUGIN_BOUNDARY.md) — manifest contract and secure subprocess model
 - [Milestone 9 workspace views](ROADMAP.md#milestone-9-complete--files-projects-git-and-docker-views) — read-only Files, Projects, Git, and Docker scope
 - [Milestone 10 deployment hardening](ROADMAP.md#milestone-10-deployment-hardening) — hardened LAN proxy, systemd, encrypted replication, and recovery gate

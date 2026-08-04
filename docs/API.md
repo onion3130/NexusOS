@@ -1,7 +1,7 @@
 # NexusOS API
 
-**Current milestone:** Milestone 11 (part 2) — integrations and plugin boundary
-**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, calendar, finance, media, confirmation-gated maintenance actions, verified SQLite backups, automated restore, retention cleanup, encryption key rotation, audit visibility, read-only workspace views, outbound email/push notification channels, and the out-of-process plugin boundary are implemented. Embeddings and streaming remain planned.
+**Current milestone:** v1.2 — semantic retrieval foundation
+**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, optional embeddings, calendar, finance, media, confirmation-gated maintenance actions, verified SQLite backups, automated restore, retention cleanup, encryption key rotation, audit visibility, read-only workspace views, outbound email/push notification channels, and the out-of-process plugin boundary are implemented. Streaming remains planned.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-04
 
@@ -91,7 +91,11 @@ Returns current-version deterministic retrieval chunks for one owned note.
 
 #### `GET /api/v1/search/retrieve`
 
-Returns bounded source-aware lexical retrieval results for future assistant/RAG context assembly.
+Returns bounded, ownership-scoped source-aware retrieval results. `mode=lexical` is the default; `mode=semantic` and `mode=hybrid` require `notes.semantic` and an explicitly configured embedding provider. If semantic retrieval is unavailable, the endpoint fails safe to lexical results. Responses include retrieval mode, lexical/semantic scores when available, source version, and provenance metadata.
+
+#### `GET /api/v1/search/embeddings/status`
+
+Returns aggregate semantic-index availability and counts for the authenticated user. It never returns vectors, note content, provider credentials, or upstream payloads.
 
 ### Notifications
 
@@ -234,7 +238,7 @@ Returns the current user's bounded host-action proposal, confirmation, rejection
 - Cookie-authenticated mutations require CSRF validation.
 - CORS allows `PATCH` in addition to existing methods.
 - Database migrations are explicit; startup never mutates schema.
-- Readiness verifies the current Alembic head `0015_plugins` and the notes FTS5 table.
+- Readiness verifies the current Alembic head `0016_embeddings` and the notes FTS5 table.
 - Notifications are persistent records; optional outbound email/push channels are server-configured and delivery is worker-side only.
 - No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, or provider URLs from a client.
 - Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf. Restore is the highest-risk action and additionally requires a verified source, a fresh safety backup, staged digest/integrity verification, and an atomic swap. Retention cleanup accepts no input and prunes only per the server policy with last-backup protection; key rotation accepts no input and uses only environment-configured keys.

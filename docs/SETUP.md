@@ -1,6 +1,6 @@
 # NexusOS development setup
 
-**Status:** v1.1.0 released — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, calendar, finance, media, confirmation-gated host maintenance, verified SQLite backups, encrypted directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, outbound email/push notification channels, audited out-of-process plugins, and audit history are available. Embeddings and autonomous memory remain deferred.
+**Status:** v1.2 semantic retrieval foundation — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, optional embeddings, calendar, finance, media, confirmation-gated host maintenance, verified SQLite backups, encrypted directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, outbound email/push notification channels, audited out-of-process plugins, and audit history are available. Autonomous memory remains deferred.
 
 ## Prerequisites
 

@@ -1,7 +1,7 @@
 # NexusOS database
 
-**Current milestone:** Milestone 11 (part 2) — integrations and plugin boundary
-**Current status:** Identity, assistant, task, notes, search/retrieval, calendar, finance, media, plugin registry/run history, host-action proposals, backup metadata, restore markers, retention pruning markers, workspace permissions, encrypted replication metadata, and outbound notification channel deliveries are implemented through Alembic revisions `0001_identity` through `0015_plugins`.
+**Current milestone:** v1.2 — semantic retrieval foundation
+**Current status:** Identity, assistant, task, notes, lexical search/retrieval, optional embeddings, calendar, finance, media, plugin registry/run history, host-action proposals, backup metadata, restore markers, retention pruning markers, workspace permissions, encrypted replication metadata, and outbound notification channel deliveries are implemented through Alembic revisions `0001_identity` through `0016_embeddings`.
 **Last updated:** 2026-08-04
 
 ## Current database state
@@ -27,6 +27,7 @@ The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys
 - `0013_finance` adds integer-cent finance accounts, categories, transactions, and finance permissions.
 - `0014_media` adds the derived media index and media permissions; thumbnails remain rebuildable files beneath `DATA_DIR`.
 - `0015_plugins` adds registered plugin manifests, bounded run history, and plugin permissions. Plugin code and artifacts remain outside the database.
+- `0016_embeddings` adds optional provider-scoped serialized vectors for versioned note chunks and the `notes.semantic` permission. Vectors are private derived data and can be rebuilt from canonical chunks.
 
 ## Milestone 7 tables
 
@@ -38,7 +39,7 @@ The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys
 | `notes_fts` | derived SQLite FTS5 | Bounded lexical search index |
 | `note_chunks` | user/note | Versioned source-aware retrieval chunks |
 
-`notes` is authoritative. Search projections and chunks are derived and can be rebuilt. FTS5 is lexical only; embeddings and vector storage are deferred.
+`notes` is authoritative. Search projections, chunks, and embeddings are derived and can be rebuilt. FTS5 remains available as the lexical fallback; serialized vectors are bounded and provider-scoped.
 
 ## Milestone 6 tables
 

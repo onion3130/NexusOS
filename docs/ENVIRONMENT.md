@@ -20,6 +20,20 @@
 | `AI_MAX_CONTEXT_MESSAGES` | optional | `20` | no | Context bound |
 | `AI_MAX_OUTPUT_TOKENS` | optional | `512` | no | Output bound |
 | `AI_MAX_RESPONSE_BYTES` | optional | `1048576` | no | Response memory bound |
+| `EMBEDDING_PROVIDER` | optional | `disabled` | no | Optional semantic retrieval provider |
+| `EMBEDDING_BASE_URL` | optional | empty | no | Explicit HTTP(S) embeddings endpoint when enabled |
+| `EMBEDDING_API_KEY` | optional | empty | yes | Server-side embeddings credential |
+| `EMBEDDING_MODEL` | optional | empty | no | Provider embedding model when enabled |
+| `EMBEDDING_TIMEOUT_SECONDS` | optional | `30` | no | Embedding call timeout, 1–120 seconds |
+| `EMBEDDING_BATCH_SIZE` | optional | `8` | no | Bounded embedding worker batch, 1–32 |
+| `EMBEDDING_MAX_CHUNK_LENGTH` | optional | `4000` | no | Maximum text sent per embedding request |
+| `EMBEDDING_PROVIDER` | optional | `disabled` | no | Optional semantic retrieval provider |
+| `EMBEDDING_BASE_URL` | optional | empty | no | Explicit HTTP(S) embeddings endpoint when enabled |
+| `EMBEDDING_API_KEY` | optional | empty | yes | Server-side embeddings credential |
+| `EMBEDDING_MODEL` | optional | empty | no | Provider embedding model when enabled |
+| `EMBEDDING_TIMEOUT_SECONDS` | optional | `30` | no | Embedding call timeout, 1–120 seconds |
+| `EMBEDDING_BATCH_SIZE` | optional | `8` | no | Bounded embedding worker batch, 1–32 |
+| `EMBEDDING_MAX_CHUNK_LENGTH` | optional | `4000` | no | Maximum text sent per embedding request |
 | `TASK_WORKER_INTERVAL_SECONDS` | optional | `30` | no | Worker polling interval, 5–3600 |
 | `TASK_WORKER_BATCH_SIZE` | optional | `50` | no | Reminder batch size, 1–200 |
 | `WORKSPACE_ROOTS` | optional | empty | no | Approved absolute roots or paths relative to `DATA_DIR` for read-only Files, Projects, and Git views |

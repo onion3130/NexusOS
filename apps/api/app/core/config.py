@@ -54,6 +54,15 @@ class Settings(BaseSettings):
     ai_max_context_messages: int = Field(default=20, validation_alias="AI_MAX_CONTEXT_MESSAGES")
     ai_max_output_tokens: int = Field(default=512, validation_alias="AI_MAX_OUTPUT_TOKENS")
     ai_max_response_bytes: int = Field(default=1_048_576, validation_alias="AI_MAX_RESPONSE_BYTES")
+    embedding_provider: str = Field(default="disabled", validation_alias="EMBEDDING_PROVIDER")
+    embedding_base_url: str | None = Field(default=None, validation_alias="EMBEDDING_BASE_URL")
+    embedding_api_key: SecretStr | None = Field(default=None, validation_alias="EMBEDDING_API_KEY")
+    embedding_model: str | None = Field(default=None, validation_alias="EMBEDDING_MODEL")
+    embedding_timeout_seconds: float = Field(default=30.0, validation_alias="EMBEDDING_TIMEOUT_SECONDS")
+    embedding_batch_size: int = Field(default=8, validation_alias="EMBEDDING_BATCH_SIZE")
+    embedding_max_chunk_length: int = Field(default=4000, validation_alias="EMBEDDING_MAX_CHUNK_LENGTH")
+    embedding_max_response_bytes: int = Field(default=2_097_152, validation_alias="EMBEDDING_MAX_RESPONSE_BYTES")
+    embedding_max_dimensions: int = Field(default=2048, validation_alias="EMBEDDING_MAX_DIMENSIONS")
     task_worker_interval_seconds: int = Field(default=30, validation_alias="TASK_WORKER_INTERVAL_SECONDS")
     task_worker_batch_size: int = Field(default=50, validation_alias="TASK_WORKER_BATCH_SIZE")
     workspace_roots: str = Field(default="", validation_alias="WORKSPACE_ROOTS")
@@ -169,6 +178,67 @@ class Settings(BaseSettings):
         if not 16_384 <= value <= 8_388_608:
             raise ValueError("must be between 16384 and 8388608 bytes")
         return value
+
+    @field_validator("embedding_provider")
+    @classmethod
+    def validate_embedding_provider(cls, value: str) -> str:
+        """Normalize the optional embedding provider selection."""
+        normalized = value.strip().lower()
+        if normalized not in {"disabled", "openai", "openai_compatible", "nvidia_nim"}:
+            raise ValueError("unsupported embedding provider")
+        return normalized
+
+    @field_validator("embedding_timeout_seconds")
+    @classmethod
+    def validate_embedding_timeout(cls, value: float) -> float:
+        """Bound embedding calls for predictable worker resource use."""
+        if not 1 <= value <= 120:
+            raise ValueError("must be between 1 and 120 seconds")
+        return value
+
+    @field_validator("embedding_batch_size")
+    @classmethod
+    def validate_embedding_batch(cls, value: int) -> int:
+        """Bound one embedding provider batch."""
+        if not 1 <= value <= 32:
+            raise ValueError("must be between 1 and 32")
+        return value
+
+    @field_validator("embedding_max_chunk_length")
+    @classmethod
+    def validate_embedding_chunk_length(cls, value: int) -> int:
+        """Bound text sent to the embedding provider."""
+        if not 128 <= value <= 16_000:
+            raise ValueError("must be between 128 and 16000 characters")
+        return value
+
+    @field_validator("embedding_max_response_bytes")
+    @classmethod
+    def validate_embedding_response_bytes(cls, value: int) -> int:
+        """Bound embedding response memory use."""
+        if not 16_384 <= value <= 16_777_216:
+            raise ValueError("must be between 16384 and 16777216 bytes")
+        return value
+
+    @field_validator("embedding_max_dimensions")
+    @classmethod
+    def validate_embedding_dimensions(cls, value: int) -> int:
+        """Bound persisted vector dimensions."""
+        if not 8 <= value <= 4096:
+            raise ValueError("must be between 8 and 4096 dimensions")
+        return value
+
+    @field_validator("embedding_base_url")
+    @classmethod
+    def validate_embedding_base_url(cls, value: str | None) -> str | None:
+        """Allow only absolute HTTP(S) embedding endpoints without credentials."""
+        if value is None or not value.strip():
+            return None
+        normalized = value.strip()
+        parsed = urlsplit(normalized)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.username or parsed.password or parsed.path == "":
+            raise ValueError("must be an absolute HTTP(S) URL without credentials")
+        return normalized
 
     @field_validator("media_thumbnail_max_dimension")
     @classmethod
@@ -399,6 +469,9 @@ class Settings(BaseSettings):
         if self.ai_provider != "disabled":
             if not self.ai_base_url or not self.ai_model or not self.ai_api_key or not self.ai_api_key.get_secret_value().strip():
                 raise ValueError("active AI provider requires AI_BASE_URL, AI_MODEL, and AI_API_KEY")
+        if self.embedding_provider != "disabled":
+            if not self.embedding_base_url or not self.embedding_model or not self.embedding_api_key or not self.embedding_api_key.get_secret_value().strip():
+                raise ValueError("active embedding provider requires EMBEDDING_BASE_URL, EMBEDDING_MODEL, and EMBEDDING_API_KEY")
         return self
 
 

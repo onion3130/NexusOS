@@ -73,6 +73,16 @@ def validate(values: dict[str, str]) -> list[str]:
 
     environment = values.get("NEXUS_ENV", "").strip().lower()
     provider = values.get("AI_PROVIDER", "").strip().lower()
+    embedding_provider = values.get("EMBEDDING_PROVIDER", "disabled").strip().lower()
+    if embedding_provider not in {"disabled", "openai", "openai_compatible", "nvidia_nim"}:
+        errors.append("EMBEDDING_PROVIDER is unsupported")
+    if embedding_provider != "disabled":
+        for name in ("EMBEDDING_BASE_URL", "EMBEDDING_MODEL", "EMBEDDING_API_KEY"):
+            if not values.get(name, "").strip():
+                errors.append(f"{name} is required when EMBEDDING_PROVIDER is enabled")
+        embedding_url = values.get("EMBEDDING_BASE_URL", "").strip()
+        if embedding_url and not (embedding_url.startswith("https://") or embedding_url.startswith("http://")):
+            errors.append("EMBEDDING_BASE_URL must be an absolute HTTP(S) URL")
 
     if environment not in {"development", "test", "production"}:
         errors.append(
@@ -140,6 +150,28 @@ def validate(values: dict[str, str]) -> list[str]:
     plugins_dir = values.get("PLUGINS_DIR", "").strip()
     if plugins_dir and not (Path(plugins_dir).is_absolute() or plugins_dir.startswith("/")):
         errors.append("PLUGINS_DIR must be an absolute path")
+    embedding_timeout = values.get("EMBEDDING_TIMEOUT_SECONDS", "").strip()
+    if embedding_timeout:
+        try:
+            if not 1 <= float(embedding_timeout) <= 120:
+                raise ValueError
+        except ValueError:
+            errors.append("EMBEDDING_TIMEOUT_SECONDS must be a number between 1 and 120")
+    embedding_batch = values.get("EMBEDDING_BATCH_SIZE", "").strip()
+    if embedding_batch:
+        try:
+            if not 1 <= int(embedding_batch) <= 32:
+                raise ValueError
+        except ValueError:
+            errors.append("EMBEDDING_BATCH_SIZE must be an integer between 1 and 32")
+    embedding_length = values.get("EMBEDDING_MAX_CHUNK_LENGTH", "").strip()
+    if embedding_length:
+        try:
+            if not 128 <= int(embedding_length) <= 16000:
+                raise ValueError
+        except ValueError:
+            errors.append("EMBEDDING_MAX_CHUNK_LENGTH must be an integer between 128 and 16000")
+
     plugin_timeout = values.get("PLUGIN_INVOKE_TIMEOUT_SECONDS", "").strip()
     if plugin_timeout:
         try:

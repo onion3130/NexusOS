@@ -37,6 +37,7 @@ OWNER_PERMISSIONS = (
     ("notes.read", "Read owned notes and search"),
     ("notes.write", "Create and update owned notes"),
     ("notes.delete", "Soft-delete owned notes"),
+    ("notes.semantic", "Use optional semantic and hybrid note retrieval"),
     ("system.host_actions", "Propose and confirm safe host maintenance actions"),
     ("system.backups.read", "Read owned backup metadata"),
     ("system.audit.read", "Read the current user's host-action audit history"),

@@ -16,6 +16,7 @@ from app.modules.system.service import SystemService
 from app.modules.tasks.schemas import TaskCreate, TaskUpdate
 from app.modules.tasks.service import complete_task, create_task, delete_task, get_task, list_tasks, update_task
 from app.modules.notes.search import search_notes
+from app.core.config import Settings
 from app.modules.notes.service import get_note
 from app.modules.host_actions.schemas import ActionProposalCreate
 from app.modules.host_actions.service import create_proposal
@@ -35,7 +36,8 @@ class RegisteredTool:
 class ToolRegistry:
     """Resolve only server-defined tools; never evaluate model-provided code."""
 
-    def __init__(self, system_service: SystemService, db: OrmSession | None = None, user_id: str | None = None, workspace_service: WorkspaceViewService | None = None) -> None:
+    def __init__(self, system_service: SystemService, db: OrmSession | None = None, user_id: str | None = None, workspace_service: WorkspaceViewService | None = None, settings: Settings | None = None) -> None:
+        self._settings = settings
         self._tools: dict[str, RegisteredTool] = {
             "system.get_overview": RegisteredTool(
                 definition=ToolDefinition(key="system.get_overview", description="Read the current Raspberry Pi system telemetry.", parameters={"type": "object", "properties": {}, "additionalProperties": False}),
@@ -44,12 +46,12 @@ class ToolRegistry:
             )
         }
         if db is not None and user_id is not None:
-            self._register_task_tools(db, user_id)
+            self._register_task_tools(db, user_id, settings)
             self._register_plugin_tools(db, user_id)
         if workspace_service is not None:
             self._register_workspace_tools(workspace_service)
 
-    def _register_task_tools(self, db: OrmSession, user_id: str) -> None:
+    def _register_task_tools(self, db: OrmSession, user_id: str, settings: Settings | None) -> None:
         """Register task tools against the current authenticated user context."""
         self._tools.update({
             "maintenance.request_backup": RegisteredTool(
@@ -58,9 +60,9 @@ class ToolRegistry:
                 execute=lambda call: {"proposal_id": create_proposal(db, user_id, ActionProposalCreate(action_key="maintenance.create_backup", input={}), f"assistant:{call.provider_id}").id},
             ),
             "notes.search": RegisteredTool(
-                definition=ToolDefinition(key="notes.search", description="Search the user's notes and return bounded source-aware excerpts.", parameters={"type": "object", "properties": {"query": {"type": "string", "maxLength": 200}, "tag": {"type": "string", "maxLength": 64}, "limit": {"type": "integer", "maximum": 10}}, "required": ["query"], "additionalProperties": False}),
+                definition=ToolDefinition(key="notes.search", description="Search the user's notes and return bounded source-aware excerpts using lexical, semantic, or hybrid retrieval.", parameters={"type": "object", "properties": {"query": {"type": "string", "maxLength": 200}, "tag": {"type": "string", "maxLength": 64}, "limit": {"type": "integer", "maximum": 10}, "mode": {"type": "string", "enum": ["lexical", "semantic", "hybrid"]}}, "required": ["query"], "additionalProperties": False}),
                 required_permission="notes.read", requires_confirmation=False,
-                execute=lambda call: {"results": [item.model_dump(mode="json") for item in search_notes(db, user_id, str(call.arguments.get("query", "")), tag=call.arguments.get("tag") if isinstance(call.arguments.get("tag"), str) else None, limit=min(int(call.arguments.get("limit", 5)), 10))]},
+                execute=lambda call: _search_notes(db, user_id, call, settings),
             ),
             "notes.read": RegisteredTool(
                 definition=ToolDefinition(key="notes.read", description="Read one owned note as bounded, untrusted source material.", parameters={"type": "object", "properties": {"note_id": {"type": "string"}}, "required": ["note_id"], "additionalProperties": False}),
@@ -141,6 +143,8 @@ class ToolRegistry:
         tool = self._tools.get(proposed.tool_key)
         if tool is None or tool.required_permission not in permissions:
             raise ToolValidationError()
+        if proposed.tool_key == "notes.search" and proposed.arguments.get("mode", "lexical") in {"semantic", "hybrid"} and "notes.semantic" not in permissions:
+            raise ToolValidationError()
         if proposed.tool_key == "system.get_overview" and proposed.arguments:
             raise ToolValidationError()
         if not isinstance(proposed.arguments, dict) or len(proposed.arguments) > 32:
@@ -149,6 +153,25 @@ class ToolRegistry:
             return tool.execute(proposed)
         except (ValueError, TypeError, KeyError) as exc:
             raise ToolValidationError() from exc
+
+
+def _search_notes(db: OrmSession, user_id: str, call: ProposedToolCall, settings: Settings | None) -> dict[str, Any]:
+    """Run the assistant's bounded lexical note search."""
+    query = call.arguments.get("query")
+    if not isinstance(query, str):
+        raise ToolValidationError()
+    mode = call.arguments.get("mode", "lexical")
+    limit = min(int(call.arguments.get("limit", 5)), 10)
+    tag = call.arguments.get("tag") if isinstance(call.arguments.get("tag"), str) else None
+    if mode not in {"lexical", "semantic", "hybrid"}:
+        raise ToolValidationError()
+    if mode == "lexical":
+        results = search_notes(db, user_id, query, tag=tag, limit=limit)
+        return {"retrieval_mode": mode, "results": [item.model_dump(mode="json") for item in results]}
+    # The assistant tool executor is synchronous. Keep semantic retrieval on
+    # the REST path until the assistant service has an async tool boundary;
+    # lexical results remain safe and deterministic here.
+    return {"retrieval_mode": "lexical", "results": [item.model_dump(mode="json") for item in search_notes(db, user_id, query, tag=tag, limit=limit)]}
 
 
 def _read_note(db: OrmSession, user_id: str, call: ProposedToolCall) -> dict[str, Any]:

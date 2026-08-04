@@ -1,7 +1,7 @@
 # NexusOS AI system
 
-**Current milestone:** Milestone 11 (part 2) — integrations and plugin boundary
-**Status:** The bounded assistant gateway, conversation storage, provider normalization, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Embeddings, autonomous memory, semantic RAG, streaming, and privileged host control remain deferred.
+**Current milestone:** v1.2 — semantic retrieval foundation
+**Status:** The bounded assistant gateway, conversation storage, provider normalization, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, optional embeddings, semantic/hybrid retrieval, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Autonomous memory, external ingestion, streaming, and privileged host control remain deferred.
 **Last updated:** 2026-08-04
 
 ## Current behavior
@@ -72,7 +72,7 @@ No tool may execute arbitrary shell text, SQL, Docker commands, filesystem paths
 
 ## Retrieval and memory foundation
 
-Milestone 7 introduces lexical, provider-neutral retrieval results containing source type, source ID, chunk ID, title, excerpt, source version, update time, and bounded metadata. Note chunks are deterministic and versioned. No embedding model, vector index, autonomous memory extraction, or model-written note is enabled.
+Milestone 7 introduced lexical, provider-neutral retrieval results containing source type, source ID, chunk ID, title, excerpt, source version, update time, and bounded metadata. v1.2 adds optional provider-neutral embeddings for those chunks, bounded serialized-vector similarity, hybrid scoring, stale-content detection, and lexical fallback. Semantic retrieval is read-only and disabled unless explicitly configured. No autonomous memory extraction or model-written note is enabled.
 
 If retrieved note text is later added to model context, it must be explicitly delimited as untrusted user-authored reference material. It cannot alter system instructions or bypass confirmation-gated task actions.
 
@@ -80,8 +80,8 @@ If retrieved note text is later added to model context, it must be explicitly de
 
 - Streaming responses
 - Provider health dashboards
-- Semantic source-aware retrieval
-- Memory and RAG
+- Autonomous semantic memory and model-written notes
+- Autonomous memory and model-written notes
 - Additional integrations
 - Privileged host control, assistant-triggered restore, cloud/object-storage replication, and autonomous memory
 

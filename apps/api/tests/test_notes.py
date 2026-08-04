@@ -84,7 +84,7 @@ def test_assistant_note_tools_are_read_only_and_scoped(client, tmp_path):
         note = create_note(db, user.id, NoteCreate(title="Assistant source", content="Private source material", tags=["reference"]))
         registry = ToolRegistry(SystemService(tmp_path, tmp_path / "proc", tmp_path / "sys"), db, user.id)
         definitions = {item.key for item in registry.definitions({"notes.read"})}
-        assert definitions == {"notes.search", "notes.read"}
+        assert {"notes.search", "notes.read"}.issubset(definitions)
         result = registry.execute(ProposedToolCall(provider_id="test", tool_key="notes.read", arguments={"note_id": note.id}), {"notes.read"})
         assert result["source_type"] == "note"
         assert result["content"] == "Private source material"

@@ -8,7 +8,10 @@ from sqlalchemy.orm import Session as OrmSession
 from app.db.models import Note, NoteChunk
 from app.db.session import get_db
 from app.modules.identity.dependencies import AuthContext, get_auth_context, require_csrf, require_permission
-from app.modules.notes.retrieval import retrieve_note_chunks
+from app.core.config import Settings, get_settings
+from app.modules.notes.retrieval import retrieve_hybrid_chunks, retrieve_note_chunks, retrieve_semantic_chunks
+from app.modules.embeddings.schemas import EmbeddingError, EmbeddingStatus
+from app.modules.embeddings.service import embedding_status
 from app.modules.notes.schemas import NoteChunksResponse, NoteCreate, NoteListResponse, NoteResponse, NoteUpdate, RetrievalChunkResponse, RetrievalResult, SearchResponse
 from app.modules.notes.search import search_notes
 from app.modules.notes.service import archive_note, create_note, delete_note, get_note, list_chunks, list_notes, restore_note, update_note
@@ -112,6 +115,30 @@ def search(q: str, tag: str | None = None, include_archived: bool = False, limit
 
 
 @router.get("/search/retrieve", response_model=list[RetrievalResult])
-def retrieve(q: str, limit: int = 8, db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context)) -> list[RetrievalResult]:
+async def retrieve(q: str, mode: str = "lexical", include_archived: bool = False, limit: int = 8, db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context), settings: Settings = Depends(get_settings)) -> list[RetrievalResult]:
     require_permission("notes.read", context)
-    return retrieve_note_chunks(db, context.user.id, q, limit=limit)
+    if mode not in {"lexical", "semantic", "hybrid"}:
+        raise HTTPException(status_code=422, detail="invalid retrieval mode")
+    if mode in {"semantic", "hybrid"}:
+        require_permission("notes.semantic", context)
+    try:
+        if mode == "semantic":
+            return await retrieve_semantic_chunks(db, settings, context.user.id, q, limit=limit, include_archived=include_archived)
+        if mode == "hybrid":
+            return await retrieve_hybrid_chunks(db, settings, context.user.id, q, limit=limit, include_archived=include_archived)
+        return retrieve_note_chunks(db, context.user.id, q, limit=limit, include_archived=include_archived)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except EmbeddingError:
+        if mode in {"semantic", "hybrid"}:
+            return retrieve_note_chunks(db, context.user.id, q, limit=limit, include_archived=include_archived)
+        raise HTTPException(status_code=503, detail="retrieval_unavailable")
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="retrieval_unavailable") from exc
+
+
+@router.get("/search/embeddings/status", response_model=EmbeddingStatus)
+def embeddings_status(db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context), settings: Settings = Depends(get_settings)) -> EmbeddingStatus:
+    """Return aggregate semantic-index availability without exposing vectors."""
+    require_permission("notes.read", context)
+    return embedding_status(db, context.user.id, settings)

@@ -353,7 +353,32 @@ class NoteChunk(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
     note: Mapped[Note] = relationship(back_populates="chunks")
+    embeddings: Mapped[list[NoteChunkEmbedding]] = relationship(back_populates="chunk", cascade="all, delete-orphan")
     __table_args__ = (UniqueConstraint("note_id", "source_version", "chunk_index", name="uq_note_chunks_version_index"),)
+
+
+class NoteChunkEmbedding(Base):
+    """A private, provider-scoped serialized vector for one note chunk."""
+
+    __tablename__ = "note_chunk_embeddings"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    chunk_id: Mapped[str] = mapped_column(ForeignKey("note_chunks.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    provider: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(128))
+    dimensions: Mapped[int] = mapped_column(Integer)
+    vector_json: Mapped[str] = mapped_column(Text)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    source_version: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(24), default="ready", index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, index=True)
+    chunk: Mapped[NoteChunk] = relationship(back_populates="embeddings")
+    __table_args__ = (UniqueConstraint("chunk_id", "provider", "model", name="uq_note_chunk_embeddings_provider_model"),)
 
 
 class AuditEvent(Base):
