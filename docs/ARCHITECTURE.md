@@ -1,6 +1,6 @@
 # NexusOS architecture
 
-**Current milestone:** v1.3 — NVIDIA NIM provider support
+**Current milestone:** v1.3 — NVIDIA NIM provider support (v1.3.2 patch)
 **Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-04
 

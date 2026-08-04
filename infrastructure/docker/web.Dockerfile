@@ -13,7 +13,8 @@ RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    HOSTNAME=0.0.0.0
 RUN addgroup --system --gid 10001 nexus \
     && adduser --system --uid 10001 --ingroup nexus nexus
 COPY --from=builder --chown=nexus:nexus /app/.next/standalone ./

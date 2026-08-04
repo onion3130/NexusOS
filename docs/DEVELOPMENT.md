@@ -1,6 +1,6 @@
 # NexusOS development
 
-**Current milestone:** v1.3 — NVIDIA NIM provider support
+**Current milestone:** v1.3 — NVIDIA NIM provider support (v1.3.2 patch)
 **Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, optional semantic/hybrid retrieval, confirmation-gated host maintenance, confirmation-gated restore, retention cleanup, encryption key rotation, read-only workspace views, encrypted directory replication, and outbound email/push notification channels are implemented. Autonomous memory, external ingestion, and privileged host control remain deferred.
 **Last updated:** 2026-08-04
 

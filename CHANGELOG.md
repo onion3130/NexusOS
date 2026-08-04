@@ -2,6 +2,17 @@
 
 All notable NexusOS changes are recorded here. NexusOS releases use Semantic Versioning; private, local-first Raspberry Pi deployment remains the supported operating model.
 
+## [1.3.2] — 2026-08-04
+
+NexusOS v1.3.2 is a Docker healthcheck patch for the ARM64 web container.
+
+### Docker reliability
+
+- Explicitly bind the Next.js standalone web server to `0.0.0.0` so the container-local healthcheck and service-to-service networking use the same listener.
+- Verified the fix against the Raspberry Pi deployment, where the previous image served through the published host port but refused container-loopback probes.
+- Preserved the v1.3.1 migration compatibility fix and v1.3 NVIDIA NIM support.
+
+
 ## [1.3.1] — 2026-08-04
 
 NexusOS v1.3.1 is a compatibility patch for upgrading existing v1.0/v1.1 databases to the current schema.
@@ -160,6 +171,7 @@ This release is intended for private, local-first use. Docker and Raspberry Pi r
 [1.0.1]: https://github.com/onion3130/NexusOS/releases/tag/v1.0.1
 [1.0.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.0.0
 [1.1.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.1.0
+[1.3.2]: https://github.com/onion3130/NexusOS/releases/tag/v1.3.2
 [1.3.1]: https://github.com/onion3130/NexusOS/releases/tag/v1.3.1
 [1.3.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.3.0
-[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.3.2...HEAD

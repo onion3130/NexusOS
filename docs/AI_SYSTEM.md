@@ -1,6 +1,6 @@
 # NexusOS AI system
 
-**Current milestone:** v1.3 — NVIDIA NIM provider support
+**Current milestone:** v1.3 — NVIDIA NIM provider support (v1.3.2 patch)
 **Status:** The bounded assistant gateway, conversation storage, provider normalization, hosted NVIDIA NIM configuration, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, optional embeddings, semantic/hybrid retrieval, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Autonomous memory, external ingestion, streaming, and privileged host control remain deferred.
 **Last updated:** 2026-08-04
 

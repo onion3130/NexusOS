@@ -1,6 +1,6 @@
 # NexusOS roadmap
 
-**Current milestone:** v1.3 — NVIDIA NIM provider support
+**Current milestone:** v1.3 — NVIDIA NIM provider support (v1.3.2 patch)
 **Next milestone:** v1.4 — grounded assistant memory and external source ingestion
 **Last updated:** 2026-08-04
 
