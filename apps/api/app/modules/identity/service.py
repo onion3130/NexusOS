@@ -43,6 +43,8 @@ OWNER_PERMISSIONS = (
     ("workspace_views.read", "Read approved files, projects, Git, and Docker metadata"),
     ("calendar.read", "Read calendar events and categories"),
     ("calendar.write", "Create, update, and delete calendar events"),
+    ("finance.read", "Read finance accounts and transactions"),
+    ("finance.write", "Create, update, and delete finance records"),
 )
 
 

@@ -20,6 +20,7 @@ from app.api.routes.host_actions import router as host_actions_router
 from app.api.routes.workspace_views import router as workspace_views_router
 from app.api.routes.notifications import router as notifications_router
 from app.api.routes.calendar import router as calendar_router
+from app.api.routes.finance import router as finance_router
 from app.core.config import cors_origins_from_environment, get_settings
 
 
@@ -54,3 +55,4 @@ app.include_router(host_actions_router)
 app.include_router(workspace_views_router)
 app.include_router(notifications_router)
 app.include_router(calendar_router)
+app.include_router(finance_router)

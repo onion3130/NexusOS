@@ -448,6 +448,55 @@ class CalendarEvent(Base):
     reminders: Mapped[list[CalendarEventReminder]] = relationship(back_populates="event", cascade="all, delete-orphan")
 
 
+class FinanceAccount(Base):
+    """A user-owned finance account (integer-cent ledger)."""
+
+    __tablename__ = "finance_accounts"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    account_type: Mapped[str] = mapped_column(String(24), default="checking")
+    color: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    transactions: Mapped[list[FinanceTransaction]] = relationship(back_populates="account", cascade="all, delete-orphan")
+
+
+class FinanceCategory(Base):
+    """A user-owned finance category."""
+
+    __tablename__ = "finance_categories"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(64))
+    normalized_name: Mapped[str] = mapped_column(String(64))
+    color: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    transactions: Mapped[list[FinanceTransaction]] = relationship(back_populates="category")
+    __table_args__ = (UniqueConstraint("user_id", "normalized_name", name="uq_finance_categories_user_name"),)
+
+
+class FinanceTransaction(Base):
+    """One integer-cent transaction on a user-owned finance account."""
+
+    __tablename__ = "finance_transactions"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    account_id: Mapped[str] = mapped_column(ForeignKey("finance_accounts.id", ondelete="CASCADE"), index=True)
+    category_id: Mapped[str | None] = mapped_column(ForeignKey("finance_categories.id", ondelete="SET NULL"), nullable=True, index=True)
+    amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
+    description: Mapped[str] = mapped_column(String(255))
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    account: Mapped[FinanceAccount] = relationship(back_populates="transactions")
+    category: Mapped[FinanceCategory | None] = relationship(back_populates="transactions")
+
+
 class CalendarEventReminder(Base):
     """A calendar event reminder that the worker converts to a notification."""
 

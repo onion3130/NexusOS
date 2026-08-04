@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sqlalchemy import Engine, create_engine, event, inspect, text
 
-CURRENT_MIGRATION_HEAD = "0012_calendar"
+CURRENT_MIGRATION_HEAD = "0013_finance"
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as OrmSession
 from sqlalchemy.orm import sessionmaker
