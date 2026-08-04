@@ -1,7 +1,7 @@
 # NexusOS database
 
-**Current milestone:** Milestone 13 — backup retention and lifecycle policy
-**Current status:** Identity, assistant, task, notes, search/retrieval, host-action proposals, backup metadata, restore markers, retention pruning markers, workspace permissions, encrypted replication metadata, and outbound notification channel deliveries are implemented through Alembic revisions `0001_identity`, `0002_assistant`, `0003_tasks_notifications`, `0004_notes_search`, `0005_host_actions`, `0006_v1_hardening`, `0007_workspace_views`, `0008_deployment_hardening`, `0009_notification_channels`, `0010_restore`, and `0011_backup_lifecycle`.
+**Current milestone:** Milestone 11 (part 2) — integrations and plugin boundary
+**Current status:** Identity, assistant, task, notes, search/retrieval, calendar, finance, media, plugin registry/run history, host-action proposals, backup metadata, restore markers, retention pruning markers, workspace permissions, encrypted replication metadata, and outbound notification channel deliveries are implemented through Alembic revisions `0001_identity` through `0015_plugins`.
 **Last updated:** 2026-08-04
 
 ## Current database state
@@ -23,6 +23,10 @@ The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys
 - `0009_notification_channels` creates `notification_channel_deliveries` and seeds the `notifications.settings` owner permission.
 - `0010_restore` adds `backup_records.restored_at` to track the most recent restore of a verified backup artifact.
 - `0011_backup_lifecycle` adds `backup_records.pruned_at` so retention cleanup can soft-delete records (status `deleted`) while preserving audit history.
+- `0012_calendar` adds calendar categories, events, reminders, and calendar permissions.
+- `0013_finance` adds integer-cent finance accounts, categories, transactions, and finance permissions.
+- `0014_media` adds the derived media index and media permissions; thumbnails remain rebuildable files beneath `DATA_DIR`.
+- `0015_plugins` adds registered plugin manifests, bounded run history, and plugin permissions. Plugin code and artifacts remain outside the database.
 
 ## Milestone 7 tables
 
@@ -89,6 +93,15 @@ Note content changes increment `content_version`. Current chunks retain the sour
 Milestone 9 intentionally adds no host metadata tables. Files, projects, Git, and Docker views are live read-only adapter results; only the `workspace_views.read` permission is migration-backed.
 
 Milestone 11 delivery rows are derived from owned notifications and deduplicated by `(notification_id, channel)`. Delivery status is bounded (`pending`, `processing`, `delivered`, `failed`, `skipped`, `cancelled`); channel credentials are never persisted.
+
+## Plugin tables
+
+| Entity | Owner | Purpose |
+|---|---|---|
+| `plugins` | operator/user metadata | Approved manifest, entrypoint, capability JSON, lifecycle status, and last bounded error |
+| `plugin_runs` | plugin | Bounded invocation status, method, duration, and error code |
+
+Plugin arguments, subprocess output, credentials, and executable code are not persisted. Run history is pruned transactionally to the newest bounded entries per plugin.
 
 ## Remaining database work
 

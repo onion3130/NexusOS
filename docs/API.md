@@ -1,7 +1,7 @@
 # NexusOS API
 
-**Current milestone:** Milestone 13 — backup retention and lifecycle policy
-**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, confirmation-gated maintenance actions, verified SQLite backups, automated restore, retention cleanup, encryption key rotation, audit visibility, read-only workspace views, and outbound email/push notification channels are implemented. Embeddings, streaming, and calendar/media/finance integrations remain planned.
+**Current milestone:** Milestone 11 (part 2) — integrations and plugin boundary
+**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, calendar, finance, media, confirmation-gated maintenance actions, verified SQLite backups, automated restore, retention cleanup, encryption key rotation, audit visibility, read-only workspace views, outbound email/push notification channels, and the out-of-process plugin boundary are implemented. Embeddings and streaming remain planned.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-04
 
@@ -164,6 +164,24 @@ Returns branch, short commit, commit subject, clean/dirty state, and timestamps 
 
 Returns sanitized container names, images, states, selected ports, creation times, and Compose service labels when an operator explicitly supplies a Docker Unix socket boundary. The default Compose stack does not mount the socket, so the response reports `docker_unavailable` by default.
 
+### Calendar, finance, and media routes
+
+The Calendar, Finance, and Media route groups are implemented under `/api/v1/calendar`, `/api/v1/finance`, and `/api/v1/media`; they enforce authentication, ownership, CSRF on browser mutations, permissions, bounded payloads, and idempotency. Calendar supports event/category CRUD and reminders. Finance supports account/transaction/category CRUD, period summaries, and strict all-or-nothing CSV imports using integer cents. Media supports bounded indexed-item listing, background rescan requests, and authenticated thumbnail/original streaming confined to configured `MEDIA_ROOTS`.
+
+### Plugin routes
+
+#### `GET /api/v1/plugins`
+
+Lists registered non-deleted plugins, declared capabilities, status, version, bounded last error, and run count. Requires `plugins.read`.
+
+#### `GET /api/v1/plugins/{name}` / `GET /api/v1/plugins/{name}/runs`
+
+Returns one plugin or bounded newest run history. Requires `plugins.read`.
+
+#### `POST /api/v1/plugins/{name}/invoke`
+
+This endpoint is intentionally confirmation-gated and returns `requires_assistant_confirmation`; it never executes plugin code directly. All plugin capabilities, including read-labeled capabilities, run through the always-confirmed assistant `plugins.invoke` tool so a plugin’s self-declared risk label cannot bypass the host-action safety invariant. Plugin manifests and entrypoints are server-owned; the route never accepts a path or executable.
+
 ### Safe host-action and maintenance routes
 
 #### `GET /api/v1/system/deployment`
@@ -172,7 +190,7 @@ Returns bounded authenticated operational metadata: whether encrypted replicatio
 
 #### `GET /api/v1/system/actions`
 
-Returns the server-owned allowlist of enabled maintenance actions. The current catalog contains database backup creation, backup verification, live database integrity checking, and database restore from a verified backup. It never exposes arbitrary executables, filesystem paths, Docker operations, reboot, shutdown, package management, or systemd controls.
+Returns the server-owned allowlist of enabled maintenance actions. The catalog contains database backup/recovery actions plus confirmed plugin rescan, enable, disable, and uninstall lifecycle actions. It never exposes arbitrary executables, filesystem paths, Docker operations, reboot, shutdown, package management, or systemd controls.
 
 #### `POST /api/v1/system/actions/proposals`
 
@@ -216,7 +234,7 @@ Returns the current user's bounded host-action proposal, confirmation, rejection
 - Cookie-authenticated mutations require CSRF validation.
 - CORS allows `PATCH` in addition to existing methods.
 - Database migrations are explicit; startup never mutates schema.
-- Readiness verifies the current Alembic head `0011_backup_lifecycle` and the notes FTS5 table.
+- Readiness verifies the current Alembic head `0015_plugins` and the notes FTS5 table.
 - Notifications are persistent records; optional outbound email/push channels are server-configured and delivery is worker-side only.
 - No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, or provider URLs from a client.
 - Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf. Restore is the highest-risk action and additionally requires a verified source, a fresh safety backup, staged digest/integrity verification, and an atomic swap. Retention cleanup accepts no input and prunes only per the server policy with last-backup protection; key rotation accepts no input and uses only environment-configured keys.

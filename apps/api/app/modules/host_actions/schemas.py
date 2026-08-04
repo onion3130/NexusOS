@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-ActionKey = Literal["maintenance.create_backup", "maintenance.verify_backup", "maintenance.integrity_check", "maintenance.restore_backup", "maintenance.retention_cleanup", "maintenance.rotate_encryption_key"]
+ActionKey = Literal["maintenance.create_backup", "maintenance.verify_backup", "maintenance.integrity_check", "maintenance.restore_backup", "maintenance.retention_cleanup", "maintenance.rotate_encryption_key", "plugins.rescan", "plugins.enable", "plugins.disable", "plugins.uninstall"]
 ProposalStatus = Literal["proposed", "confirmed", "queued", "processing", "succeeded", "failed", "rejected", "expired"]
 RiskLevel = Literal["low", "medium", "high"]
 

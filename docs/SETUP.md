@@ -1,6 +1,6 @@
 # NexusOS development setup
 
-**Status:** v1.0.0 released — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, confirmation-gated host maintenance, verified SQLite backups, encrypted directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, outbound email/push notification channels, and audit history are available. Embeddings and autonomous memory remain deferred.
+**Status:** v1.1.0 released — API health, identity/assistant persistence, session authentication, authenticated web shell, read-only Pi telemetry, bounded assistant gateway, tasks, reminders, notifications, notes/search, source-aware retrieval, calendar, finance, media, confirmation-gated host maintenance, verified SQLite backups, encrypted directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, outbound email/push notification channels, audited out-of-process plugins, and audit history are available. Embeddings and autonomous memory remain deferred.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ cp .env.example .env
 python scripts/validate_env.py --env-file .env
 ```
 
-Replace `JWT_SECRET` with a random value of at least 32 characters. Keep `AI_PROVIDER=disabled` until a provider is intentionally configured. Configure `TASK_WORKER_INTERVAL_SECONDS` and `TASK_WORKER_BATCH_SIZE` only within their documented bounds.
+Replace `JWT_SECRET` with a random value of at least 32 characters. Keep `AI_PROVIDER=disabled` until a provider is intentionally configured. Configure `TASK_WORKER_INTERVAL_SECONDS` and `TASK_WORKER_BATCH_SIZE` only within their documented bounds. Leave `PLUGINS_DIR` empty unless you are deliberately installing trusted operator-approved plugins.
 
 ## Run the API and worker locally
 
@@ -63,7 +63,7 @@ docker compose --env-file .env up --build -d
 docker compose --env-file .env ps
 ```
 
-The API, web, and worker use ARM64-compatible non-root images and the worker shares the SSD-backed SQLite mount. Ports bind to loopback only. Read-only Files, Projects, and Git views scan `WORKSPACE_ROOTS`; Docker views are disabled by default and remain unavailable unless an operator supplies a separately reviewed socket boundary. Stop with `docker compose --env-file .env down`.
+The API, web, and worker use ARM64-compatible non-root images and the worker shares the SSD-backed SQLite mount. Ports bind to loopback only. Read-only Files, Projects, and Git views scan `WORKSPACE_ROOTS`; Docker views are disabled by default and remain unavailable unless an operator supplies a separately reviewed socket boundary. Plugins are disabled in the default Compose stack. To explicitly enable them, use the documented plugin overlay with a dedicated host directory. Stop with `docker compose --env-file .env down`.
 
 ## Validation
 

@@ -1,6 +1,6 @@
 # NexusOS architecture
 
-**Current milestone:** Milestone 13 — backup retention and lifecycle policy
+**Current milestone:** Milestone 11 (part 2) — integrations and plugin boundary
 **Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-04
 
@@ -12,7 +12,8 @@ NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an exte
 - `apps/api/app/modules/tasks`: task service, schemas, recurrence calculator, and reminder dispatcher.
 - `apps/api/app/modules/notifications`: channel settings, outbound email/push adapters, enqueue/resend service, and bounded delivery worker.
 - `apps/api/app/modules/notes`: canonical notes, SQLite FTS5 search, deterministic chunks, and source-aware retrieval.
-- `apps/api/app/modules/host_actions`: typed action catalog, proposal lifecycle, SQLite backups, confirmation-gated restore, retention cleanup and key rotation, fixed executor, and worker processing.
+- `apps/api/app/modules/host_actions`: typed action catalog, proposal lifecycle, SQLite backups, confirmation-gated restore, retention cleanup/key rotation, plugin lifecycle actions, fixed executor, and worker processing.
+- `apps/api/app/modules/plugins`: validated manifests, approved-directory discovery, secret-free JSON-stdio subprocess broker, bounded run history, and capability/risk enforcement.
 - `apps/api/app/worker.py`: dedicated bounded SQLite reminder, confirmed host-action, replication, and notification-delivery worker.
 - `apps/api/app/db`: SQLAlchemy engine/session and all persisted models.
 - `apps/api/migrations`: explicit Alembic migration history through `0011_backup_lifecycle`.
@@ -33,7 +34,8 @@ FastAPI
   ├── host-actions service -> typed proposals -> confirmed job queue -> fixed backup/integrity adapters
   ├── workspace-views service -> approved-root file/project/Git adapters -> optional Docker metadata adapter
   ├── backup-replication service -> bounded AES-GCM encryption -> operator-mounted destination adapter
-  └── notifications service -> channel settings -> email (SMTP) / push (ntfy) outbound adapters
+  ├── notifications service -> channel settings -> email (SMTP) / push (ntfy) outbound adapters
+  └── plugins service -> approved manifest registry -> out-of-process JSON-stdio broker
 
 Dedicated worker -> SQLite reminder claims -> notifications -> enqueued channel deliveries
 Dedicated worker -> confirmed host-action claims -> verified backup/integrity/restore results
@@ -118,8 +120,8 @@ Not implemented today:
 - External document ingestion and file sources
 - Privileged host actions and service/container control
 - File contents, project execution, Git mutations, and Docker control
-- Key rotation, retention policy, production monitoring, and public-internet ingress
-- Plugin loading and package verification
+- Production monitoring and public-internet ingress
+- Plugin package signing and third-party trust verification
 
 See [`ROADMAP.md`](ROADMAP.md) and [`DEVELOPMENT.md`](DEVELOPMENT.md).
 

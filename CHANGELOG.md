@@ -1,8 +1,19 @@
 # Changelog
 
-All notable NexusOS changes are recorded here. Version `1.0.0` is a private, local-first Raspberry Pi release; internet-facing production deployment remains outside this release.
+All notable NexusOS changes are recorded here. NexusOS releases use Semantic Versioning; private, local-first Raspberry Pi deployment remains the supported operating model.
 
-## [Unreleased]
+## [1.1.0] — 2026-08-04
+
+NexusOS v1.1.0 delivers calendar, finance, media, and the security-first out-of-process plugin boundary.
+
+### Milestone 11 part 2 integrations and plugin boundary
+
+- Added a user-owned Calendar workspace with categories, all-day events, bounded date-range queries, absolute and event-relative reminders, and worker-delivered notifications.
+- Added a Finance workspace with integer-cent account balances, categorized transactions, period summaries, and strict all-or-nothing CSV import.
+- Added a derived Media workspace with approved-root indexing, credential-file exclusion, deterministic hashing, bounded Pillow thumbnails, rescan jobs, and confined private streaming.
+- Added the out-of-process plugin boundary: manifest validation, approved-directory discovery, JSON-stdio subprocess execution, Linux resource limits, bounded timeout/output, capability risk labels, run history, and audited lifecycle actions.
+- Added migration `0015_plugins`, `PLUGINS_DIR`, and `PLUGIN_INVOKE_TIMEOUT_SECONDS`; plugin lifecycle mutations require explicit confirmation and write/dangerous capabilities are unavailable through the direct HTTP path.
+- Added backend and frontend validation for plugin confinement, timeouts, capability enforcement, lifecycle auditing, migration reversibility, TypeScript, and production builds.
 
 ### Milestone 13 backup retention and lifecycle policy
 
@@ -98,4 +109,5 @@ This release is intended for private, local-first use. Docker and Raspberry Pi r
 
 [1.0.1]: https://github.com/onion3130/NexusOS/releases/tag/v1.0.1
 [1.0.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.0.0
-[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.0.0...HEAD
+[1.1.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.1.0
+[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.1.0...HEAD

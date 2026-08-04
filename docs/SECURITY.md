@@ -1,7 +1,7 @@
 # NexusOS security baseline
 
 **Status:** Milestone 10 deployment hardening is implemented as an opt-in LAN profile alongside the v1.0 safe host actions, encrypted backup replication, confirmation-gated restore, audit, notes, search, retrieval, tasks, reminders, notifications, and assistant controls; public-internet deployment remains out of scope.
-**Last updated:** 2026-08-03
+**Last updated:** 2026-08-04
 
 ## Runtime boundaries
 
@@ -11,7 +11,7 @@
 - FTS5 results are joined back to canonical notes with user and deletion filters; derived chunks carry a direct user boundary.
 - The worker has no browser-facing port and performs only bounded database-backed reminder delivery.
 - No arbitrary shell text, SQL, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, systemd controls, or provider URLs are accepted from model output or the browser.
-- Host-action execution uses fixed Python/SQLite adapters, not subprocesses. If future subprocess actions are proposed, they require a separate privileged-broker design, absolute executable paths, `shell=False`, fixed argument allowlists, and independent review.
+- Host-action execution uses fixed Python/SQLite adapters. Plugin execution is the separate, non-privileged JSON-stdio broker: no shell, confined approved entrypoints, a minimal secret-free environment, bounded output/time, and Linux resource limits. Plugins are trusted operator-installed code, not a hostile-code sandbox.
 
 ## Notes, search, and retrieval controls
 

@@ -47,6 +47,8 @@ OWNER_PERMISSIONS = (
     ("finance.write", "Create, update, and delete finance records"),
     ("media.read", "Browse the indexed media library"),
     ("media.write", "Trigger media library rescans"),
+    ("plugins.read", "List installed plugins and their capabilities"),
+    ("plugins.write", "Invoke plugin methods and manage plugin lifecycle"),
 )
 
 

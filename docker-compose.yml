@@ -1,4 +1,4 @@
-# NexusOS v1.0 ARM64 development stack
+# NexusOS v1.1 ARM64 development stack
 #
 # API/web/worker are real services. Proxy and AI remain deferred/optional boundaries.
 # Configure .env first.
@@ -33,6 +33,7 @@ services:
     environment:
       DATA_DIR: /var/lib/nexus/data
       DATABASE_URL: ${DATABASE_URL:-sqlite:////var/lib/nexus/data/nexus.db}
+      PLUGINS_DIR: ""
     volumes:
       - "${DATA_DIR:-./data}/db:/var/lib/nexus/data"
       - "${DATA_DIR:-./data}/logs:/var/log/nexus"
@@ -82,6 +83,7 @@ services:
     environment:
       DATA_DIR: /var/lib/nexus/data
       DATABASE_URL: ${DATABASE_URL:-sqlite:////var/lib/nexus/data/nexus.db}
+      PLUGINS_DIR: ""
       TASK_WORKER_INTERVAL_SECONDS: ${TASK_WORKER_INTERVAL_SECONDS:-30}
       TASK_WORKER_BATCH_SIZE: ${TASK_WORKER_BATCH_SIZE:-50}
     volumes:

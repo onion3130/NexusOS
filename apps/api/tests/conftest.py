@@ -33,6 +33,8 @@ def configured_app(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         "BACKUP_ENCRYPTION_KEY": "",
         "MEDIA_ROOTS": str(tmp_path / "photos"),
         "MEDIA_THUMBNAIL_MAX_DIMENSION": "96",
+        "PLUGINS_DIR": str(tmp_path / "plugins"),
+        "PLUGIN_INVOKE_TIMEOUT_SECONDS": "10",
     }
     for key, value in values.items():
         monkeypatch.setenv(key, value)

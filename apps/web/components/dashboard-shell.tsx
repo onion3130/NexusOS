@@ -14,6 +14,7 @@ import { MaintenanceWorkspace } from "./maintenance-workspace";
 import { CalendarWorkspace } from "./calendar-workspace";
 import { FinanceWorkspace } from "./finance-workspace";
 import { MediaWorkspace } from "./media-workspace";
+import { PluginsWorkspace } from "./plugins-workspace";
 import { FilesWorkspace } from "./files-workspace";
 import { ProjectsWorkspace } from "./projects-workspace";
 import { GitWorkspace } from "./git-workspace";
@@ -32,6 +33,7 @@ const navigation = [
   { label: "Calendar", icon: "▦", available: true },
   { label: "Finance", icon: "₿", available: true },
   { label: "Media", icon: "▣", available: true },
+  { label: "Plugins", icon: "◇", available: true },
   { label: "Maintenance", icon: "⚙", available: true },
   { label: "Files", icon: "▤", available: true },
   { label: "Projects", icon: "◈", available: true },
@@ -49,7 +51,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
   const { toggleTheme } = useTheme();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [activeView, setActiveView] = useState<"overview" | "assistant" | "tasks" | "notifications" | "notes" | "search" | "calendar" | "finance" | "media" | "maintenance" | "files" | "projects" | "git" | "docker">("overview");
+  const [activeView, setActiveView] = useState<"overview" | "assistant" | "tasks" | "notifications" | "notes" | "search" | "calendar" | "finance" | "media" | "plugins" | "maintenance" | "files" | "projects" | "git" | "docker">("overview");
   const [noteToOpen, setNoteToOpen] = useState<string | null>(null);
 
   function viewKey(label: string): typeof activeView {
@@ -109,7 +111,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         <header className="topbar">
           <div className="mobile-topbar-row">
             <button aria-controls="mobile-navigation" aria-expanded={mobileNavOpen} aria-label="Toggle navigation" className="menu-button" onClick={() => setMobileNavOpen((open) => !open)} type="button">☰</button>
-            <div><p className="breadcrumb">Workspace / {activeView === "assistant" ? "Assistant" : activeView === "tasks" ? "Tasks" : activeView === "notifications" ? "Notifications" : activeView === "notes" ? "Notes" : activeView === "search" ? "Search" : activeView === "calendar" ? "Calendar" : activeView === "finance" ? "Finance" : activeView === "media" ? "Media" : activeView === "maintenance" ? "Maintenance" : activeView === "files" ? "Files" : activeView === "projects" ? "Projects" : activeView === "git" ? "Git" : activeView === "docker" ? "Docker" : "Overview"}</p><h1>{activeView === "assistant" ? "Your assistant workspace." : activeView === "tasks" ? "Make progress visible." : activeView === "notifications" ? "Stay in the loop." : activeView === "notes" ? "Capture what matters." : activeView === "search" ? "Find your sources." : activeView === "calendar" ? "Make time visible." : activeView === "finance" ? "Know your numbers." : activeView === "media" ? "See your library." : activeView === "maintenance" ? "Keep your host healthy." : activeView === "files" ? "See what is changing." : activeView === "projects" ? "Your projects, in one place." : activeView === "git" ? "Review repository status." : activeView === "docker" ? "Inspect your containers." : `Good morning, ${user.username}.`}</h1></div>
+            <div><p className="breadcrumb">Workspace / {activeView === "assistant" ? "Assistant" : activeView === "tasks" ? "Tasks" : activeView === "notifications" ? "Notifications" : activeView === "notes" ? "Notes" : activeView === "search" ? "Search" : activeView === "calendar" ? "Calendar" : activeView === "finance" ? "Finance" : activeView === "media" ? "Media" : activeView === "plugins" ? "Plugins" : activeView === "maintenance" ? "Maintenance" : activeView === "files" ? "Files" : activeView === "projects" ? "Projects" : activeView === "git" ? "Git" : activeView === "docker" ? "Docker" : "Overview"}</p><h1>{activeView === "assistant" ? "Your assistant workspace." : activeView === "tasks" ? "Make progress visible." : activeView === "notifications" ? "Stay in the loop." : activeView === "notes" ? "Capture what matters." : activeView === "search" ? "Find your sources." : activeView === "calendar" ? "Make time visible." : activeView === "finance" ? "Know your numbers." : activeView === "media" ? "See your library." : activeView === "plugins" ? "Extend your command center safely." : activeView === "maintenance" ? "Keep your host healthy." : activeView === "files" ? "See what is changing." : activeView === "projects" ? "Your projects, in one place." : activeView === "git" ? "Review repository status." : activeView === "docker" ? "Inspect your containers." : `Good morning, ${user.username}.`}</h1></div>
           </div>
           <div className="topbar-actions">
             <NotificationCenter />
@@ -119,10 +121,10 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
           </div>
         </header>
 
-        {activeView === "assistant" ? <AssistantWorkspace /> : activeView === "tasks" ? <TaskWorkspace /> : activeView === "notifications" ? <NotificationSettingsWorkspace /> : activeView === "notes" ? <NotesWorkspace initialNoteId={noteToOpen} onSearch={() => setActiveView("search")} /> : activeView === "search" ? <SearchWorkspace onBack={() => setActiveView("notes")} onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }} /> : activeView === "calendar" ? <CalendarWorkspace /> : activeView === "finance" ? <FinanceWorkspace /> : activeView === "media" ? <MediaWorkspace /> : activeView === "maintenance" ? <MaintenanceWorkspace /> : activeView === "files" ? <FilesWorkspace /> : activeView === "projects" ? <ProjectsWorkspace /> : activeView === "git" ? <GitWorkspace /> : activeView === "docker" ? <DockerWorkspace /> : <>
+        {activeView === "assistant" ? <AssistantWorkspace /> : activeView === "tasks" ? <TaskWorkspace /> : activeView === "notifications" ? <NotificationSettingsWorkspace /> : activeView === "notes" ? <NotesWorkspace initialNoteId={noteToOpen} onSearch={() => setActiveView("search")} /> : activeView === "search" ? <SearchWorkspace onBack={() => setActiveView("notes")} onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }} /> : activeView === "calendar" ? <CalendarWorkspace /> : activeView === "finance" ? <FinanceWorkspace /> : activeView === "media" ? <MediaWorkspace /> : activeView === "plugins" ? <PluginsWorkspace /> : activeView === "maintenance" ? <MaintenanceWorkspace /> : activeView === "files" ? <FilesWorkspace /> : activeView === "projects" ? <ProjectsWorkspace /> : activeView === "git" ? <GitWorkspace /> : activeView === "docker" ? <DockerWorkspace /> : <>
         <div className="hero-card">
           <div className="hero-copy">
-            <span className="status-pill"><span /> NexusOS v1.0 ready</span>
+            <span className="status-pill"><span /> NexusOS v1.1 ready</span>
             <h2>Your digital life, <em>connected.</em></h2>
             <p>Your private workspace is authenticated and ready. The shell keeps deferred capabilities visible without pretending they are live.</p>
             <button className="primary-button" onClick={() => setPaletteOpen(true)} type="button">Explore commands <span aria-hidden="true">⌘ K</span></button>
@@ -147,7 +149,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         </section>
 
         </>}
-        <footer>Local-first. Private by default. <span>NexusOS 1.0.0</span></footer>
+        <footer>Local-first. Private by default. <span>NexusOS 1.1.0</span></footer>
       </section>
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} onLogout={signOut} onSearch={() => { setPaletteOpen(false); setActiveView("search"); }} onToggleTheme={() => { toggleTheme(); setPaletteOpen(false); }} />}
     </main>

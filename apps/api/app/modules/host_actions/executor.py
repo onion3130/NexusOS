@@ -82,4 +82,21 @@ def execute_action(
 
         except LifecycleError as exc:
             raise ValueError(str(exc)) from exc
+    if action_key in {"plugins.rescan", "plugins.enable", "plugins.disable", "plugins.uninstall"}:
+        from app.modules.plugins.service import PluginError, rescan_plugins, set_plugin_status, uninstall_plugin
+
+        try:
+            if action_key == "plugins.rescan":
+                return rescan_plugins(db, user_id)
+            name = str(action_input.get("name"))
+            if action_key == "plugins.enable":
+                row = set_plugin_status(db, user_id, name, "enabled")
+                return {"plugin": row.name, "status": row.status}
+            if action_key == "plugins.disable":
+                row = set_plugin_status(db, user_id, name, "disabled")
+                return {"plugin": row.name, "status": row.status}
+            row = uninstall_plugin(db, user_id, name)
+            return {"plugin": row.name, "status": row.status}
+        except PluginError as exc:
+            raise ValueError(str(exc)) from exc
     raise ValueError("action_not_allowed")

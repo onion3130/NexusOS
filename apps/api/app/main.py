@@ -22,6 +22,7 @@ from app.api.routes.notifications import router as notifications_router
 from app.api.routes.calendar import router as calendar_router
 from app.api.routes.finance import router as finance_router
 from app.api.routes.media import router as media_router
+from app.api.routes.plugins import router as plugins_router
 from app.core.config import cors_origins_from_environment, get_settings
 
 
@@ -58,3 +59,4 @@ app.include_router(notifications_router)
 app.include_router(calendar_router)
 app.include_router(finance_router)
 app.include_router(media_router)
+app.include_router(plugins_router)

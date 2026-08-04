@@ -137,6 +137,17 @@ def validate(values: dict[str, str]) -> list[str]:
         except ValueError:
             errors.append("MEDIA_INDEX_MAX_SIZE_MB must be an integer between 1 and 1024")
 
+    plugins_dir = values.get("PLUGINS_DIR", "").strip()
+    if plugins_dir and not (Path(plugins_dir).is_absolute() or plugins_dir.startswith("/")):
+        errors.append("PLUGINS_DIR must be an absolute path")
+    plugin_timeout = values.get("PLUGIN_INVOKE_TIMEOUT_SECONDS", "").strip()
+    if plugin_timeout:
+        try:
+            if not 1 <= float(plugin_timeout) <= 120:
+                raise ValueError
+        except ValueError:
+            errors.append("PLUGIN_INVOKE_TIMEOUT_SECONDS must be a number between 1 and 120")
+
     retention_count = values.get("BACKUP_RETENTION_COUNT", "").strip()
     if retention_count:
         try:

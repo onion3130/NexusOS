@@ -45,6 +45,7 @@ class ToolRegistry:
         }
         if db is not None and user_id is not None:
             self._register_task_tools(db, user_id)
+            self._register_plugin_tools(db, user_id)
         if workspace_service is not None:
             self._register_workspace_tools(workspace_service)
 
@@ -92,6 +93,14 @@ class ToolRegistry:
                 execute=lambda call: _delete_task(db, user_id, call),
             ),
         })
+
+    def _register_plugin_tools(self, db: OrmSession, user_id: str) -> None:
+        """Register the always-confirmed out-of-process plugin invocation tool."""
+        self._tools["plugins.invoke"] = RegisteredTool(
+            definition=ToolDefinition(key="plugins.invoke", description="Invoke a declared capability of an enabled out-of-process plugin after the user explicitly confirms the plugin, method, and bounded arguments.", parameters={"type": "object", "properties": {"plugin": {"type": "string", "maxLength": 64}, "method": {"type": "string", "maxLength": 64}, "arguments": {"type": "object"}}, "required": ["plugin", "method"], "additionalProperties": False}),
+            required_permission="plugins.write", requires_confirmation=True,
+            execute=lambda call: _invoke_plugin(db, user_id, call),
+        )
 
     def _register_workspace_tools(self, service: WorkspaceViewService) -> None:
         """Register read-only workspace views against the configured host boundary."""
@@ -181,3 +190,24 @@ def _delete_task(db: OrmSession, user_id: str, call: ProposedToolCall) -> dict[s
     if task is None:
         raise ToolValidationError()
     return {"task_id": task.id, "deleted": True}
+
+
+def _invoke_plugin(db: OrmSession, user_id: str, call: ProposedToolCall) -> dict[str, Any]:
+    """Invoke one allowlisted plugin capability out-of-process after confirmation."""
+    from app.modules.plugins.service import PluginError, invoke_plugin
+
+    plugin = call.arguments.get("plugin")
+    method = call.arguments.get("method")
+    arguments = call.arguments.get("arguments")
+    if not isinstance(plugin, str) or not plugin or len(plugin) > 64:
+        raise ToolValidationError()
+    if not isinstance(method, str) or not method or len(method) > 64:
+        raise ToolValidationError()
+    if not isinstance(arguments, dict):
+        arguments = {}
+    if len(arguments) > 16:
+        raise ToolValidationError()
+    try:
+        return {"result": invoke_plugin(db, user_id, plugin, method, arguments)}
+    except PluginError as exc:
+        raise ToolValidationError() from exc

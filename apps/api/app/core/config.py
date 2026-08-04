@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     media_roots: str = Field(default="", validation_alias="MEDIA_ROOTS")
     media_thumbnail_max_dimension: int = Field(default=320, validation_alias="MEDIA_THUMBNAIL_MAX_DIMENSION")
     media_index_max_size_mb: int = Field(default=200, validation_alias="MEDIA_INDEX_MAX_SIZE_MB")
+    plugins_dir: Path | None = Field(default=None, validation_alias="PLUGINS_DIR")
+    plugin_invoke_timeout_seconds: float = Field(default=20.0, validation_alias="PLUGIN_INVOKE_TIMEOUT_SECONDS")
     docker_socket_path: str = Field(default="", validation_alias="DOCKER_SOCKET_PATH")
     backup_replication_destination: Path | None = Field(default=None, validation_alias="BACKUP_REPLICATION_DESTINATION")
     backup_encryption_key: SecretStr | None = Field(default=None, validation_alias="BACKUP_ENCRYPTION_KEY")
@@ -182,6 +184,25 @@ class Settings(BaseSettings):
         """Bound the largest file the media indexer will hash."""
         if not 1 <= value <= 1024:
             raise ValueError("must be between 1 and 1024 MB")
+        return value
+
+    @field_validator("plugins_dir", mode="before")
+    @classmethod
+    def validate_plugins_dir(cls, value: Path | str | None) -> Path | None:
+        """Require an absolute operator-approved directory for out-of-process plugins."""
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        path = value if isinstance(value, Path) else Path(value)
+        if not path.is_absolute():
+            raise ValueError("must be an absolute path")
+        return path
+
+    @field_validator("plugin_invoke_timeout_seconds")
+    @classmethod
+    def validate_plugin_timeout(cls, value: float) -> float:
+        """Keep out-of-process plugin calls bounded on the Raspberry Pi."""
+        if not 1 <= value <= 120:
+            raise ValueError("must be between 1 and 120 seconds")
         return value
 
     @field_validator("backup_retention_count")

@@ -1,0 +1,13 @@
+# Explicit opt-in plugin overlay.
+# Use with: PLUGINS_DIR=/srv/nexus/plugins docker compose -f docker-compose.yml -f infrastructure/compose/plugins.yml up -d
+services:
+  nexus-api:
+    environment:
+      PLUGINS_DIR: /var/lib/nexus/plugins
+    volumes:
+      - "${PLUGINS_DIR:?Set PLUGINS_DIR to a dedicated host plugin directory}:/var/lib/nexus/plugins:ro"
+  nexus-worker:
+    environment:
+      PLUGINS_DIR: /var/lib/nexus/plugins
+    volumes:
+      - "${PLUGINS_DIR:?Set PLUGINS_DIR to a dedicated host plugin directory}:/var/lib/nexus/plugins:ro"

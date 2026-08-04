@@ -1,7 +1,7 @@
 # NexusOS AI system
 
-**Current milestone:** Milestone 12 — restore and recovery automation
-**Status:** The bounded assistant gateway, conversation storage, provider normalization, read-only system/task/note/workspace-view tools, confirmation-gated task mutations, lexical search, source-aware note chunks, and confirmation-gated maintenance proposals are implemented. Outbound email/push notification delivery is worker-side and deliberately outside the assistant tool registry, and restore is a browser/API-confirmed maintenance action deliberately outside the assistant tool registry. Embeddings, autonomous memory, semantic RAG, streaming, and privileged host control remain deferred.
+**Current milestone:** Milestone 11 (part 2) — integrations and plugin boundary
+**Status:** The bounded assistant gateway, conversation storage, provider normalization, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Embeddings, autonomous memory, semantic RAG, streaming, and privileged host control remain deferred.
 **Last updated:** 2026-08-04
 
 ## Current behavior
@@ -38,6 +38,12 @@ Approval and rejection are authenticated, ownership-scoped, CSRF-protected for c
 - `docker.containers`: sanitized container metadata when the optional, trusted socket boundary is available; socket access is not a Docker API sandbox
 
 These tools require `workspace_views.read`, share the REST service layer, return bounded untrusted metadata, and cannot write files, mutate Git, control containers, or execute commands.
+
+## Implemented plugin tool
+
+- `plugins.invoke`: always-confirmed invocation of a declared capability on an enabled plugin. The API verifies the plugin and method against the server-owned manifest, then runs it through the out-of-process broker. Every capability, including read-labeled capabilities, requires explicit confirmation because a manifest label cannot prove that code has no side effects.
+
+Plugin results are bounded and treated as untrusted data. Plugin credentials and application secrets are never passed to the subprocess.
 
 ## Implemented maintenance tool
 

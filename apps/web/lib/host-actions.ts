@@ -1,7 +1,7 @@
 import { authenticatedFetch } from "./auth";
 
 export type ActionCatalogItem = {
-  key: "maintenance.create_backup" | "maintenance.verify_backup" | "maintenance.integrity_check" | "maintenance.restore_backup" | "maintenance.retention_cleanup" | "maintenance.rotate_encryption_key";
+  key: "maintenance.create_backup" | "maintenance.verify_backup" | "maintenance.integrity_check" | "maintenance.restore_backup" | "maintenance.retention_cleanup" | "maintenance.rotate_encryption_key" | "plugins.rescan" | "plugins.enable" | "plugins.disable" | "plugins.uninstall";
   title: string;
   description: string;
   risk_level: "low" | "medium" | "high";

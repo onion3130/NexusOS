@@ -2,7 +2,7 @@
 
 **Current milestone:** Milestone 13 — backup retention and lifecycle policy
 **Status:** Hardened Compose/systemd/proxy configuration, encrypted off-host directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, bounded worker recovery, Maintenance deployment status, and outbound email/push notification channels are implemented. Target-Pi image, TLS trust, restore-drill validation, and real SMTP/ntfy endpoint checks remain required operator checks.
-**Last updated:** 2026-08-03
+**Last updated:** 2026-08-04
 
 ## Target hardware
 
@@ -15,13 +15,13 @@
 
 | Service | Current state | Purpose |
 |---|---|---|
-| `nexus-api` | Implemented | FastAPI identity, telemetry, assistant, task, reminder, and notification API |
+| `nexus-api` | Implemented | FastAPI identity, telemetry, assistant, productivity, integrations, plugin, and maintenance API |
 | `nexus-web` | Implemented | Next.js authenticated shell and task workspace |
 | `nexus-worker` | Implemented | Dedicated non-root ARM64 reminder and confirmed maintenance dispatcher |
 | `nexus-proxy` | Hardened profile | ARM64 Caddy TLS/routing boundary; absent from default profile |
 | `nexus-ai` | Opt-in placeholder profile | Optional future local/provider boundary |
 
-The worker shares the API's SQLite data mount, publishes no host port, and runs `python -m app.worker`. Run exactly one worker in the current deployment topology.
+The worker shares the API's SQLite data mount and read-only `/var/lib/nexus/plugins` mount, publishes no host port, and runs `python -m app.worker`. Run exactly one worker in the current deployment topology. Plugin code is trusted operator-installed code; use a separate VM/container boundary for untrusted extensions.
 
 ## Development deployment
 
@@ -53,6 +53,10 @@ The worker shares the API's SQLite data mount, publishes no host port, and runs 
 8. Stop with `docker compose --env-file .env down`.
 
 Ports remain loopback-only in the default topology. Do not expose this development topology directly to the internet. The hardened overlay is LAN-facing only and must use a trusted private hostname/certificate policy. Workspace views use `WORKSPACE_ROOTS`; Docker inspection remains unavailable unless an operator separately mounts and configures a reviewed socket boundary. A filesystem `:ro` mount does not make the Docker API read-only: access to the Docker Unix socket is a powerful host-control boundary. Never mount the Docker socket into the web or worker service.
+
+## Plugin deployment
+
+Leave `PLUGINS_DIR` empty to disable plugins. In Compose, set the host-side `PLUGINS_DIR` to a dedicated operator-owned directory; the default stack mounts it read-only at `/var/lib/nexus/plugins` in the API and worker and sets the in-container environment value automatically. Run a confirmed Plugins → Rescan directory action after adding or replacing a manifest. Keep plugin files separate from the database, backup, Docker socket, and secrets volumes. Verify the plugin directory is not writable by untrusted users. The broker uses no shell, a minimal secret-free environment, bounded wall time/output, and Linux resource limits on the Raspberry Pi.
 
 ## Workspace view deployment
 

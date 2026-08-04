@@ -448,6 +448,38 @@ class CalendarEvent(Base):
     reminders: Mapped[list[CalendarEventReminder]] = relationship(back_populates="event", cascade="all, delete-orphan")
 
 
+class Plugin(Base):
+    """A registered out-of-process plugin declared in an operator-approved directory."""
+
+    __tablename__ = "plugins"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String(64), unique=True)
+    version: Mapped[str] = mapped_column(String(32))
+    entrypoint: Mapped[str] = mapped_column(String(256))
+    manifest_json: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(24), index=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, index=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    runs: Mapped[list[PluginRun]] = relationship(back_populates="plugin", cascade="all, delete-orphan")
+
+
+class PluginRun(Base):
+    """Bounded execution metadata for one plugin method invocation."""
+
+    __tablename__ = "plugin_runs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    plugin_id: Mapped[str] = mapped_column(ForeignKey("plugins.id", ondelete="CASCADE"), index=True)
+    method: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(24), index=True)
+    error_code: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+    plugin: Mapped[Plugin] = relationship(back_populates="runs")
+
+
 class MediaItem(Base):
     """A derived, rebuildable index entry for one file in an approved media root."""
 

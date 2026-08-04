@@ -1,7 +1,7 @@
 # NexusOS roadmap
 
-**Current milestone:** Milestone 13 — backup retention and lifecycle policy
-**Next milestone:** Milestone 11 (part 2) — calendar, media, finance, and plugin boundary
+**Current milestone:** Milestone 11 (part 2) — calendar, media, finance, and plugin boundary
+**Next milestone:** v1.2 — semantic retrieval and memory foundations
 **Last updated:** 2026-08-04
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
@@ -25,7 +25,8 @@ Milestone 6 is implemented within its approved scope. NexusOS now has an authent
 | 8. Safe host actions | Complete | Confirmation-gated maintenance actions, audit events, verified SQLite backups, and recovery documentation |
 | 9. Files, projects, Git, Docker views | Complete | Approved roots, repository/project metadata, sanitized Docker read operations |
 | 10. Deployment hardening | Complete | Hardened LAN proxy, systemd startup, encrypted replication, resource limits, and recovery gate |
-| 11. Integrations and plugins | Part 1 complete | Outbound email and push notification channels implemented; calendar/media/finance ports and out-of-process plugin boundary remain (part 2) |
+| 11. Integrations and plugins | Complete | Calendar, finance, media, outbound notification channels, and the out-of-process plugin boundary |
+
 | 12. Restore and recovery automation | Complete | Confirmation-gated restore from verified local and encrypted off-host backup artifacts with safety backup, staging, digest/integrity verification, and atomic swap |
 | 13. Backup retention and lifecycle | Complete | Policy-driven retention cleanup with last-backup protection, digest-safe pruning of local and encrypted artifacts, and confirmation-gated AES-256 key rotation |
 
@@ -196,9 +197,22 @@ Known limitations:
 - Push targets a single ntfy-compatible endpoint/topic; object-storage or cloud push providers remain future integrations.
 - Real SMTP relays, self-hosted ntfy servers, and sustained delivery load still require target-environment validation on the Pi.
 
-### Milestone 11 (part 2) — calendar, media, finance, and plugin boundary
+### Milestone 11 (part 2) complete — calendar, media, finance, and plugin boundary
 
-Calendar, media, finance, and out-of-process plugin integration remains planned. Add integrations only through explicit capability, credential, isolation, and out-of-process boundaries.
+Implemented:
+
+- Calendar events, categories, all-day support, range filtering, reminders, and worker delivery through the existing notification pipeline.
+- Finance accounts, integer-cent transactions, categories, summaries, and strict all-or-nothing CSV import.
+- Approved-root media indexing, sensitive-file exclusion, deterministic hashes, bounded Pillow thumbnails, rescan jobs, and confined private streaming.
+- Migration `0015_plugins`, manifest validation, operator-approved plugin discovery, JSON-stdio subprocess execution, Linux resource limits, bounded timeout/output, risk-labeled capabilities, plugin run history, and audited lifecycle actions.
+- `plugins.read` / `plugins.write` permissions, a Plugins workspace, and an always-confirmed assistant `plugins.invoke` tool. Direct HTTP invocation is limited to read-risk capabilities.
+- Secret-free plugin subprocess environments, re-registration after uninstall, bounded run-history retention, and ARM64 Docker plugin-volume guidance.
+
+Known limitations:
+
+- Plugins are trusted operator-installed code, not a complete hostile-code sandbox; use a separate VM/container boundary for untrusted code.
+- Docker and target Raspberry Pi runtime validation remain operator checks in the current environment.
+
 
 ## Approval rule
 

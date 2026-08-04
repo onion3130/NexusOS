@@ -1,6 +1,6 @@
 # Compose profile guidance
 
-The root `docker-compose.yml` is the current source of truth for the v1.0 ARM64 development stack.
+The root `docker-compose.yml` is the current source of truth for the v1.1 ARM64 development stack.
 
 ## Current services
 
@@ -23,13 +23,23 @@ Set `NEXUS_HOST` to a private LAN hostname and install Caddy's internal CA root 
 
 | Profile | Purpose | Introduced |
 |---|---|---|
-| default | Local ARM64 API, web, reminder/maintenance worker, and safe backup boundary | v1.0 |
+| default | Local ARM64 API, web, reminder/maintenance worker, safe backup boundary; plugins disabled | v1.1 |
 | `dev` | Hot-reload API/web development | Future |
 | `pi` | Raspberry Pi deployment with SSD mounts and recovery policies | Deployment milestone |
 | `postgres` | PostgreSQL compatibility validation | Persistence milestone |
 | `ai` | Explicit external/local model boundary | Assistant milestone |
 
 Each future profile must document image provenance, ARM64 support, healthchecks, resource limits, volumes, networks, secrets, and rollback behavior.
+
+## Optional plugin overlay
+
+The default stack intentionally does not mount or enable plugins. To opt in, set `PLUGINS_DIR` to a dedicated host directory and use the explicit overlay:
+
+```sh
+PLUGINS_DIR=/srv/nexus/plugins docker compose --env-file .env -f docker-compose.yml -f infrastructure/compose/plugins.yml up -d
+```
+
+The overlay mounts the directory read-only at `/var/lib/nexus/plugins` into API and worker and sets the in-container `PLUGINS_DIR`. Review [`docs/PLUGIN_BOUNDARY.md`](../../docs/PLUGIN_BOUNDARY.md) before installing any extension.
 
 ## Validation
 
