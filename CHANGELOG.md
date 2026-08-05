@@ -11,6 +11,7 @@ All notable NexusOS changes are recorded here. NexusOS releases use Semantic Ver
 - Encrypts browser-managed NIM settings under the private data volume using a key derived from the server JWT secret; keys never enter SQLite, browser storage, logs, or API responses.
 - Activates saved configuration immediately for the API and hot-reloads it in the worker each cycle so container restarts are not required.
 - Added Admin status summary on Overview, Assistant empty-state guidance that links to Admin, command-palette entry, CSRF/permission enforcement, audit events, and redacted options/test endpoints.
+- Reorganized Admin into Overview / AI setup / Operations / Host-only sections with smoother transitions, operation shortcuts into existing web workspaces, and an explicit list of tasks that remain terminal-only for safety.
 
 ### NVIDIA NIM browser setup
 

@@ -224,7 +224,10 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         ) : activeView === "docker" ? (
           <DockerWorkspace />
         ) : activeView === "admin" && isOwner ? (
-          <AdminWorkspace onOpenAssistant={() => setActiveView("assistant")} />
+          <AdminWorkspace
+            onNavigate={(target) => setActiveView(target)}
+            onOpenAssistant={() => setActiveView("assistant")}
+          />
         ) : (
           <>
             <div className="hero-card">
