@@ -20,12 +20,14 @@ import {
 } from "../lib/admin";
 import type { User } from "../lib/auth";
 import { listAuditEvents, listBackups, readDeploymentStatus, type AuditEvent, type Backup, type DeploymentStatus } from "../lib/host-actions";
+import { configureOpenWebUI, disableOpenWebUI, readOpenWebUIStatus, type OpenWebUIStatus } from "../lib/openwebui";
 import { readSystemOverview, type HealthLevel, type SystemOverview } from "../lib/system";
 
 type AdminPage = "dashboard" | "ai" | "updates" | "system" | "services" | "operations" | "host";
 
 type AdminNavigateTarget =
   | "assistant"
+  | "chat"
   | "maintenance"
   | "notifications"
   | "sources"
@@ -37,6 +39,7 @@ type AdminNavigateTarget =
 type AdminWorkspaceProps = {
   user: User;
   onOpenAssistant?: () => void;
+  onOpenChat?: () => void;
   onNavigate?: (target: AdminNavigateTarget) => void;
   onLogout?: () => void;
 };
@@ -129,7 +132,7 @@ function Panel({ title, eyebrow, actions, children }: { title: string; eyebrow?:
   );
 }
 
-export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: AdminWorkspaceProps) {
+export function AdminWorkspace({ user, onOpenAssistant, onOpenChat, onNavigate, onLogout }: AdminWorkspaceProps) {
   const [page, setPage] = useState<AdminPage>("dashboard");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<AdminStatus | null>(null);
@@ -157,11 +160,17 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
   const [loadingModels, setLoadingModels] = useState(false);
   const [modelFilter, setModelFilter] = useState("");
   const [modelsError, setModelsError] = useState<string | null>(null);
+  const [openWebUI, setOpenWebUI] = useState<OpenWebUIStatus | null>(null);
+  const [openWebUIUrl, setOpenWebUIUrl] = useState("http://192.168.1.46:8080");
+  const [openWebUILabel, setOpenWebUILabel] = useState("Open WebUI");
+  const [openWebUIEmbed, setOpenWebUIEmbed] = useState(true);
+  const [openWebUIEnabled, setOpenWebUIEnabled] = useState(true);
+  const [savingOpenWebUI, setSavingOpenWebUI] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [nextStatus, nextOptions, nextUpdate, nextSystem, nextAudit, nextBackups, nextDeployment] = await Promise.all([
+      const [nextStatus, nextOptions, nextUpdate, nextSystem, nextAudit, nextBackups, nextDeployment, nextOpenWebUI] = await Promise.all([
         readAdminStatus(),
         readNimOptions(),
         readSoftwareUpdateStatus(),
@@ -169,6 +178,7 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
         listAuditEvents().catch(() => [] as AuditEvent[]),
         listBackups().catch(() => [] as Backup[]),
         readDeploymentStatus().catch(() => null),
+        readOpenWebUIStatus().catch(() => null),
       ]);
       setStatus(nextStatus);
       setOptions(nextOptions);
@@ -181,6 +191,13 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
         setModel(nextStatus.nvidia_nim.model);
       }
       setEmbeddings(nextStatus.nvidia_nim.embeddings_enabled);
+      if (nextOpenWebUI) {
+        setOpenWebUI(nextOpenWebUI);
+        if (nextOpenWebUI.url) setOpenWebUIUrl(nextOpenWebUI.url);
+        setOpenWebUILabel(nextOpenWebUI.label || "Open WebUI");
+        setOpenWebUIEmbed(nextOpenWebUI.embed);
+        setOpenWebUIEnabled(nextOpenWebUI.enabled || !nextOpenWebUI.configured);
+      }
       setError(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Admin console unavailable");
@@ -352,6 +369,41 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
       setError(reason instanceof Error ? reason.message : "Update request failed");
     } finally {
       setUpdateBusy(false);
+    }
+  }
+
+  async function saveOpenWebUI(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingOpenWebUI(true);
+    setError(null);
+    try {
+      const next = await configureOpenWebUI({
+        enabled: openWebUIEnabled,
+        url: openWebUIUrl.trim(),
+        label: openWebUILabel.trim() || "Open WebUI",
+        embed: openWebUIEmbed,
+      });
+      setOpenWebUI(next);
+      setNotice(next.detail);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Open WebUI setup failed");
+    } finally {
+      setSavingOpenWebUI(false);
+    }
+  }
+
+  async function clearOpenWebUI() {
+    if (!window.confirm("Remove the browser-managed Open WebUI link? Environment OPENWEBUI_URL still applies if set.")) return;
+    setSavingOpenWebUI(true);
+    setError(null);
+    try {
+      const next = await disableOpenWebUI();
+      setOpenWebUI(next);
+      setNotice(next.detail);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to clear Open WebUI settings");
+    } finally {
+      setSavingOpenWebUI(false);
     }
   }
 
@@ -785,6 +837,71 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
                   </div>
                 </form>
               </Panel>
+
+              <Panel
+                title="Open WebUI chat"
+                eyebrow="Studio-style multi-model UI"
+                actions={
+                  onOpenChat ? (
+                    <button className="text-button" onClick={onOpenChat} type="button">
+                      Open Chat
+                    </button>
+                  ) : null
+                }
+              >
+                <p className="admin-panel-help">
+                  Your Pi already hosts Open WebUI (docker <code>open-webui</code>, usually port <code>8080</code>). Link it here so
+                  Workspace → <strong>Chat</strong> embeds the full UI. Nexus Assistant stays for system/tasks/notes tools.
+                </p>
+                <form className="admin-openwebui-form" onSubmit={(event) => void saveOpenWebUI(event)}>
+                  <label className="checkbox-row">
+                    <input checked={openWebUIEnabled} onChange={(event) => setOpenWebUIEnabled(event.target.checked)} type="checkbox" />
+                    Enable Open WebUI in Chat
+                  </label>
+                  <label>
+                    Open WebUI URL
+                    <input
+                      onChange={(event) => setOpenWebUIUrl(event.target.value)}
+                      placeholder="http://192.168.1.46:8080"
+                      required={openWebUIEnabled}
+                      type="url"
+                      value={openWebUIUrl}
+                    />
+                  </label>
+                  <label>
+                    Label
+                    <input maxLength={64} onChange={(event) => setOpenWebUILabel(event.target.value)} type="text" value={openWebUILabel} />
+                  </label>
+                  <label className="checkbox-row">
+                    <input checked={openWebUIEmbed} onChange={(event) => setOpenWebUIEmbed(event.target.checked)} type="checkbox" />
+                    Embed inside Nexus (iframe). Turn off to only offer “open in new tab”.
+                  </label>
+                  <div className="admin-nim-actions">
+                    <button className="primary-button" disabled={savingOpenWebUI || (openWebUIEnabled && !openWebUIUrl.trim())} type="submit">
+                      {savingOpenWebUI ? "Saving…" : "Save Open WebUI"}
+                    </button>
+                    <button className="refresh-button" onClick={() => setOpenWebUIUrl("http://192.168.1.46:8080")} type="button">
+                      Use Pi :8080
+                    </button>
+                    {openWebUI?.source === "browser" ? (
+                      <button className="text-button danger-text" disabled={savingOpenWebUI} onClick={() => void clearOpenWebUI()} type="button">
+                        Clear saved link
+                      </button>
+                    ) : null}
+                    {openWebUI?.url ? (
+                      <a className="text-button" href={openWebUI.url} rel="noreferrer" target="_blank">
+                        Open URL
+                      </a>
+                    ) : null}
+                  </div>
+                  {openWebUI ? (
+                    <p className="form-help">
+                      Status: {openWebUI.enabled ? "enabled" : "disabled"} · source {openWebUI.source}
+                      {openWebUI.url ? ` · ${openWebUI.url}` : ""}
+                    </p>
+                  ) : null}
+                </form>
+              </Panel>
             </div>
           )}
 
@@ -889,9 +1006,21 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
                   { label: "Plugins", detail: "Rescan & lifecycle", target: "plugins" as const },
                   { label: "Files", detail: "Approved-root metadata", target: "files" as const },
                   { label: "Docker view", detail: "Container inspection", target: "docker" as const },
-                  { label: "Assistant", detail: "Chat with configured model", target: "assistant" as const },
+                  { label: "Assistant", detail: "Nexus tools chat", target: "assistant" as const },
+                  { label: "Open WebUI", detail: "Studio multi-model chat", target: "chat" as const },
                 ].map((item) => (
-                  <button className="admin-quick-action" key={item.label} onClick={() => (item.target === "assistant" ? onOpenAssistant?.() : onNavigate?.(item.target))} type="button">
+                  <button
+                    className="admin-quick-action"
+                    key={item.label}
+                    onClick={() =>
+                      item.target === "assistant"
+                        ? onOpenAssistant?.()
+                        : item.target === "chat"
+                          ? onOpenChat?.()
+                          : onNavigate?.(item.target)
+                    }
+                    type="button"
+                  >
                     <strong>{item.label}</strong>
                     <span>{item.detail}</span>
                   </button>

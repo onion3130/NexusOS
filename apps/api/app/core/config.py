@@ -102,6 +102,8 @@ class Settings(BaseSettings):
     notification_delivery_batch_size: int = Field(default=20, validation_alias="NOTIFICATION_DELIVERY_BATCH_SIZE")
     nvidia_api_key: SecretStr | None = Field(default=None, validation_alias="NVIDIA_API_KEY")
     openai_api_key: SecretStr | None = Field(default=None, validation_alias="OPENAI_API_KEY")
+    # Optional local Open WebUI base URL for the Chat workspace embed (e.g. http://192.168.1.46:8080).
+    openwebui_url: str | None = Field(default=None, validation_alias="OPENWEBUI_URL")
 
     @field_validator("cors_origins")
     @classmethod

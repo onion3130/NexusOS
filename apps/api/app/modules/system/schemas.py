@@ -270,6 +270,29 @@ class SoftwareUpdateStatusResponse(BaseModel):
     can_request: bool = True
 
 
+class OpenWebUIConfigRequest(BaseModel):
+    """Owner-provided Open WebUI integration settings (URL only, no secrets)."""
+
+    model_config = {"extra": "forbid"}
+
+    enabled: bool = True
+    url: str | None = Field(default=None, max_length=512)
+    label: str = Field(default="Open WebUI", max_length=64)
+    embed: bool = True
+
+
+class OpenWebUIStatusResponse(BaseModel):
+    """Redacted Open WebUI integration status for Chat and Admin."""
+
+    enabled: bool = False
+    configured: bool = False
+    url: str | None = None
+    label: str = "Open WebUI"
+    embed: bool = True
+    source: Literal["browser", "environment", "none"] = "none"
+    detail: str = ""
+
+
 class SystemOverviewResponse(BaseModel):
     """Authenticated read-only Raspberry Pi system overview."""
 

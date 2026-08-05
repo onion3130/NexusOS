@@ -13,6 +13,7 @@ from app.modules.identity.dependencies import require_permission
 from app.db.session import get_db
 from app.modules.system.admin import collect_admin_status
 from app.modules.system.nim_setup import list_nvidia_models, nim_options, resolve_runtime_config, test_nim_connection
+from app.modules.system.openwebui import delete_openwebui_config, openwebui_status, write_openwebui_config
 from app.modules.system.schemas import (
     AdminStatusResponse,
     AssistantProviderStatus,
@@ -22,6 +23,8 @@ from app.modules.system.schemas import (
     NimSetupRequest,
     NimTestRequest,
     NimTestResponse,
+    OpenWebUIConfigRequest,
+    OpenWebUIStatusResponse,
     SoftwareUpdateRequest,
     SoftwareUpdateStatusResponse,
     SystemOverviewResponse,
@@ -51,6 +54,64 @@ def assistant_provider(
     require_permission("assistant.task_actions", context)
     from app.modules.system.admin import assistant_provider_status
     return assistant_provider_status(settings)
+
+
+@router.get("/openwebui", response_model=OpenWebUIStatusResponse)
+def get_openwebui(
+    context: AuthContext = Depends(get_auth_context),
+    settings: Settings = Depends(get_settings),
+) -> OpenWebUIStatusResponse:
+    """Return Open WebUI Chat integration status (URL only, no secrets)."""
+    require_permission("assistant.task_actions", context)
+    return openwebui_status(settings)
+
+
+@router.post("/admin/openwebui", response_model=OpenWebUIStatusResponse)
+def configure_openwebui(
+    payload: OpenWebUIConfigRequest,
+    request: Request,
+    context: AuthContext = Depends(get_auth_context),
+    settings: Settings = Depends(get_settings),
+    db: OrmSession = Depends(get_db),
+) -> OpenWebUIStatusResponse:
+    """Save Open WebUI URL for the embedded Chat workspace."""
+    from app.modules.identity.dependencies import require_csrf
+    from app.modules.identity.service import add_audit_event
+    require_csrf(request, context)
+    require_permission("admin.manage_users", context)
+    try:
+        status = write_openwebui_config(settings.data_dir, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=503, detail="openwebui_storage_unavailable") from exc
+    add_audit_event(
+        db,
+        action="system.openwebui_configure",
+        result="success",
+        actor_user_id=context.user.id,
+        metadata={"enabled": status.enabled, "embed": status.embed},
+    )
+    db.commit()
+    return status
+
+
+@router.delete("/admin/openwebui", response_model=OpenWebUIStatusResponse)
+def disable_openwebui(
+    request: Request,
+    context: AuthContext = Depends(get_auth_context),
+    settings: Settings = Depends(get_settings),
+    db: OrmSession = Depends(get_db),
+) -> OpenWebUIStatusResponse:
+    """Remove browser-managed Open WebUI settings (env URL may still apply)."""
+    from app.modules.identity.dependencies import require_csrf
+    from app.modules.identity.service import add_audit_event
+    require_csrf(request, context)
+    require_permission("admin.manage_users", context)
+    delete_openwebui_config(settings.data_dir)
+    add_audit_event(db, action="system.openwebui_disable", result="success", actor_user_id=context.user.id)
+    db.commit()
+    return openwebui_status(settings)
 
 
 @router.get("/admin/nvidia-nim/options", response_model=NimOptionsResponse)
