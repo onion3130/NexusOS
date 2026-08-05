@@ -4,12 +4,16 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNo
 import {
   configureNvidiaNim,
   disableNvidiaNim,
+  listNvidiaModels,
   readAdminStatus,
   readNimOptions,
   readSoftwareUpdateStatus,
   requestSoftwareUpdate,
   testNvidiaNim,
   type AdminStatus,
+  type NimChatPreset,
+  type NimEmbeddingPreset,
+  type NimModelCatalog,
   type NimOptions,
   type NimTestResult,
   type SoftwareUpdateStatus,
@@ -149,6 +153,10 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
   const [embeddingModel, setEmbeddingModel] = useState("nvidia/nv-embedqa-e5-v5");
   const [customEmbedding, setCustomEmbedding] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [liveCatalog, setLiveCatalog] = useState<NimModelCatalog | null>(null);
+  const [loadingModels, setLoadingModels] = useState(false);
+  const [modelFilter, setModelFilter] = useState("");
+  const [modelsError, setModelsError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -170,9 +178,7 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
       setBackups(nextBackups);
       setDeployment(nextDeployment);
       if (nextStatus.nvidia_nim.model) {
-        const known = nextOptions.chat_models.some((item) => item.id === nextStatus.nvidia_nim.model);
         setModel(nextStatus.nvidia_nim.model);
-        setCustomModel(!known);
       }
       setEmbeddings(nextStatus.nvidia_nim.embeddings_enabled);
       setError(null);
@@ -216,6 +222,18 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
   const configured = Boolean(status?.nvidia_nim.configured);
   const source = status?.nvidia_nim.source ?? "none";
   const canSave = Boolean(model.trim()) && (Boolean(apiKey.trim()) || (configured && source === "browser"));
+  const chatModels: NimChatPreset[] = liveCatalog?.chat_models ?? options?.chat_models ?? [];
+  const embeddingModels: NimEmbeddingPreset[] = liveCatalog?.embedding_models ?? options?.embedding_models ?? [];
+  const filteredChatModels = useMemo(() => {
+    const q = modelFilter.trim().toLowerCase();
+    if (!q) return chatModels;
+    return chatModels.filter((item) => `${item.id} ${item.label} ${item.description}`.toLowerCase().includes(q));
+  }, [chatModels, modelFilter]);
+  const filteredEmbeddingModels = useMemo(() => {
+    const q = modelFilter.trim().toLowerCase();
+    if (!q) return embeddingModels;
+    return embeddingModels.filter((item) => `${item.id} ${item.label} ${item.description}`.toLowerCase().includes(q));
+  }, [embeddingModels, modelFilter]);
 
   async function saveNim(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -262,6 +280,7 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
     setError(null);
     try {
       setStatus(await disableNvidiaNim());
+      setLiveCatalog(null);
       setNotice("NVIDIA NIM disabled.");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Disable failed");
@@ -269,6 +288,48 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
       setSaving(false);
     }
   }
+
+  async function loadLiveModels(forceKey?: string) {
+    const key = (forceKey ?? apiKey).trim();
+    const canUseSaved = configured && (source === "browser" || source === "environment");
+    if (!key && !canUseSaved) {
+      setModelsError("Paste an NVIDIA API key first, then load models.");
+      return;
+    }
+    setLoadingModels(true);
+    setModelsError(null);
+    try {
+      const catalog = await listNvidiaModels(key || undefined);
+      setLiveCatalog(catalog);
+      const chatIds = catalog.chat_models.map((item) => item.id);
+      const embedIds = catalog.embedding_models.map((item) => item.id);
+      if (!chatIds.includes(model) && catalog.chat_models[0]) {
+        const recommended = catalog.chat_models.find((item) => item.recommended) ?? catalog.chat_models[0];
+        setModel(recommended.id);
+        setCustomModel(false);
+      }
+      if (embeddings && !embedIds.includes(embeddingModel) && catalog.embedding_models[0]) {
+        const recommended = catalog.embedding_models.find((item) => item.recommended) ?? catalog.embedding_models[0];
+        setEmbeddingModel(recommended.id);
+        setCustomEmbedding(false);
+      }
+      setNotice(catalog.detail);
+    } catch (reason) {
+      setModelsError(reason instanceof Error ? reason.message : "Failed to load NVIDIA models");
+    } finally {
+      setLoadingModels(false);
+    }
+  }
+
+  useEffect(() => {
+    if (page !== "ai") return;
+    if (liveCatalog) return;
+    if (configured) {
+      void loadLiveModels();
+    }
+    // Only auto-load once when opening AI with a saved key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, configured]);
 
   async function runUpdate(action: "check" | "apply") {
     if (action === "apply") {
@@ -500,31 +561,29 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
             <div className="admin-console-stack">
               <div className="admin-console-title-row">
                 <div>
-                  <p className="eyebrow">Provider setup</p>
+                  <p className="eyebrow">OpenAI-compatible NVIDIA API</p>
                   <h2>AI / NVIDIA NIM</h2>
                 </div>
                 <span className={`admin-badge admin-badge-${configured ? "healthy" : "muted"}`}>{configured ? "Connected" : "Not connected"}</span>
               </div>
-              <Panel title={configured ? "NVIDIA NIM connected" : "Connect NVIDIA NIM"} eyebrow="Step-by-step">
-                <p className="admin-panel-help">{options?.help_text ?? "Paste your NVIDIA API Catalog key and choose a model."}</p>
+              <Panel title={configured ? "NVIDIA NIM connected" : "Connect NVIDIA NIM"} eyebrow="Live model catalog">
+                <p className="admin-panel-help">
+                  Paste your NVIDIA API key once. NexusOS verifies the OpenAI-compatible base URL{" "}
+                  <code>{liveCatalog?.base_url ?? options?.base_url ?? "https://integrate.api.nvidia.com/v1"}</code> and loads real models from{" "}
+                  <code>/v1/models</code> — no need to browse build.nvidia.com for model ids.
+                </p>
                 <ol className="admin-setup-steps">
                   <li>
-                    <strong>1 · Get an API key</strong>
-                    <span>
-                      Create one at{" "}
-                      <a href="https://build.nvidia.com/" rel="noreferrer" target="_blank">
-                        build.nvidia.com
-                      </a>
-                      .
-                    </span>
+                    <strong>1 · Paste API key</strong>
+                    <span>Key is required only to authenticate against NVIDIA. Create one once if you do not already have it.</span>
                   </li>
                   <li>
-                    <strong>2 · Choose a model</strong>
-                    <span>Use a recommended preset or a custom hosted model id.</span>
+                    <strong>2 · Load live models</strong>
+                    <span>Pulls the real hosted catalog from integrate.api.nvidia.com (chat + embeddings).</span>
                   </li>
                   <li>
-                    <strong>3 · Test and save</strong>
-                    <span>Keys are encrypted on the Pi and never returned to the browser.</span>
+                    <strong>3 · Test, then save</strong>
+                    <span>Test a completion, then encrypt the key on this device and enable the Assistant.</span>
                   </li>
                 </ol>
                 <form className="admin-nim-form" onSubmit={(event) => void saveNim(event)}>
@@ -539,11 +598,36 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
                       value={apiKey}
                     />
                   </label>
+                  <div className="admin-nim-actions">
+                    <button
+                      className="refresh-button"
+                      disabled={loadingModels}
+                      onClick={() => void loadLiveModels()}
+                      type="button"
+                    >
+                      {loadingModels ? "Loading models…" : liveCatalog?.source === "live" ? "Refresh models from NVIDIA" : "Load models from NVIDIA"}
+                    </button>
+                    <span className="form-help">
+                      {liveCatalog
+                        ? `${liveCatalog.source === "live" ? "Live" : "Fallback"} · ${liveCatalog.chat_models.length} chat · ${liveCatalog.embedding_models.length} embedding`
+                        : "Models load from NVIDIA after you paste a key (or use a saved key)."}
+                    </span>
+                  </div>
+                  {modelsError && (
+                    <div className="inline-state error-state" role="alert">
+                      <strong>Model list failed.</strong>
+                      <span>{modelsError}</span>
+                    </div>
+                  )}
+                  <label>
+                    Filter models
+                    <input onChange={(event) => setModelFilter(event.target.value)} placeholder="Search llama, gemma, embed…" value={modelFilter} />
+                  </label>
                   <div className="admin-model-block">
                     <div className="admin-model-heading">
-                      <strong>Chat model</strong>
+                      <strong>Chat model ({filteredChatModels.length})</strong>
                       <button className="text-button" onClick={() => setCustomModel((value) => !value)} type="button">
-                        {customModel ? "Use presets" : "Custom model id"}
+                        {customModel ? "Pick from list" : "Custom model id"}
                       </button>
                     </div>
                     {customModel ? (
@@ -552,22 +636,26 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
                         <input maxLength={160} onChange={(event) => setModel(event.target.value)} required value={model} />
                       </label>
                     ) : (
-                      <div className="admin-preset-grid">
-                        {(options?.chat_models ?? []).map((preset) => (
-                          <button
-                            className={`admin-preset-card${model === preset.id ? " selected" : ""}`}
-                            key={preset.id}
-                            onClick={() => setModel(preset.id)}
-                            type="button"
-                          >
-                            <strong>
-                              {preset.label}
-                              {preset.recommended ? <span className="admin-recommended">Recommended</span> : null}
-                            </strong>
-                            <span>{preset.description}</span>
-                            <code>{preset.id}</code>
-                          </button>
-                        ))}
+                      <div className="admin-preset-grid admin-preset-grid-scroll">
+                        {filteredChatModels.length === 0 ? (
+                          <p className="form-help">No chat models loaded yet. Paste a key and click Load models from NVIDIA.</p>
+                        ) : (
+                          filteredChatModels.map((preset) => (
+                            <button
+                              className={`admin-preset-card${model === preset.id ? " selected" : ""}`}
+                              key={preset.id}
+                              onClick={() => setModel(preset.id)}
+                              type="button"
+                            >
+                              <strong>
+                                {preset.label}
+                                {preset.recommended ? <span className="admin-recommended">Recommended</span> : null}
+                              </strong>
+                              <span>{preset.description}</span>
+                              <code>{preset.id}</code>
+                            </button>
+                          ))
+                        )}
                       </div>
                     )}
                   </div>
@@ -578,9 +666,9 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
                   {embeddings && (
                     <div className="admin-model-block">
                       <div className="admin-model-heading">
-                        <strong>Embedding model</strong>
+                        <strong>Embedding model ({filteredEmbeddingModels.length})</strong>
                         <button className="text-button" onClick={() => setCustomEmbedding((value) => !value)} type="button">
-                          {customEmbedding ? "Use presets" : "Custom model id"}
+                          {customEmbedding ? "Pick from list" : "Custom model id"}
                         </button>
                       </div>
                       {customEmbedding ? (
@@ -589,33 +677,46 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
                           <input maxLength={160} onChange={(event) => setEmbeddingModel(event.target.value)} required value={embeddingModel} />
                         </label>
                       ) : (
-                        <div className="admin-preset-grid">
-                          {(options?.embedding_models ?? []).map((preset) => (
-                            <button
-                              className={`admin-preset-card${embeddingModel === preset.id ? " selected" : ""}`}
-                              key={preset.id}
-                              onClick={() => setEmbeddingModel(preset.id)}
-                              type="button"
-                            >
-                              <strong>
-                                {preset.label}
-                                {preset.recommended ? <span className="admin-recommended">Recommended</span> : null}
-                              </strong>
-                              <span>{preset.description}</span>
-                              <code>{preset.id}</code>
-                            </button>
-                          ))}
+                        <div className="admin-preset-grid admin-preset-grid-scroll">
+                          {filteredEmbeddingModels.length === 0 ? (
+                            <p className="form-help">No embedding models loaded yet.</p>
+                          ) : (
+                            filteredEmbeddingModels.map((preset) => (
+                              <button
+                                className={`admin-preset-card${embeddingModel === preset.id ? " selected" : ""}`}
+                                key={preset.id}
+                                onClick={() => setEmbeddingModel(preset.id)}
+                                type="button"
+                              >
+                                <strong>
+                                  {preset.label}
+                                  {preset.recommended ? <span className="admin-recommended">Recommended</span> : null}
+                                </strong>
+                                <span>{preset.description}</span>
+                                <code>{preset.id}</code>
+                              </button>
+                            ))
+                          )}
                         </div>
                       )}
                     </div>
                   )}
                   <button className="text-button" onClick={() => setShowAdvanced((value) => !value)} type="button">
-                    {showAdvanced ? "Hide technical details" : "Show technical details"}
+                    {showAdvanced ? "Hide endpoint details" : "Show endpoint details"}
                   </button>
                   {showAdvanced && (
-                    <p className="form-help">
-                      Endpoint: <code>{options?.chat_endpoint}</code>
-                    </p>
+                    <DataTable
+                      columns={["Field", "Value"]}
+                      empty="—"
+                      rows={[
+                        ["Base URL", liveCatalog?.base_url ?? options?.base_url ?? "https://integrate.api.nvidia.com/v1"],
+                        ["Models", liveCatalog?.models_url ?? "https://integrate.api.nvidia.com/v1/models"],
+                        ["Chat completions", liveCatalog?.chat_endpoint ?? options?.chat_endpoint ?? "https://integrate.api.nvidia.com/v1/chat/completions"],
+                        ["Embeddings", liveCatalog?.embedding_endpoint ?? options?.embedding_endpoint ?? "https://integrate.api.nvidia.com/v1/embeddings"],
+                        ["OpenAI compatible", (liveCatalog?.openai_compatible ?? options?.openai_compatible ?? true) ? "Yes" : "No"],
+                        ["Catalog source", liveCatalog?.source ?? "fallback presets"],
+                      ]}
+                    />
                   )}
                   {testResult && (
                     <div className={`inline-state ${testResult.ok ? "success-state" : "error-state"}`}>

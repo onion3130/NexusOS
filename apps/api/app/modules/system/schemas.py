@@ -196,13 +196,38 @@ class NimEmbeddingPreset(BaseModel):
 
 
 class NimOptionsResponse(BaseModel):
-    """Static setup guidance and model presets for the admin UI."""
+    """Static setup guidance and offline model presets for the admin UI."""
 
     chat_endpoint: str
     embedding_endpoint: str
+    base_url: str = "https://integrate.api.nvidia.com/v1"
+    openai_compatible: bool = True
     chat_models: list[NimChatPreset]
     embedding_models: list[NimEmbeddingPreset]
     help_text: str
+
+
+class NimModelListRequest(BaseModel):
+    """Optional temporary key used only to list hosted NVIDIA models."""
+
+    model_config = {"extra": "forbid"}
+
+    api_key: str | None = Field(default=None, min_length=20, max_length=512)
+
+
+class NimModelCatalogResponse(BaseModel):
+    """Live or fallback NVIDIA model catalog for the admin UI."""
+
+    ok: bool = True
+    base_url: str
+    models_url: str
+    chat_endpoint: str
+    embedding_endpoint: str
+    openai_compatible: bool = True
+    source: Literal["live", "fallback"] = "live"
+    chat_models: list[NimChatPreset]
+    embedding_models: list[NimEmbeddingPreset]
+    detail: str
 
 
 class AdminStatusResponse(BaseModel):

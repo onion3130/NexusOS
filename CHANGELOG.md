@@ -4,6 +4,12 @@ All notable NexusOS changes are recorded here. NexusOS releases use Semantic Ver
 
 ## [Unreleased]
 
+### Live NVIDIA model catalog
+
+- Admin AI setup loads real hosted models from the OpenAI-compatible NVIDIA endpoint `https://integrate.api.nvidia.com/v1/models` after an API key is provided or already saved.
+- Confirms chat/embeddings endpoints under `/v1/chat/completions` and `/v1/embeddings`, splits chat vs embedding models, and keeps keys server-side (never echoed).
+- Offline fallback presets remain available if the live catalog cannot be reached.
+
 ### Full Admin console layout
 
 - Rebuilt the owner Admin experience into a dedicated console with fixed left navigation, sticky top header (search, profile, refresh), and a data-dense main area.

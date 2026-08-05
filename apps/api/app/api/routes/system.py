@@ -12,10 +12,12 @@ from app.modules.identity.dependencies import AuthContext, get_auth_context
 from app.modules.identity.dependencies import require_permission
 from app.db.session import get_db
 from app.modules.system.admin import collect_admin_status
-from app.modules.system.nim_setup import nim_options, resolve_runtime_config, test_nim_connection
+from app.modules.system.nim_setup import list_nvidia_models, nim_options, resolve_runtime_config, test_nim_connection
 from app.modules.system.schemas import (
     AdminStatusResponse,
     AssistantProviderStatus,
+    NimModelCatalogResponse,
+    NimModelListRequest,
     NimOptionsResponse,
     NimSetupRequest,
     NimTestRequest,
@@ -56,6 +58,31 @@ def nvidia_nim_options(context: AuthContext = Depends(get_auth_context)) -> NimO
     """Return beginner-friendly model presets and setup guidance."""
     require_permission("admin.manage_users", context)
     return nim_options()
+
+
+@router.post("/admin/nvidia-nim/models", response_model=NimModelCatalogResponse)
+async def nvidia_nim_models(
+    payload: NimModelListRequest,
+    request: Request,
+    context: AuthContext = Depends(get_auth_context),
+    settings: Settings = Depends(get_settings),
+) -> NimModelCatalogResponse:
+    """List live NVIDIA hosted models via the OpenAI-compatible /v1/models endpoint."""
+    from app.modules.identity.dependencies import require_csrf
+    require_csrf(request, context)
+    require_permission("admin.manage_users", context)
+    try:
+        return await list_nvidia_models(settings, api_key=payload.api_key)
+    except ValueError as exc:
+        code = str(exc)
+        detail = {
+            "api_key_required": "Add an NVIDIA API key to load models.",
+            "nvidia_models_timeout": "NVIDIA model list timed out. Check outbound internet access from the Pi.",
+            "nvidia_models_unavailable": "NVIDIA model list is unavailable. Check the API key and network access.",
+            "nvidia_models_invalid": "NVIDIA returned an unexpected model list payload.",
+            "nvidia_models_empty": "NVIDIA returned no usable models for this key.",
+        }.get(code, code)
+        raise HTTPException(status_code=422, detail=detail) from exc
 
 
 @router.post("/admin/nvidia-nim/test", response_model=NimTestResponse)

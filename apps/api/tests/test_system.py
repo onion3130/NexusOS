@@ -164,6 +164,8 @@ def test_nvidia_nim_options_and_test_require_admin(client, monkeypatch) -> None:
     body = options.json()
     assert body["chat_models"]
     assert body["embedding_models"]
+    assert body["base_url"] == "https://integrate.api.nvidia.com/v1"
+    assert body["openai_compatible"] is True
     assert "nvapi" not in options.text.lower()
     csrf = client.cookies.get("nexus_csrf")
     missing_csrf = client.post("/api/v1/system/admin/nvidia-nim/test", json={"api_key": "nvapi-" + "s" * 40, "model": "meta/llama-3.1-8b-instruct"})
@@ -178,6 +180,46 @@ def test_nvidia_nim_options_and_test_require_admin(client, monkeypatch) -> None:
     assert tested.status_code == 200
     assert tested.json()["ok"] is True
     assert "nvapi" not in tested.text
+
+
+def test_nvidia_nim_models_lists_live_catalog_without_echoing_key(client, monkeypatch) -> None:
+    """Owner can load real NVIDIA models through the OpenAI-compatible /v1/models path."""
+    from app.modules.system.schemas import NimChatPreset, NimEmbeddingPreset, NimModelCatalogResponse
+
+    _bootstrap_owner()
+    login = client.post("/api/v1/auth/login", json={"username": "owner", "password": "correct horse battery staple"})
+    assert login.status_code == 200
+    csrf = client.cookies.get("nexus_csrf")
+
+    async def _fake_list(settings, *, api_key=None):
+        assert api_key and api_key.startswith("nvapi-")
+        return NimModelCatalogResponse(
+            ok=True,
+            base_url="https://integrate.api.nvidia.com/v1",
+            models_url="https://integrate.api.nvidia.com/v1/models",
+            chat_endpoint="https://integrate.api.nvidia.com/v1/chat/completions",
+            embedding_endpoint="https://integrate.api.nvidia.com/v1/embeddings",
+            openai_compatible=True,
+            source="live",
+            chat_models=[NimChatPreset(id="meta/llama-3.1-8b-instruct", label="Llama", description="chat", recommended=True)],
+            embedding_models=[NimEmbeddingPreset(id="nvidia/nv-embed-v1", label="Embed", description="embed", recommended=True)],
+            detail="Loaded models",
+        )
+
+    monkeypatch.setattr("app.api.routes.system.list_nvidia_models", _fake_list)
+    missing = client.post("/api/v1/system/admin/nvidia-nim/models", json={"api_key": "nvapi-" + "x" * 40})
+    assert missing.status_code == 403
+    listed = client.post(
+        "/api/v1/system/admin/nvidia-nim/models",
+        headers={"X-CSRF-Token": csrf},
+        json={"api_key": "nvapi-" + "x" * 40},
+    )
+    assert listed.status_code == 200, listed.text
+    body = listed.json()
+    assert body["source"] == "live"
+    assert body["openai_compatible"] is True
+    assert body["chat_models"][0]["id"] == "meta/llama-3.1-8b-instruct"
+    assert "nvapi" not in listed.text
 
 
 def test_browser_nvidia_nim_setup_requires_csrf_and_admin(client) -> None:

@@ -42,9 +42,24 @@ export type NimEmbeddingPreset = {
 export type NimOptions = {
   chat_endpoint: string;
   embedding_endpoint: string;
+  base_url?: string;
+  openai_compatible?: boolean;
   chat_models: NimChatPreset[];
   embedding_models: NimEmbeddingPreset[];
   help_text: string;
+};
+
+export type NimModelCatalog = {
+  ok: boolean;
+  base_url: string;
+  models_url: string;
+  chat_endpoint: string;
+  embedding_endpoint: string;
+  openai_compatible: boolean;
+  source: "live" | "fallback";
+  chat_models: NimChatPreset[];
+  embedding_models: NimEmbeddingPreset[];
+  detail: string;
 };
 
 export type NimTestResult = {
@@ -69,6 +84,16 @@ export async function readNimOptions(): Promise<NimOptions> {
   const response = await authenticatedFetch("/api/v1/system/admin/nvidia-nim/options", { cache: "no-store" });
   if (!response.ok) throw new Error(`NVIDIA NIM options request failed with ${response.status}`);
   return response.json() as Promise<NimOptions>;
+}
+
+export async function listNvidiaModels(apiKey?: string): Promise<NimModelCatalog> {
+  const response = await authenticatedFetch("/api/v1/system/admin/nvidia-nim/models", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(apiKey?.trim() ? { api_key: apiKey.trim() } : {}),
+  });
+  if (!response.ok) throw new Error(await parseError(response, `NVIDIA model list failed with ${response.status}`));
+  return response.json() as Promise<NimModelCatalog>;
 }
 
 export async function configureNvidiaNim(payload: {

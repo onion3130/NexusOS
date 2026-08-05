@@ -21,7 +21,11 @@ Returns redacted owner-only status cards for system readiness, the configured ch
 
 #### `GET /api/v1/system/admin/nvidia-nim/options`
 
-Owner-only model presets and beginner setup guidance for hosted NVIDIA NIM. Returns recommended chat/embedding model choices and help text without contacting NVIDIA or exposing secrets.
+Owner-only offline fallback model presets and beginner setup guidance for hosted NVIDIA NIM. Returns OpenAI-compatible base URL metadata and recommended chat/embedding model choices without contacting NVIDIA or exposing secrets.
+
+#### `POST /api/v1/system/admin/nvidia-nim/models`
+
+Owner-only, CSRF-protected live model catalog. Accepts optional `{ "api_key" }` or reuses a saved browser-managed/environment key. Calls the fixed hosted OpenAI-compatible endpoint `GET https://integrate.api.nvidia.com/v1/models` with SSRF-safe transport and returns chat/embedding model lists without echoing the key.
 
 #### `POST /api/v1/system/admin/nvidia-nim/test`
 
