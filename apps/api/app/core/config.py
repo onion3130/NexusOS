@@ -168,9 +168,13 @@ class Settings(BaseSettings):
     @field_validator("ai_timeout_seconds")
     @classmethod
     def validate_ai_timeout(cls, value: float) -> float:
-        """Keep provider calls bounded for the Pi API process."""
-        if not 1 <= value <= 60:
-            raise ValueError("must be between 1 and 60 seconds")
+        """Keep provider calls bounded for the Pi API process.
+
+        Hosted NIM models (GLM and similar) often need 45–90s; the Next rewrite
+        proxyTimeout must stay above this value.
+        """
+        if not 1 <= value <= 180:
+            raise ValueError("must be between 1 and 180 seconds")
         return value
 
     @field_validator("ai_max_context_messages")
