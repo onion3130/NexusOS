@@ -96,6 +96,13 @@ def _approval_key(user_id: str, operation: str, key: str) -> str:
     return hashlib.sha256(f"{user_id}:{operation}:{key}".encode("utf-8")).hexdigest()
 
 
+def _utc_datetime(value: datetime | None) -> datetime | None:
+    """Normalize SQLite's naive UTC timestamps before comparing them."""
+    if value is None or value.tzinfo is not None:
+        return value
+    return value.replace(tzinfo=UTC)
+
+
 def _source_responses(db: OrmSession, message: AssistantMessage, user_id: str) -> list[SourceReference]:
     """Return only provenance whose canonical note and chunk belong together and to the user."""
     rows = db.execute(
@@ -300,7 +307,11 @@ async def send_message(
             input_json=json.dumps(proposed.arguments, separators=(",", ":"))[:16000],
         )
         try:
-            if tools.requires_confirmation(proposed.tool_key):
+            is_available = getattr(tools, "is_available", lambda _key, _permissions: True)(proposed.tool_key, permissions)
+            if not is_available:
+                tool_call.status = "failed"
+                tool_call.error_code = "ai_tool_not_allowed"
+            elif tools.requires_confirmation(proposed.tool_key):
                 tool_call.status = "proposed"
                 tool_call.expires_at = datetime.now(UTC) + timedelta(minutes=10)
             else:
@@ -314,7 +325,11 @@ async def send_message(
             tool_call.error_code = "ai_tool_not_allowed"
         db.add(tool_call)
         db.flush()
-        tool_responses.append(ToolCallResponse(id=tool_call.id, tool_key=tool_call.tool_key, status=tool_call.status, error_code=tool_call.error_code, requires_confirmation=tools.requires_confirmation(proposed.tool_key), arguments=proposed.arguments))
+        requires_confirmation = bool(
+            getattr(tools, "is_available", lambda _key, _permissions: True)(proposed.tool_key, permissions)
+            and tools.requires_confirmation(proposed.tool_key)
+        )
+        tool_responses.append(ToolCallResponse(id=tool_call.id, tool_key=tool_call.tool_key, status=tool_call.status, error_code=tool_call.error_code, requires_confirmation=requires_confirmation, arguments=proposed.arguments))
 
     db.commit()
     if tool_results:
@@ -425,11 +440,23 @@ def approve_tool_call(db: OrmSession, user_id: str, tool_call_id: str, permissio
     if tool_call.status == "rejected":
         return tool_call, None
     now = datetime.now(UTC)
-    if tool_call.status == "processing" and tool_call.processing_until is not None and tool_call.processing_until > now:
+    processing_until = _utc_datetime(tool_call.processing_until)
+    expires_at = _utc_datetime(tool_call.expires_at)
+    if tool_call.status == "processing" and processing_until is not None and processing_until > now:
         return tool_call, None
-    if tool_call.status not in {"proposed", "processing"} or tool_call.expires_at is None or tool_call.expires_at <= now:
+    if tool_call.status not in {"proposed", "processing"} or expires_at is None or expires_at <= now:
         return tool_call, None
-    claim = db.execute(update(AssistantToolCall).where(AssistantToolCall.id == tool_call.id, AssistantToolCall.status.in_(["proposed", "processing"]), AssistantToolCall.expires_at > now, (AssistantToolCall.processing_until.is_(None) | (AssistantToolCall.processing_until <= now))).values(status="processing", processing_until=now + timedelta(minutes=2)))
+    claim = db.execute(
+        update(AssistantToolCall)
+        .where(
+            AssistantToolCall.id == tool_call.id,
+            AssistantToolCall.status.in_(["proposed", "processing"]),
+            AssistantToolCall.expires_at > now,
+            (AssistantToolCall.processing_until.is_(None) | (AssistantToolCall.processing_until <= now)),
+        )
+        .values(status="processing", processing_until=now + timedelta(minutes=2))
+        .execution_options(synchronize_session=False)
+    )
     db.commit()
     if claim.rowcount != 1:
         return db.get(AssistantToolCall, tool_call.id), None

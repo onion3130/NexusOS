@@ -321,6 +321,7 @@ export function AssistantWorkspace({
       await approveToolCall(pendingAction.id);
       setPendingAction(null);
     } catch (reason) {
+      setPendingAction(null);
       setErrorKind("load");
       setError(reason instanceof Error ? reason.message : "Approval unavailable");
     }

@@ -54,11 +54,11 @@ export type AssistantResult = {
 };
 
 const FRIENDLY_ERRORS: Record<string, string> = {
+  ai_tool_not_allowed: "That assistant action is unavailable. Notes are read-only in the Assistant; create the note from the Notes workspace.",
   ai_provider_disabled: "AI is disabled. Connect NVIDIA NIM in Admin to send messages.",
   ai_provider_timeout: "The model took too long. Try a shorter question, or raise AI_TIMEOUT_SECONDS.",
   ai_provider_unavailable: "The AI provider is unreachable or rejected the request. Check NIM settings in Admin.",
   assistant_unavailable: "Assistant hit an internal error. Try a new conversation.",
-  ai_tool_not_allowed: "That action is not allowed for your account.",
 };
 
 async function parse<T>(response: Response): Promise<T> {
@@ -89,6 +89,6 @@ export async function listConversations(): Promise<ConversationSummary[]> { retu
 export async function createConversation(title?: string): Promise<ConversationSummary> { return parse<ConversationSummary>(await authenticatedFetch("/api/v1/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }) })); }
 export async function readConversation(id: string): Promise<Conversation> { return parse<Conversation>(await authenticatedFetch(`/api/v1/conversations/${encodeURIComponent(id)}`, { cache: "no-store" })); }
 function idempotencyKey(): string { return typeof crypto.randomUUID === "function" ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`; }
-export async function approveToolCall(id: string): Promise<void> { const response = await authenticatedFetch(`/api/v1/ai/tool-calls/${encodeURIComponent(id)}/approve`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey() } }); if (!response.ok) throw new Error(`Approval failed with ${response.status}`); }
+export async function approveToolCall(id: string): Promise<void> { const response = await authenticatedFetch(`/api/v1/ai/tool-calls/${encodeURIComponent(id)}/approve`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey() } }); if (!response.ok) { const detail = (await response.json().catch(() => null)) as { detail?: string } | null; const code = typeof detail?.detail === "string" ? detail.detail : ""; throw new Error(FRIENDLY_ERRORS[code] ?? `Approval failed with ${response.status}`); } }
 export async function rejectToolCall(id: string): Promise<void> { const response = await authenticatedFetch(`/api/v1/ai/tool-calls/${encodeURIComponent(id)}/reject`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey() } }); if (!response.ok) throw new Error(`Rejection failed with ${response.status}`); }
 export async function sendMessage(id: string, content: string, grounding: GroundingOptions = { enabled: true, mode: "hybrid", limit: 6 }): Promise<AssistantResult> { return parse<AssistantResult>(await authenticatedFetch(`/api/v1/conversations/${encodeURIComponent(id)}/messages`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, grounding }) })); }

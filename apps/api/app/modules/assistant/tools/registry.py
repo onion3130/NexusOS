@@ -133,6 +133,11 @@ class ToolRegistry:
         """Return only definitions the authenticated user may execute."""
         return [tool.definition for tool in self._tools.values() if tool.required_permission in permissions]
 
+    def is_available(self, tool_key: str, permissions: set[str]) -> bool:
+        """Return whether a server-registered tool is available to this user."""
+        tool = self._tools.get(tool_key)
+        return tool is not None and tool.required_permission in permissions
+
     def requires_confirmation(self, tool_key: str) -> bool:
         """Return whether a valid tool call must wait for explicit approval."""
         tool = self._tools.get(tool_key)
