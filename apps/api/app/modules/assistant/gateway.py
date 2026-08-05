@@ -123,11 +123,19 @@ class _PinnedTransport(httpx.AsyncBaseTransport):
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         """Forward one request while retaining the original URL hostname for TLS."""
+        # httpx puts connect/read/write/pool budgets in extensions; without this
+        # the pinned httpcore pool ignores AI_TIMEOUT_SECONDS and can hang past
+        # the Next.js rewrite proxy (default 30s → browser 500).
+        extensions = {}
+        timeout = request.extensions.get("timeout")
+        if timeout is not None:
+            extensions["timeout"] = timeout
         core_request = httpcore.Request(
             method=request.method.encode("ascii"),
             url=httpcore.URL(str(request.url)),
             headers=[(key.encode("ascii"), value.encode("latin-1")) for key, value in request.headers.multi_items()],
             content=request.content,
+            extensions=extensions,
         )
         core_response = await self._pool.handle_async_request(core_request)
         try:

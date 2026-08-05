@@ -53,10 +53,30 @@ export type AssistantResult = {
   tool_calls: Array<{ id: string; tool_key: string; status: "proposed" | "validated" | "executed" | "failed"; error_code: string | null; requires_confirmation: boolean; arguments: Record<string, unknown> }>;
 };
 
+const FRIENDLY_ERRORS: Record<string, string> = {
+  ai_provider_disabled: "AI is disabled. Connect NVIDIA NIM in Admin to send messages.",
+  ai_provider_timeout: "The model took too long. Try a shorter question, or raise AI_TIMEOUT_SECONDS.",
+  ai_provider_unavailable: "The AI provider is unreachable or rejected the request. Check NIM settings in Admin.",
+  assistant_unavailable: "Assistant hit an internal error. Try a new conversation.",
+  ai_tool_not_allowed: "That action is not allowed for your account.",
+};
+
 async function parse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const detail = (await response.json().catch(() => null)) as { detail?: string } | null;
-    throw new Error(detail?.detail ?? `Assistant request failed with ${response.status}`);
+    const code = typeof detail?.detail === "string" ? detail.detail : "";
+    if (code && FRIENDLY_ERRORS[code]) {
+      throw new Error(FRIENDLY_ERRORS[code]);
+    }
+    if (response.status === 504) {
+      throw new Error(FRIENDLY_ERRORS.ai_provider_timeout);
+    }
+    if (response.status === 502 || response.status === 500) {
+      throw new Error(
+        "Assistant proxy timed out or failed while waiting for the model. Slow NIM models need a longer proxy timeout.",
+      );
+    }
+    throw new Error(code || `Assistant request failed with ${response.status}`);
   }
   return response.json() as Promise<T>;
 }

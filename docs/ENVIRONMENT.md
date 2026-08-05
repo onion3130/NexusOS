@@ -16,9 +16,9 @@
 | `AI_BASE_URL` | optional | empty | no | Approved public provider endpoint; hosted NIM defaults to `https://integrate.api.nvidia.com/v1/chat/completions` |
 | `AI_API_KEY` | conditional | placeholder only | yes | Provider credential; NIM may use `NVIDIA_API_KEY` |
 | `AI_MODEL` | optional | placeholder only | no | Provider model identifier, required when AI is enabled |
-| `AI_TIMEOUT_SECONDS` | optional | `20` | no | Bounded provider timeout |
+| `AI_TIMEOUT_SECONDS` | optional | `90` | no | Bounded provider timeout (hosted NIM often needs 60–90s) |
 | `AI_MAX_CONTEXT_MESSAGES` | optional | `20` | no | Context bound |
-| `AI_MAX_OUTPUT_TOKENS` | optional | `512` | no | Output bound |
+| `AI_MAX_OUTPUT_TOKENS` | optional | `1024` | no | Output bound |
 | `AI_MAX_RESPONSE_BYTES` | optional | `1048576` | no | Response memory bound |
 | `EMBEDDING_PROVIDER` | optional | `disabled` | no | Optional semantic retrieval provider (`nvidia_nim` enables the hosted NIM default) |
 | `EMBEDDING_BASE_URL` | optional | empty | no | Explicit public HTTP(S) embeddings endpoint; hosted NIM defaults to `https://integrate.api.nvidia.com/v1/embeddings` |

@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     ai_base_url: str | None = Field(default=None, validation_alias="AI_BASE_URL")
     ai_api_key: SecretStr | None = Field(default=None, validation_alias="AI_API_KEY")
     ai_model: str | None = Field(default=None, validation_alias="AI_MODEL")
-    ai_timeout_seconds: float = Field(default=45.0, validation_alias="AI_TIMEOUT_SECONDS")
+    ai_timeout_seconds: float = Field(default=90.0, validation_alias="AI_TIMEOUT_SECONDS")
     ai_max_context_messages: int = Field(default=20, validation_alias="AI_MAX_CONTEXT_MESSAGES")
     ai_max_output_tokens: int = Field(default=1024, validation_alias="AI_MAX_OUTPUT_TOKENS")
     ai_max_response_bytes: int = Field(default=1_048_576, validation_alias="AI_MAX_RESPONSE_BYTES")
