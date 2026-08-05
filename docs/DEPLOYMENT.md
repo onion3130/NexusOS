@@ -1,8 +1,8 @@
 # NexusOS deployment
 
-**Current milestone:** v1.5 — external source ingestion and source lifecycle management (unreleased)
+**Current milestone:** v1.5.0 — external source ingestion and source lifecycle management (stable)
 **Status:** Hardened Compose/systemd/proxy configuration, encrypted off-host directory replication, confirmation-gated restore, retention cleanup, encryption key rotation, bounded worker recovery, optional semantic retrieval, grounded assistant note context and provenance, Maintenance deployment status, and outbound email/push notification channels are implemented. Target-Pi image, TLS trust, restore-drill validation, and real SMTP/ntfy endpoint checks remain required operator checks.
-**Last updated:** 2026-08-04
+**Last updated:** 2026-08-05
 
 ## Target hardware
 
@@ -21,7 +21,7 @@
 | `nexus-proxy` | Hardened profile | ARM64 Caddy TLS/routing boundary; absent from default profile |
 | `nexus-ai` | Opt-in placeholder profile | Optional future local/provider boundary |
 
-The worker shares the API's SQLite data mount and read-only `/var/lib/nexus/plugins` mount, publishes no host port, and runs `python -m app.worker`. It also performs bounded approved-root source synchronization checks; synchronization reads only server-configured `WORKSPACE_ROOTS` and remains disabled unless explicitly enabled per imported approved file. Run exactly one worker in the current deployment topology. If hosted NVIDIA NIM is enabled, the API and worker receive the server-side credential through the private environment contract or the encrypted browser-managed runtime file; never expose it to the web container or browser. From the owner System status panel, enter the NIM key and model, then restart `nexus-api` and `nexus-worker` so both processes reload the encrypted configuration. Plugin code is trusted operator-installed code; use a separate VM/container boundary for untrusted extensions.
+The worker shares the API's SQLite data mount and read-only `/var/lib/nexus/plugins` mount, publishes no host port, and runs `python -m app.worker`. It also performs bounded approved-root source synchronization checks; synchronization reads only server-configured `WORKSPACE_ROOTS` and remains disabled unless explicitly enabled per imported approved file. Run exactly one worker in the current deployment topology. If hosted NVIDIA NIM is enabled, the API and worker receive the server-side credential through the private environment contract or the encrypted browser-managed runtime file; never expose it to the web container or browser. From the owner System status panel, enter the NIM key and model; browser-managed settings activate immediately and the worker reloads them on its next cycle. Restart `nexus-api` and `nexus-worker` only when changing environment-based NIM settings or after an operator deployment update. Plugin code is trusted operator-installed code; use a separate VM/container boundary for untrusted extensions.
 
 ## Web UI software updates
 

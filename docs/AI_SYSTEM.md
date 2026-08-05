@@ -1,6 +1,6 @@
 # NexusOS AI system
 
-**Current milestone:** v1.5 — external source ingestion and source lifecycle management (unreleased)
+**Current milestone:** v1.5.0 — external source ingestion and source lifecycle management (stable)
 **Status:** The bounded assistant gateway, conversation storage, provider normalization, hosted NVIDIA NIM configuration, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, optional embeddings, semantic/hybrid retrieval, grounded note context with source provenance, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Autonomous memory, external ingestion, streaming, and privileged host control remain deferred.
 **Last updated:** 2026-08-04
 

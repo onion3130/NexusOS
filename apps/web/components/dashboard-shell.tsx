@@ -423,7 +423,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         {activeView !== "admin" ? (
           <footer>
             <span>Local-first · Private by default</span>
-            <span>NexusOS 1.3.2</span>
+            <span>NexusOS 1.5.0</span>
           </footer>
         ) : null}
       </section>

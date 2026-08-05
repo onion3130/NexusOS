@@ -1,8 +1,8 @@
 # NexusOS database
 
-**Current milestone:** v1.5 — external source ingestion and source lifecycle management (unreleased)
+**Current milestone:** v1.5.0 — external source ingestion and source lifecycle management (stable)
 **Current status:** Identity, assistant, task, notes, source-aware retrieval, external source ingestion, optional embeddings, calendar, finance, media, plugin registry/run history, host-action proposals, backup metadata, restore markers, retention pruning markers, workspace permissions, encrypted replication metadata, and outbound notification channel deliveries are implemented through Alembic revisions `0001_identity` through `0019_source_sync`.
-**Last updated:** 2026-08-04
+**Last updated:** 2026-08-05
 
 ## Current database state
 

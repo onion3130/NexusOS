@@ -1,12 +1,12 @@
 # NexusOS development
 
-**Current milestone:** v1.5 — external source ingestion and source lifecycle management (unreleased)
+**Current milestone:** v1.5.0 — external source ingestion and source lifecycle management (stable)
 **Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, optional semantic/hybrid retrieval, grounded assistant note context and provenance, confirmation-gated host maintenance, confirmation-gated restore, retention cleanup, encryption key rotation, read-only workspace views, encrypted directory replication, outbound email/push notification channels, and approved-root source synchronization are implemented. PDF/OCR parsing, external URLs, autonomous memory, and privileged host control remain deferred.
-**Last updated:** 2026-08-04
+**Last updated:** 2026-08-05
 
 Read this document with [`README.md`](../README.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`API.md`](API.md), [`DATABASE.md`](DATABASE.md), [`AI_SYSTEM.md`](AI_SYSTEM.md), [`SECURITY.md`](SECURITY.md), and [`ROADMAP.md`](ROADMAP.md) before changing code.
 
-## Implemented Milestone 6 files
+## Implemented milestone files
 
 Backend:
 

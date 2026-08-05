@@ -39,6 +39,9 @@ out/
 .vscode/settings.json
 Thumbs.db
 
+# Local agent instructions
+agent.md
+
 # Local Docker overrides
 compose.override.yml
 docker-compose.override.yml

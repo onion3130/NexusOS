@@ -4,6 +4,10 @@ All notable NexusOS changes are recorded here. NexusOS releases use Semantic Ver
 
 ## [Unreleased]
 
+_No unreleased changes._
+
+## [1.5.0] — 2026-08-05
+
 ### Live NVIDIA model catalog
 
 - Admin AI setup loads real hosted models from the OpenAI-compatible NVIDIA endpoint `https://integrate.api.nvidia.com/v1/models` after an API key is provided or already saved.
@@ -250,4 +254,5 @@ This release is intended for private, local-first use. Docker and Raspberry Pi r
 [1.3.2]: https://github.com/onion3130/NexusOS/releases/tag/v1.3.2
 [1.3.1]: https://github.com/onion3130/NexusOS/releases/tag/v1.3.1
 [1.3.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.3.0
-[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.3.2...HEAD
+[1.5.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.5.0
+[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.5.0...HEAD

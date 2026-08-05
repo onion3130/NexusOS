@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/onion3130/NexusOS?style=flat-square&label=license" alt="MIT License"></a>
-  <a href="https://github.com/onion3130/NexusOS/releases"><img src="https://img.shields.io/badge/release-v1.3.2-8b5cf6?style=flat-square" alt="NexusOS v1.3.2 release"></a>
+  <a href="https://github.com/onion3130/NexusOS/releases"><img src="https://img.shields.io/badge/release-v1.5.0-8b5cf6?style=flat-square" alt="NexusOS v1.5.0 release"></a>
   <img src="https://img.shields.io/badge/Docker-ARM64--ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker ARM64 ready">
   <img src="https://img.shields.io/badge/Raspberry%20Pi%205-supported-c51a4a?style=flat-square&logo=raspberrypi&logoColor=white" alt="Raspberry Pi 5 supported">
   <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.11 or newer">
@@ -49,8 +49,8 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 | Item | Status |
 | --- | --- |
-| **Current milestone** | v1.5 — external source ingestion and approved-root sync ✅ (unreleased) |
-| **Current version** | `1.3.2` — latest released Docker health and migration compatibility fixes |
+| **Current milestone** | v1.5.0 — external source ingestion and approved-root sync ✅ |
+| **Current version** | `1.5.0` — stable external source ingestion and synchronization release |
 | **Next milestone** | v1.6 — richer document parsing and streaming Assistant responses |
 
 NexusOS v1.5 adds bounded external text/Markdown ingestion, approved-root synchronization, source lifecycle controls, background versioned chunking, source-aware retrieval, and Assistant provenance while preserving the private, local-first Raspberry Pi architecture. NVIDIA NIM remains optional and disabled by default. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.

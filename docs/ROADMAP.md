@@ -1,8 +1,8 @@
 # NexusOS roadmap
 
-**Current milestone:** v1.5 — external source ingestion and source lifecycle management (unreleased)
+**Current milestone:** v1.5.0 — external source ingestion and source lifecycle management (stable)
 **Next milestone:** v1.6 — richer document parsing and streaming Assistant responses
-**Last updated:** 2026-08-04
+**Last updated:** 2026-08-05
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
 
@@ -29,7 +29,7 @@ Milestone 6 is implemented within its approved scope. NexusOS now has an authent
 
 | 12. Restore and recovery automation | Complete | Confirmation-gated restore from verified local and encrypted off-host backup artifacts with safety backup, staging, digest/integrity verification, and atomic swap |
 | 13. Backup retention and lifecycle | Complete | Policy-driven retention cleanup with last-backup protection, digest-safe pruning of local and encrypted artifacts, and confirmation-gated AES-256 key rotation |
-| 15. External source ingestion | In progress | Bounded text/Markdown uploads, approved-file imports, versioned ingestion, source-aware retrieval, and lifecycle controls |
+| 15. External source ingestion | Complete | Bounded text/Markdown uploads, approved-file imports, versioned ingestion, source-aware retrieval, and lifecycle controls |
 
 ## Milestone 6 complete — tasks, reminders, and notifications
 
@@ -232,7 +232,7 @@ Known limitations:
 - Target Raspberry Pi ARM64 provider latency and sustained worker-load validation remain operational checks.
 - Autonomous memory, external ingestion, and model-written notes remain future scope.
 
-## v1.5 external source ingestion and lifecycle
+## v1.5.0 external source ingestion and lifecycle
 
 Implemented:
 
@@ -266,7 +266,7 @@ Known limitations:
 
 - Sources are server-derived retrieved-source references, not claims that the model cited or quoted each source.
 - External document ingestion, autonomous memory extraction, model-written notes, and streaming remain deferred.
-- The v1.5 feature is unreleased; the current production tag remains v1.3.2 until a release is created.
+- v1.5.0 is the current stable release; richer document parsing, URL ingestion, crawling, autonomous memory, model-written notes, and streaming remain future scope.
 
 ## v1.3 provider integration — NVIDIA NIM
 

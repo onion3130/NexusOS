@@ -1,6 +1,6 @@
 # NexusOS architecture
 
-**Current milestone:** v1.5 — external source ingestion and source lifecycle management (unreleased)
+**Current milestone:** v1.5.0 — external source ingestion and source lifecycle management (stable)
 **Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service with grounded note context, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-04
 
