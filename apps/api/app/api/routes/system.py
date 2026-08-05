@@ -37,7 +37,7 @@ def overview(
 ) -> SystemOverviewResponse:
     """Return bounded read-only telemetry for the configured Nexus host."""
     require_permission("system.read_overview", context)
-    return SystemService(settings.data_dir).collect()
+    return SystemService.from_settings(settings).collect()
 
 
 @router.get("/assistant/provider", response_model=AssistantProviderStatus)

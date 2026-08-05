@@ -217,3 +217,41 @@ footer { color: var(--muted); font-size: 10px; margin-top: 54px; } footer span {
 @media (max-width: 800px) {
   .admin-section-nav-5, .admin-update-meta { grid-template-columns: 1fr; }
 }
+
+/* System overview health UI */
+.system-heading-actions { align-items: center; display: flex; gap: 10px; }
+.health-chip { border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: .04em; padding: 4px 8px; text-transform: uppercase; white-space: nowrap; }
+.health-chip-lg { font-size: 11px; padding: 6px 10px; }
+.health-chip-healthy { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+.health-chip-warning { background: color-mix(in srgb, #ffad66 18%, transparent); color: #ffad66; }
+.health-chip-critical, .health-chip-danger { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
+.health-chip-unavailable, .health-chip-muted { background: var(--panel-hover); color: var(--muted); }
+.metric-indicator.warning, .metric-indicator.orange.warning { background: #ffad66; box-shadow: 0 0 9px #ffad66; }
+.metric-indicator.danger { background: var(--danger); box-shadow: 0 0 9px var(--danger); }
+.metric-indicator.muted { background: var(--muted); box-shadow: none; }
+.telemetry-card.health-warning { border-color: color-mix(in srgb, #ffad66 40%, var(--line)); }
+.telemetry-card.health-critical { border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.telemetry-card-top { align-items: center; display: flex; gap: 8px; justify-content: space-between; margin-bottom: 10px; padding-right: 16px; }
+.telemetry-card-top p { margin: 0; }
+.telemetry-meter { background: color-mix(in srgb, var(--line) 80%, transparent); border-radius: 999px; height: 5px; margin-top: 12px; overflow: hidden; }
+.telemetry-meter-fill { display: block; height: 100%; border-radius: inherit; transition: width .35s ease; }
+.health-fill-healthy { background: var(--green); }
+.health-fill-warning { background: #ffad66; }
+.health-fill-critical { background: var(--danger); }
+.health-fill-unavailable { background: var(--muted); }
+.system-health-dot.warning { background: #ffad66; }
+.system-health-dot.danger { background: var(--danger); }
+.service-boundary { align-items: stretch; display: grid; gap: 12px; margin-top: 14px; }
+.service-boundary-heading { align-items: flex-start; display: flex; gap: 12px; }
+.service-boundary-heading > div { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.service-boundary-heading strong { font-size: 12px; }
+.service-boundary-heading span { color: var(--muted); font-size: 11px; line-height: 1.45; }
+.service-boundary-healthy { border-color: color-mix(in srgb, var(--green) 30%, var(--line)); }
+.service-boundary-warning { border-color: color-mix(in srgb, #ffad66 35%, var(--line)); }
+.service-boundary-critical { border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
+.service-unit-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.service-unit { align-items: center; background: color-mix(in srgb, var(--panel-hover) 65%, transparent); border: 1px solid var(--line); border-radius: 10px; display: flex; gap: 10px; justify-content: space-between; padding: 10px 12px; }
+.service-unit strong { display: block; font-size: 12px; }
+.service-unit span { color: var(--muted); font-size: 10px; }
+.service-unit em { font-style: normal; }
+.service-boundary-empty { color: var(--muted); font-size: 11px; margin: 0; }

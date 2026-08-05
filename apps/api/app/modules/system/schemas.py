@@ -15,6 +15,16 @@ class Availability(BaseModel):
     reason: str | None = None
 
 
+HealthLevel = Literal["healthy", "warning", "critical", "unavailable"]
+
+
+class MetricHealth(BaseModel):
+    """Auto-detected health level for one telemetry card."""
+
+    level: HealthLevel
+    label: str
+
+
 class CpuTelemetry(BaseModel):
     """CPU load and utilization information."""
 
@@ -22,6 +32,7 @@ class CpuTelemetry(BaseModel):
     load_1m: float | None = Field(default=None, ge=0)
     cpu_count: int | None = Field(default=None, ge=1)
     source: Availability
+    health: MetricHealth = Field(default_factory=lambda: MetricHealth(level="unavailable", label="Unavailable"))
 
 
 class MemoryTelemetry(BaseModel):
@@ -31,6 +42,7 @@ class MemoryTelemetry(BaseModel):
     available_bytes: int | None = Field(default=None, ge=0)
     used_percent: float | None = Field(default=None, ge=0, le=100)
     source: Availability
+    health: MetricHealth = Field(default_factory=lambda: MetricHealth(level="unavailable", label="Unavailable"))
 
 
 class StorageTelemetry(BaseModel):
@@ -42,6 +54,7 @@ class StorageTelemetry(BaseModel):
     free_bytes: int | None = Field(default=None, ge=0)
     used_percent: float | None = Field(default=None, ge=0, le=100)
     source: Availability
+    health: MetricHealth = Field(default_factory=lambda: MetricHealth(level="unavailable", label="Unavailable"))
 
 
 class TemperatureTelemetry(BaseModel):
@@ -50,6 +63,7 @@ class TemperatureTelemetry(BaseModel):
     celsius: float | None = None
     source_name: str | None = None
     source: Availability
+    health: MetricHealth = Field(default_factory=lambda: MetricHealth(level="unavailable", label="Unavailable"))
 
 
 class UptimeTelemetry(BaseModel):
@@ -57,6 +71,7 @@ class UptimeTelemetry(BaseModel):
 
     seconds: float | None = Field(default=None, ge=0)
     source: Availability
+    health: MetricHealth = Field(default_factory=lambda: MetricHealth(level="unavailable", label="Unavailable"))
 
 
 class NetworkInterfaceTelemetry(BaseModel):
@@ -73,15 +88,36 @@ class NetworkTelemetry(BaseModel):
 
     interfaces: list[NetworkInterfaceTelemetry]
     source: Availability
+    health: MetricHealth = Field(default_factory=lambda: MetricHealth(level="unavailable", label="Unavailable"))
+
+
+class ServiceUnitStatus(BaseModel):
+    """One redacted service or container unit for the overview panel."""
+
+    name: str
+    kind: Literal["service", "container"]
+    state: Literal["running", "exited", "restarting", "paused", "created", "unknown", "unavailable"]
+    health: HealthLevel
+    detail: str | None = None
 
 
 class ServiceStatusTelemetry(BaseModel):
-    """Status boundary for service/container data not yet safely exposed."""
+    """Bounded service/container visibility for the overview panel."""
 
     services_available: bool
     containers_available: bool
+    units: list[ServiceUnitStatus] = Field(default_factory=list)
     reason: str | None = None
     source: Availability
+    health: MetricHealth = Field(default_factory=lambda: MetricHealth(level="unavailable", label="Unavailable"))
+
+
+class SystemHealthSummary(BaseModel):
+    """Combined auto-detected system health verdict."""
+
+    level: HealthLevel
+    label: str
+    reasons: list[str] = Field(default_factory=list)
 
 
 class AssistantProviderStatus(BaseModel):
@@ -214,6 +250,7 @@ class SystemOverviewResponse(BaseModel):
 
     status: Literal["ok", "degraded"]
     checked_at: datetime
+    health: SystemHealthSummary
     cpu: CpuTelemetry
     memory: MemoryTelemetry
     storage: StorageTelemetry

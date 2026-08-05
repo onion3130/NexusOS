@@ -4,6 +4,13 @@ All notable NexusOS changes are recorded here. NexusOS releases use Semantic Ver
 
 ## [Unreleased]
 
+### System overview health auto-detection
+
+- System overview now auto-classifies CPU, memory, storage, temperature, network, and stack services as Healthy / Warning / Critical.
+- Temperature uses Pi-aware thresholds (warm ≥ 65 °C, hot ≥ 80 °C) with progress meters and overall “Needs attention” / “Dangerous” banners.
+- Service status auto-detects Compose units on the private network (and Docker containers when a socket is configured), replacing the old static “not exposed yet” placeholder.
+- Refresh interval tightened to 15s for live monitoring.
+
 ### Web UI software updates
 
 - Added owner-only Admin **Updates** controls to check for updates and apply a fixed host update from GitHub `main`.

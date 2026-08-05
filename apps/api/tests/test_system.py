@@ -64,7 +64,20 @@ def test_system_service_degrades_without_exposing_paths(tmp_path) -> None:
     assert result.status == "degraded"
     assert result.storage.source.reason == "storage_unavailable"
     assert result.temperature.source.reason == "temperature_unavailable"
+    assert result.health.level in {"warning", "critical", "unavailable", "healthy"}
+    assert result.temperature.health.level == "unavailable"
     assert str(tmp_path) not in result.model_dump_json()
+
+
+def test_temperature_health_marks_warm_and_hot() -> None:
+    """Pi thermal thresholds auto-detect warm and dangerous ranges."""
+    from app.modules.system.health import temperature_health
+
+    assert temperature_health(50.0)[0] == "healthy"
+    assert temperature_health(70.5)[0] == "warning"
+    assert temperature_health(70.5)[1] == "Warm"
+    assert temperature_health(82.0)[0] == "critical"
+    assert temperature_health(82.0)[1] == "Hot"
 
 
 def test_admin_status_is_owner_only_and_redacted(client, monkeypatch) -> None:
@@ -239,5 +252,8 @@ def test_system_overview_requires_authentication(client) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["storage"]["path_label"] == "configured data volume"
-    assert body["service_status"]["containers_available"] is False
+    assert "health" in body
+    assert body["health"]["level"] in {"healthy", "warning", "critical", "unavailable"}
+    assert body["temperature"]["health"]["level"] in {"healthy", "warning", "critical", "unavailable"}
+    assert "units" in body["service_status"]
     assert "shutdown" not in body
