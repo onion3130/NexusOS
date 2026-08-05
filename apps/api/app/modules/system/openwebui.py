@@ -1,4 +1,4 @@
-"""Browser-managed Open WebUI integration (URL embed, no secrets)."""
+"""Browser-managed Open WebUI integration (Assistant embed + filesystem bridge)."""
 
 from __future__ import annotations
 
@@ -10,15 +10,61 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from app.core.config import Settings
-from app.modules.system.schemas import OpenWebUIConfigRequest, OpenWebUIStatusResponse
+from app.modules.system.schemas import (
+    OpenWebUIConfigRequest,
+    OpenWebUIFilesystemBridge,
+    OpenWebUIStatusResponse,
+)
 
 _CONFIG_NAME = "openwebui.json"
 _MAX_URL_LENGTH = 512
 _LABEL_RE = re.compile(r"^[\w \-.'/]{1,64}$")
+_DEFAULT_LABEL = "Nexus Assistant"
+_CONTAINER_FS_PATH = "/data/nexus"
+_SHARED_DIRNAME = "shared"
 
 
 def _config_path(data_dir: Path) -> Path:
     return data_dir.expanduser().resolve() / "runtime" / _CONFIG_NAME
+
+
+def shared_host_path(data_dir: Path) -> Path:
+    """Shared folder under DATA_DIR for files both Nexus and Open WebUI can use."""
+    return data_dir.expanduser().resolve() / _SHARED_DIRNAME
+
+
+def ensure_shared_directory(data_dir: Path) -> Path:
+    """Create the shared filesystem folder if missing."""
+    path = shared_host_path(data_dir)
+    path.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(path, 0o755)
+    except OSError:
+        pass
+    return path
+
+
+def filesystem_bridge_for(data_dir: Path) -> OpenWebUIFilesystemBridge:
+    """Describe the Nexus ↔ Open WebUI shared folder (paths only, no contents)."""
+    host = shared_host_path(data_dir)
+    exists = host.is_dir()
+    host_label = str(host)
+    if exists:
+        detail = (
+            f"Shared folder ready. Mount it into Open WebUI as {_CONTAINER_FS_PATH}:ro "
+            f"(see scripts/link-openwebui-nexus.sh). Drop files here for Knowledge / chat context."
+        )
+    else:
+        detail = (
+            f"Shared folder will be created at {host_label}. "
+            f"Link Open WebUI with a read-only mount to {_CONTAINER_FS_PATH}."
+        )
+    return OpenWebUIFilesystemBridge(
+        host_path=host_label,
+        container_path=_CONTAINER_FS_PATH,
+        linked=exists,
+        detail=detail,
+    )
 
 
 def validate_openwebui_url(url: str) -> str:
@@ -33,10 +79,8 @@ def validate_openwebui_url(url: str) -> str:
         raise ValueError("openwebui_url_invalid")
     if parsed.username or parsed.password:
         raise ValueError("openwebui_url_credentials_forbidden")
-    # Disallow fragments and keep path simple; Open WebUI is usually root or a subpath.
     if parsed.fragment or "\\" in cleaned or "\n" in cleaned or "\r" in cleaned:
         raise ValueError("openwebui_url_invalid")
-    # Normalize bare "/" and trailing slashes for a stable embed src.
     path = parsed.path or ""
     if path == "/":
         path = ""
@@ -57,13 +101,37 @@ def _read_file(data_dir: Path) -> dict[str, object] | None:
     return payload if isinstance(payload, dict) else None
 
 
+def _status(
+    data_dir: Path,
+    *,
+    enabled: bool,
+    configured: bool,
+    url: str | None,
+    label: str,
+    embed: bool,
+    source: str,
+    detail: str,
+) -> OpenWebUIStatusResponse:
+    ensure_shared_directory(data_dir)
+    return OpenWebUIStatusResponse(
+        enabled=enabled,
+        configured=configured,
+        url=url,
+        label=label[:64],
+        embed=embed,
+        source=source,  # type: ignore[arg-type]
+        detail=detail,
+        filesystem=filesystem_bridge_for(data_dir),
+    )
+
+
 def write_openwebui_config(data_dir: Path, payload: OpenWebUIConfigRequest) -> OpenWebUIStatusResponse:
-    """Persist Open WebUI integration settings for the Chat workspace."""
+    """Persist Open WebUI integration settings for the Assistant workspace."""
     enabled = payload.enabled
     url = validate_openwebui_url(payload.url) if payload.url and payload.url.strip() else None
     if enabled and not url:
         raise ValueError("openwebui_url_required")
-    label = (payload.label or "Open WebUI").strip() or "Open WebUI"
+    label = (payload.label or _DEFAULT_LABEL).strip() or _DEFAULT_LABEL
     if not _LABEL_RE.match(label):
         raise ValueError("openwebui_label_invalid")
     embed = bool(payload.embed)
@@ -95,14 +163,15 @@ def write_openwebui_config(data_dir: Path, payload: OpenWebUIConfigRequest) -> O
             temporary.unlink()
         except FileNotFoundError:
             pass
-    return OpenWebUIStatusResponse(
+    return _status(
+        data_dir,
         enabled=enabled and bool(url),
         configured=bool(url),
         url=url if enabled else url,
         label=label,
         embed=embed,
         source="browser",
-        detail="Open WebUI integration saved." if enabled else "Open WebUI integration disabled.",
+        detail="Assistant is Open WebUI." if enabled else "Open WebUI assistant disabled.",
     )
 
 
@@ -116,8 +185,10 @@ def delete_openwebui_config(data_dir: Path) -> None:
 
 
 def openwebui_status(settings: Settings) -> OpenWebUIStatusResponse:
-    """Return redacted Open WebUI integration status for the Chat workspace."""
-    stored = _read_file(settings.data_dir)
+    """Return Open WebUI Assistant status plus shared filesystem bridge metadata."""
+    data_dir = settings.data_dir
+    ensure_shared_directory(data_dir)
+    stored = _read_file(data_dir)
     env_url = (settings.openwebui_url or "").strip() or None
     if stored is not None:
         raw_url = stored.get("url")
@@ -128,17 +199,22 @@ def openwebui_status(settings: Settings) -> OpenWebUIStatusResponse:
             except ValueError:
                 url = None
         enabled = bool(stored.get("enabled", True)) and bool(url)
-        label = stored.get("label") if isinstance(stored.get("label"), str) else "Open WebUI"
-        label = label.strip() or "Open WebUI"
+        label = stored.get("label") if isinstance(stored.get("label"), str) else _DEFAULT_LABEL
+        label = (label or _DEFAULT_LABEL).strip() or _DEFAULT_LABEL
         embed = bool(stored.get("embed", True))
-        return OpenWebUIStatusResponse(
+        return _status(
+            data_dir,
             enabled=enabled,
             configured=bool(url),
             url=url if enabled else url,
-            label=label[:64],
+            label=label,
             embed=embed,
             source="browser",
-            detail="Open WebUI is ready in Chat." if enabled else ("Open WebUI URL saved but embedding is disabled." if url else "Configure Open WebUI in Admin."),
+            detail=(
+                "Assistant is Open WebUI with a shared Nexus filesystem folder."
+                if enabled
+                else ("Open WebUI URL saved but disabled." if url else "Configure Open WebUI in Admin.")
+            ),
         )
 
     if env_url:
@@ -147,22 +223,24 @@ def openwebui_status(settings: Settings) -> OpenWebUIStatusResponse:
         except ValueError:
             url = None
         if url:
-            return OpenWebUIStatusResponse(
+            return _status(
+                data_dir,
                 enabled=True,
                 configured=True,
                 url=url,
-                label="Open WebUI",
+                label=_DEFAULT_LABEL,
                 embed=True,
                 source="environment",
-                detail="Open WebUI is configured from OPENWEBUI_URL.",
+                detail="Assistant is Open WebUI (OPENWEBUI_URL) with a shared Nexus filesystem folder.",
             )
 
-    return OpenWebUIStatusResponse(
+    return _status(
+        data_dir,
         enabled=False,
         configured=False,
         url=None,
-        label="Open WebUI",
+        label=_DEFAULT_LABEL,
         embed=True,
         source="none",
-        detail="Point Nexus at your local Open WebUI (often http://<pi-ip>:8080).",
+        detail="Point Nexus at your local Open WebUI (often http://<pi-ip>:8080) to use it as Assistant.",
     )

@@ -1,114 +1,187 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { approveToolCall, createConversation, listConversations, readAssistantProvider, readConversation, rejectToolCall, sendMessage, type AssistantProviderStatus, type Conversation, type ConversationSummary } from "../lib/assistant";
-import { AssistantActionConfirmation } from "./assistant-action-confirmation";
-import { AssistantSourceCitations } from "./assistant-source-citations";
+import { readOpenWebUIStatus, type OpenWebUIStatus } from "../lib/openwebui";
 
-function ConversationList({ items, selected, onSelect, onCreate }: { items: ConversationSummary[]; selected: string | null; onSelect: (id: string) => void; onCreate: () => void }) {
-  return (
-    <aside aria-label="Conversations" className="conversation-list">
-      <div className="conversation-list-heading"><div><p className="eyebrow">Assistant</p><strong>Conversations</strong></div><button aria-label="New conversation" className="icon-button" onClick={onCreate} type="button">+</button></div>
-      {items.length === 0 ? <p className="conversation-empty">Start a private conversation.</p> : items.map((item) => <button className={`conversation-item${item.id === selected ? " selected" : ""}`} key={item.id} onClick={() => onSelect(item.id)} type="button"><strong>{item.title ?? "New conversation"}</strong><span>{item.message_count} message{item.message_count === 1 ? "" : "s"}</span></button>)}
-    </aside>
-  );
-}
-
+/**
+ * Assistant is Open WebUI, embedded in Nexus and linked to the shared filesystem.
+ * The older tool-gateway chat is no longer the primary surface.
+ */
 export function AssistantWorkspace({
-  onOpenNote,
-  onOpenSource,
   onOpenAdmin,
 }: {
   onOpenNote?: (id: string) => void;
   onOpenSource?: (id: string) => void;
   onOpenAdmin?: () => void;
 }) {
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [conversation, setConversation] = useState<Conversation | null>(null);
-  const [draft, setDraft] = useState("");
+  const [status, setStatus] = useState<OpenWebUIStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [errorKind, setErrorKind] = useState<"load" | "send" | null>(null);
-  const [pendingAction, setPendingAction] = useState<{ id: string; tool: string; arguments: Record<string, unknown> } | null>(null);
-  const [groundingEnabled, setGroundingEnabled] = useState(true);
-  const [groundingMode, setGroundingMode] = useState<"lexical" | "semantic" | "hybrid">("hybrid");
-  const [provider, setProvider] = useState<AssistantProviderStatus | null>(null);
+  const [frameFailed, setFrameFailed] = useState(false);
+  const [frameKey, setFrameKey] = useState(0);
 
-  const loadConversations = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const items = await listConversations();
-      setConversations(items);
-      try { setProvider(await readAssistantProvider()); } catch { setProvider(null); }
-      if (items[0]) setConversation(await readConversation(items[0].id));
+      const next = await readOpenWebUIStatus();
+      setStatus(next);
       setError(null);
-      setErrorKind(null);
+      setFrameFailed(false);
     } catch (reason) {
-      setErrorKind("load");
       setError(reason instanceof Error ? reason.message : "Assistant unavailable");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { void loadConversations(); }, [loadConversations]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  async function selectConversation(id: string) {
-    setError(null);
-    try { setConversation(await readConversation(id));    } catch (reason) { setErrorKind("load"); setError(reason instanceof Error ? reason.message : "Conversation unavailable"); }
-  }
+  const ready = Boolean(status?.enabled && status.url);
+  const canEmbed = ready && status?.embed !== false && !frameFailed;
+  const sharedHost = status?.filesystem?.host_path;
+  const sharedContainer = status?.filesystem?.container_path;
 
-  async function newConversation() {
-    setError(null);
-    try {
-      const created = await createConversation();
-      setConversations((items) => [created, ...items]);
-      setConversation({ ...created, messages: [] });
-      setErrorKind(null);
-    } catch (reason) { setErrorKind("load"); setError(reason instanceof Error ? reason.message : "Unable to create conversation"); }
-  }
-
-  async function approvePending() {
-    if (!pendingAction) return;
-    try { await approveToolCall(pendingAction.id); setPendingAction(null); } catch (reason) { setErrorKind("load"); setError(reason instanceof Error ? reason.message : "Approval unavailable"); }
-  }
-
-  async function rejectPending() {
-    if (!pendingAction) return;
-    try { await rejectToolCall(pendingAction.id); setPendingAction(null); } catch (reason) { setErrorKind("load"); setError(reason instanceof Error ? reason.message : "Rejection unavailable"); }
-  }
-
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const content = draft.trim();
-    if (!content || !conversation || sending) return;
-    setSending(true);
-    setError(null);
-    setErrorKind(null);
-    setDraft("");
-    try {
-      const result = await sendMessage(conversation.id, content, { enabled: groundingEnabled, mode: groundingMode, limit: 6 });
-      const proposal = result.tool_calls.find((call) => call.requires_confirmation && call.status === "proposed");
-      setPendingAction(proposal ? { id: proposal.id, tool: proposal.tool_key, arguments: proposal.arguments } : null);
-      setConversation((current) => current ? { ...current, message_count: current.message_count + 2, updated_at: result.assistant_message.created_at, messages: [...current.messages, result.user_message, result.assistant_message] } : current);
-      setConversations((items) => items.map((item) => item.id === conversation.id ? { ...item, message_count: item.message_count + 2, updated_at: result.assistant_message.created_at } : item));
-    } catch (reason) {
-      setDraft(content);
-      setErrorKind("send");
-      setError(reason instanceof Error ? reason.message : "Assistant unavailable");
-    } finally { setSending(false); }
-  }
-
-  return <section aria-labelledby="assistant-heading" className="assistant-workspace section-block">
-    <div className="section-heading"><div><p className="eyebrow">{provider?.provider === "nvidia_nim" ? "NVIDIA NIM connected" : "Private by default"}</p><h2 id="assistant-heading">Assistant</h2></div><span className={`updated assistant-provider-badge ${provider?.state === "disabled" ? "provider-disabled" : "provider-configured"}`}>{provider?.state === "configured" ? `${provider.label}${provider.model ? ` · ${provider.model}` : ""}` : provider?.label ?? "Checking provider…"}</span></div>
-    <div className="assistant-layout">
-      <ConversationList items={conversations} selected={conversation?.id ?? null} onSelect={(id) => void selectConversation(id)} onCreate={() => void newConversation()} />
-      <div className="assistant-panel">
-        {loading ? <div className="assistant-state" role="status">Loading conversations…</div> : conversation ? <><div aria-live="polite" className="message-list">{conversation.messages.length === 0 ? <div className="assistant-state"><strong>{provider?.state === "disabled" ? "Connect NVIDIA NIM to start" : "Start a conversation"}</strong><span>{provider?.state === "disabled" ? "Open Admin, paste your NVIDIA API key, choose a model, and save. No SSH or terminal commands are required." : "Ask your configured NVIDIA model about your system, tasks, notes, or anything you are building."}</span>{provider?.state === "disabled" && onOpenAdmin && <button className="primary-button" onClick={onOpenAdmin} type="button">Open Admin</button>}</div> : conversation.messages.map((message) => <article className={`assistant-message ${message.role}`} key={message.id}><span className="message-role">{message.role === "user" ? "You" : "Nexus"}</span><p>{message.content}</p>{message.role === "assistant" && <AssistantSourceCitations onOpenSource={(source) => source.source_type === "note" ? onOpenNote?.(source.source_id) : onOpenSource?.(source.source_id)} sources={message.sources} />}</article>)}</div><form className="assistant-composer" onSubmit={submit}><div className="assistant-grounding-controls"><label><input checked={groundingEnabled} onChange={(event) => setGroundingEnabled(event.target.checked)} type="checkbox" /> Use my notes</label>{groundingEnabled && <label>Mode <select aria-label="Grounding retrieval mode" value={groundingMode} onChange={(event) => setGroundingMode(event.target.value as typeof groundingMode)}><option value="hybrid">Hybrid</option><option value="lexical">Lexical</option><option value="semantic">Semantic</option></select></label>}</div><textarea aria-label="Message assistant" maxLength={4000} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder="Ask NexusOS… Press Enter to send, Shift+Enter for a new line" value={draft} /><div><span>{draft.length}/4000 · Provider stays server-side</span><button className="primary-button" disabled={!draft.trim() || sending || provider?.state === "disabled"} type="submit">{sending ? "Thinking…" : "Send"}</button></div></form></> : <div className="assistant-state"><strong>No conversation selected</strong><button className="text-button" onClick={() => void newConversation()} type="button">Create one</button></div>}
-        {error && <div className="inline-state error-state" role="alert"><strong>Assistant unavailable.</strong><span>{error === "ai_provider_disabled" ? "Connect NVIDIA NIM in Admin to send messages." : error}</span>{error === "ai_provider_disabled" && onOpenAdmin ? <button className="text-button" onClick={onOpenAdmin} type="button">Open Admin</button> : errorKind === "send" ? <button className="text-button" onClick={() => { setError(null); setErrorKind(null); }} type="button">Dismiss</button> : <button className="text-button" onClick={() => void loadConversations()} type="button">Retry</button>}</div>}
-        {pendingAction && <AssistantActionConfirmation arguments={pendingAction.arguments} onApprove={() => void approvePending()} onReject={() => void rejectPending()} tool={pendingAction.tool} />}
+  return (
+    <section aria-labelledby="assistant-heading" className="chat-workspace section-block">
+      <div className="chat-toolbar">
+        <div>
+          <p className="eyebrow">{ready ? "Open WebUI · Nexus filesystem" : "Assistant"}</p>
+          <h2 id="assistant-heading">{status?.label ?? "Assistant"}</h2>
+          <p className="chat-toolbar-detail">
+            {loading
+              ? "Connecting to Open WebUI…"
+              : ready
+                ? "Full multi-model chat on this Pi. Shared Nexus files are available inside Open WebUI for Knowledge / attachments."
+                : status?.detail ?? "Connect Open WebUI so Assistant becomes your local chat studio."}
+          </p>
+          {ready && sharedHost ? (
+            <p className="chat-fs-hint">
+              Shared folder: <code>{sharedHost}</code>
+              {sharedContainer ? (
+                <>
+                  {" "}
+                  → Open WebUI <code>{sharedContainer}</code>
+                </>
+              ) : null}
+            </p>
+          ) : null}
+        </div>
+        <div className="chat-toolbar-actions">
+          {ready && status?.url ? (
+            <>
+              <a className="refresh-button" href={status.url} rel="noreferrer" target="_blank">
+                Open full window
+              </a>
+              <button
+                className="text-button"
+                onClick={() => {
+                  setFrameFailed(false);
+                  setFrameKey((value) => value + 1);
+                }}
+                type="button"
+              >
+                Reload
+              </button>
+            </>
+          ) : null}
+          {onOpenAdmin ? (
+            <button className="text-button" onClick={onOpenAdmin} type="button">
+              Configure
+            </button>
+          ) : null}
+        </div>
       </div>
-    </div>
-  </section>;
+
+      {error ? (
+        <div className="inline-state error-state" role="alert">
+          <strong>Assistant unavailable.</strong>
+          <span>{error}</span>
+          <button className="text-button" onClick={() => void load()} type="button">
+            Retry
+          </button>
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div className="chat-frame-shell chat-frame-placeholder" role="status">
+          Loading Open WebUI…
+        </div>
+      ) : canEmbed && status?.url ? (
+        <div className="chat-frame-shell">
+          <iframe
+            allow="clipboard-read; clipboard-write; microphone; fullscreen"
+            className="chat-frame"
+            key={frameKey}
+            onError={() => setFrameFailed(true)}
+            referrerPolicy="no-referrer"
+            src={status.url}
+            title={status.label || "Nexus Assistant"}
+          />
+        </div>
+      ) : ready && status?.url && (frameFailed || !status.embed) ? (
+        <div className="chat-frame-shell chat-frame-placeholder">
+          <div className="chat-setup-card">
+            <strong>{frameFailed ? "Embedded view blocked" : "Embed is off"}</strong>
+            <p>
+              {frameFailed
+                ? "Open WebUI refused to load inside this page (frame headers). Use the full window — same app, same models, same shared files."
+                : "Embedding is disabled in Admin. Launch Open WebUI in a full window instead."}
+            </p>
+            <div className="chat-setup-actions">
+              <a className="primary-button" href={status.url} rel="noreferrer" target="_blank">
+                Launch Assistant
+              </a>
+              {frameFailed ? (
+                <button
+                  className="text-button"
+                  onClick={() => {
+                    setFrameFailed(false);
+                    setFrameKey((value) => value + 1);
+                  }}
+                  type="button"
+                >
+                  Try embed again
+                </button>
+              ) : null}
+            </div>
+            <code className="chat-url-code">{status.url}</code>
+          </div>
+        </div>
+      ) : (
+        <div className="chat-frame-shell chat-frame-placeholder">
+          <div className="chat-setup-card">
+            <strong>Assistant = Open WebUI</strong>
+            <p>
+              Nexus uses your Pi-hosted Open WebUI as the assistant (multi-model chat, history, Knowledge). Point it at the local
+              instance and link the shared filesystem so chat can use files from Nexus.
+            </p>
+            <ol className="chat-setup-steps">
+              <li>
+                Confirm Open WebUI is running (usually <code>http://192.168.1.46:8080</code>).
+              </li>
+              <li>
+                Admin → AI: save Open WebUI URL (or set <code>OPENWEBUI_URL</code>).
+              </li>
+              <li>
+                Drop files into the shared folder on the Pi (<code>…/nexus-data/shared</code>) — mounted into Open WebUI as{" "}
+                <code>/data/nexus</code>.
+              </li>
+            </ol>
+            <div className="chat-setup-actions">
+              {onOpenAdmin ? (
+                <button className="primary-button" onClick={onOpenAdmin} type="button">
+                  Open Admin setup
+                </button>
+              ) : null}
+              <a className="refresh-button" href="http://192.168.1.46:8080" rel="noreferrer" target="_blank">
+                Try Open WebUI
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }

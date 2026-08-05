@@ -27,7 +27,6 @@ type AdminPage = "dashboard" | "ai" | "updates" | "system" | "services" | "opera
 
 type AdminNavigateTarget =
   | "assistant"
-  | "chat"
   | "maintenance"
   | "notifications"
   | "sources"
@@ -39,7 +38,6 @@ type AdminNavigateTarget =
 type AdminWorkspaceProps = {
   user: User;
   onOpenAssistant?: () => void;
-  onOpenChat?: () => void;
   onNavigate?: (target: AdminNavigateTarget) => void;
   onLogout?: () => void;
 };
@@ -132,7 +130,7 @@ function Panel({ title, eyebrow, actions, children }: { title: string; eyebrow?:
   );
 }
 
-export function AdminWorkspace({ user, onOpenAssistant, onOpenChat, onNavigate, onLogout }: AdminWorkspaceProps) {
+export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: AdminWorkspaceProps) {
   const [page, setPage] = useState<AdminPage>("dashboard");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<AdminStatus | null>(null);
@@ -162,7 +160,7 @@ export function AdminWorkspace({ user, onOpenAssistant, onOpenChat, onNavigate, 
   const [modelsError, setModelsError] = useState<string | null>(null);
   const [openWebUI, setOpenWebUI] = useState<OpenWebUIStatus | null>(null);
   const [openWebUIUrl, setOpenWebUIUrl] = useState("http://192.168.1.46:8080");
-  const [openWebUILabel, setOpenWebUILabel] = useState("Open WebUI");
+  const [openWebUILabel, setOpenWebUILabel] = useState("Nexus Assistant");
   const [openWebUIEmbed, setOpenWebUIEmbed] = useState(true);
   const [openWebUIEnabled, setOpenWebUIEnabled] = useState(true);
   const [savingOpenWebUI, setSavingOpenWebUI] = useState(false);
@@ -194,7 +192,7 @@ export function AdminWorkspace({ user, onOpenAssistant, onOpenChat, onNavigate, 
       if (nextOpenWebUI) {
         setOpenWebUI(nextOpenWebUI);
         if (nextOpenWebUI.url) setOpenWebUIUrl(nextOpenWebUI.url);
-        setOpenWebUILabel(nextOpenWebUI.label || "Open WebUI");
+        setOpenWebUILabel(nextOpenWebUI.label || "Nexus Assistant");
         setOpenWebUIEmbed(nextOpenWebUI.embed);
         setOpenWebUIEnabled(nextOpenWebUI.enabled || !nextOpenWebUI.configured);
       }
@@ -380,7 +378,7 @@ export function AdminWorkspace({ user, onOpenAssistant, onOpenChat, onNavigate, 
       const next = await configureOpenWebUI({
         enabled: openWebUIEnabled,
         url: openWebUIUrl.trim(),
-        label: openWebUILabel.trim() || "Open WebUI",
+        label: openWebUILabel.trim() || "Nexus Assistant",
         embed: openWebUIEmbed,
       });
       setOpenWebUI(next);
@@ -839,24 +837,25 @@ export function AdminWorkspace({ user, onOpenAssistant, onOpenChat, onNavigate, 
               </Panel>
 
               <Panel
-                title="Open WebUI chat"
-                eyebrow="Studio-style multi-model UI"
+                title="Assistant = Open WebUI"
+                eyebrow="Primary chat UI"
                 actions={
-                  onOpenChat ? (
-                    <button className="text-button" onClick={onOpenChat} type="button">
-                      Open Chat
+                  onOpenAssistant ? (
+                    <button className="text-button" onClick={onOpenAssistant} type="button">
+                      Open Assistant
                     </button>
                   ) : null
                 }
               >
                 <p className="admin-panel-help">
-                  Your Pi already hosts Open WebUI (docker <code>open-webui</code>, usually port <code>8080</code>). Link it here so
-                  Workspace → <strong>Chat</strong> embeds the full UI. Nexus Assistant stays for system/tasks/notes tools.
+                  Workspace → <strong>Assistant</strong> is your Pi&apos;s Open WebUI (docker <code>open-webui</code>, usually{" "}
+                  <code>:8080</code>), embedded in Nexus. A shared folder under DATA_DIR is linked into the container so chat can use
+                  Nexus files (Knowledge / attachments).
                 </p>
                 <form className="admin-openwebui-form" onSubmit={(event) => void saveOpenWebUI(event)}>
                   <label className="checkbox-row">
                     <input checked={openWebUIEnabled} onChange={(event) => setOpenWebUIEnabled(event.target.checked)} type="checkbox" />
-                    Enable Open WebUI in Chat
+                    Enable Open WebUI as Assistant
                   </label>
                   <label>
                     Open WebUI URL
@@ -878,7 +877,7 @@ export function AdminWorkspace({ user, onOpenAssistant, onOpenChat, onNavigate, 
                   </label>
                   <div className="admin-nim-actions">
                     <button className="primary-button" disabled={savingOpenWebUI || (openWebUIEnabled && !openWebUIUrl.trim())} type="submit">
-                      {savingOpenWebUI ? "Saving…" : "Save Open WebUI"}
+                      {savingOpenWebUI ? "Saving…" : "Save Assistant link"}
                     </button>
                     <button className="refresh-button" onClick={() => setOpenWebUIUrl("http://192.168.1.46:8080")} type="button">
                       Use Pi :8080
@@ -898,6 +897,9 @@ export function AdminWorkspace({ user, onOpenAssistant, onOpenChat, onNavigate, 
                     <p className="form-help">
                       Status: {openWebUI.enabled ? "enabled" : "disabled"} · source {openWebUI.source}
                       {openWebUI.url ? ` · ${openWebUI.url}` : ""}
+                      {openWebUI.filesystem?.host_path
+                        ? ` · shared ${openWebUI.filesystem.host_path} → ${openWebUI.filesystem.container_path}`
+                        : ""}
                     </p>
                   ) : null}
                 </form>
@@ -1006,19 +1008,12 @@ export function AdminWorkspace({ user, onOpenAssistant, onOpenChat, onNavigate, 
                   { label: "Plugins", detail: "Rescan & lifecycle", target: "plugins" as const },
                   { label: "Files", detail: "Approved-root metadata", target: "files" as const },
                   { label: "Docker view", detail: "Container inspection", target: "docker" as const },
-                  { label: "Assistant", detail: "Nexus tools chat", target: "assistant" as const },
-                  { label: "Open WebUI", detail: "Studio multi-model chat", target: "chat" as const },
+                  { label: "Assistant", detail: "Open WebUI + shared files", target: "assistant" as const },
                 ].map((item) => (
                   <button
                     className="admin-quick-action"
                     key={item.label}
-                    onClick={() =>
-                      item.target === "assistant"
-                        ? onOpenAssistant?.()
-                        : item.target === "chat"
-                          ? onOpenChat?.()
-                          : onNavigate?.(item.target)
-                    }
+                    onClick={() => (item.target === "assistant" ? onOpenAssistant?.() : onNavigate?.(item.target))}
                     type="button"
                   >
                     <strong>{item.label}</strong>

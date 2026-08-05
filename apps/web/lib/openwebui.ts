@@ -1,5 +1,12 @@
 import { authenticatedFetch } from "./auth";
 
+export type OpenWebUIFilesystemBridge = {
+  host_path: string | null;
+  container_path: string;
+  linked: boolean;
+  detail: string;
+};
+
 export type OpenWebUIStatus = {
   enabled: boolean;
   configured: boolean;
@@ -8,6 +15,7 @@ export type OpenWebUIStatus = {
   embed: boolean;
   source: "browser" | "environment" | "none";
   detail: string;
+  filesystem?: OpenWebUIFilesystemBridge;
 };
 
 async function parseError(response: Response, fallback: string): Promise<string> {

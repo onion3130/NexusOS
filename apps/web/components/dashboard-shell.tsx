@@ -5,7 +5,6 @@ import { CommandPalette } from "./command-palette";
 import { ThemeToggle } from "./theme-toggle";
 import { useTheme } from "./theme-provider";
 import { AssistantWorkspace } from "./assistant-workspace";
-import { ChatWorkspace } from "./chat-workspace";
 import { SystemOverview } from "./system-overview";
 import { TaskWorkspace } from "./task-workspace";
 import { NotificationCenter } from "./notification-center";
@@ -30,7 +29,6 @@ import type { User } from "../lib/auth";
 type WorkspaceView =
   | "overview"
   | "assistant"
-  | "chat"
   | "tasks"
   | "notifications"
   | "notes"
@@ -50,7 +48,6 @@ type WorkspaceView =
 const baseNavigation = [
   { label: "Overview", icon: "◈", available: true },
   { label: "Assistant", icon: "✦", available: true },
-  { label: "Chat", icon: "◎", available: true },
   { label: "Tasks", icon: "□", available: true },
   { label: "Notifications", icon: "♢", available: true },
   { label: "Notes", icon: "▤", available: true },
@@ -86,8 +83,6 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
     switch (view) {
       case "assistant":
         return "Assistant";
-      case "chat":
-        return "Chat";
       case "tasks":
         return "Tasks";
       case "notifications":
@@ -149,7 +144,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
   }
 
   return (
-    <main className={`shell${activeView === "admin" ? " shell-admin" : ""}${activeView === "chat" ? " shell-chat" : ""}`}>
+    <main className={`shell${activeView === "admin" ? " shell-admin" : ""}${activeView === "assistant" ? " shell-chat" : ""}`}>
       <a className="skip-link" href="#main-content">Skip to main content</a>
       {mobileNavOpen && <button aria-label="Close navigation" className="mobile-nav-backdrop" onClick={() => setMobileNavOpen(false)} type="button" />}
       {activeView !== "admin" && <aside aria-label="Workspace navigation" className={`sidebar${mobileNavOpen ? " mobile-open" : ""}`} id="mobile-navigation">        <div className="brand">
@@ -198,13 +193,6 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         {activeView === "assistant" ? (
           <AssistantWorkspace
             onOpenAdmin={isOwner ? () => setActiveView("admin") : undefined}
-            onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }}
-            onOpenSource={() => setActiveView("sources")}
-          />
-        ) : activeView === "chat" ? (
-          <ChatWorkspace
-            onOpenAdmin={isOwner ? () => setActiveView("admin") : undefined}
-            onOpenAssistant={() => setActiveView("assistant")}
           />
         ) : activeView === "tasks" ? (
           <TaskWorkspace />
@@ -239,7 +227,6 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
             onLogout={signOut}
             onNavigate={(target) => setActiveView(target === "overview" ? "overview" : target)}
             onOpenAssistant={() => setActiveView("assistant")}
-            onOpenChat={() => setActiveView("chat")}
             user={user}
           />
         ) : (
@@ -248,16 +235,13 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
               <div className="hero-copy">
                 <span className="status-pill"><span /> System online</span>
                 <h2>Your private <em>command center.</em></h2>
-                <p>Local-first OS for your Pi — assistant, Open WebUI chat, services, and tools in one clean dashboard. Use Admin for NVIDIA NIM and updates without SSH.</p>
+                <p>Local-first OS for your Pi — Open WebUI assistant linked to Nexus files, services, and tools in one dashboard.</p>
                 <div className="hero-actions">
                   {isOwner && (
                     <button className="primary-button" onClick={() => setActiveView("admin")} type="button">
                       Open Admin
                     </button>
                   )}
-                  <button className="refresh-button" onClick={() => setActiveView("chat")} type="button">
-                    Open Chat
-                  </button>
                   <button className="refresh-button" onClick={() => setActiveView("assistant")} type="button">
                     Open Assistant
                   </button>

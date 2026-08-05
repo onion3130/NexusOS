@@ -277,20 +277,30 @@ class OpenWebUIConfigRequest(BaseModel):
 
     enabled: bool = True
     url: str | None = Field(default=None, max_length=512)
-    label: str = Field(default="Open WebUI", max_length=64)
+    label: str = Field(default="Nexus Assistant", max_length=64)
     embed: bool = True
 
 
+class OpenWebUIFilesystemBridge(BaseModel):
+    """Shared folder linking Nexus data to the Open WebUI container."""
+
+    host_path: str | None = None
+    container_path: str = "/data/nexus"
+    linked: bool = False
+    detail: str = ""
+
+
 class OpenWebUIStatusResponse(BaseModel):
-    """Redacted Open WebUI integration status for Chat and Admin."""
+    """Redacted Open WebUI integration status for Assistant and Admin."""
 
     enabled: bool = False
     configured: bool = False
     url: str | None = None
-    label: str = "Open WebUI"
+    label: str = "Nexus Assistant"
     embed: bool = True
     source: Literal["browser", "environment", "none"] = "none"
     detail: str = ""
+    filesystem: OpenWebUIFilesystemBridge = Field(default_factory=OpenWebUIFilesystemBridge)
 
 
 class SystemOverviewResponse(BaseModel):
