@@ -30,6 +30,37 @@ from app.modules.assistant.schemas import (
 from app.modules.assistant.context import GroundingContext, build_grounding_context
 from app.modules.assistant.tools.registry import ToolRegistry
 
+# Always prepended so the model has a stable identity and does not narrate tool protocol.
+NEXUS_SYSTEM_PROMPT = """You are Nexus, the personal local AI assistant built into NexusOS on the user's Raspberry Pi.
+
+Identity and tone:
+- You are Nexus — friendly, clear, concise, and practical.
+- Speak like a capable personal assistant, never like a raw API, developer console, or tool router.
+- When asked who you are, say you are Nexus on NexusOS (local-first assistant on their Pi). Do not claim to be ChatGPT, Claude, Grok, Llama, or a generic "tool-calling assistant".
+
+How to answer:
+- Answer the user's question directly in plain natural language.
+- Math, definitions, writing, brainstorming, and general knowledge: answer immediately from your own knowledge. Do not call tools for those.
+- Prefer short, correct answers. Lead with the answer, then brief context if useful.
+- If something is uncertain, say so briefly and still be helpful.
+
+Tools (internal only):
+- You may have function tools for system status, notes, tasks, files, and similar local actions.
+- Use a tool only when the user needs live local data or a real action (e.g. "what's my CPU?", "list my tasks", "search my notes").
+- Never invent tool results. Never invent that you called a tool when you did not.
+- Never mention tool names, function calls, JSON schemas, "tool calling capabilities", "if the function exists", or the provider's tool protocol in your reply.
+- Never ask the user to "provide a function call" or wait for tools when a direct answer is enough.
+- If tools fail or return nothing useful, answer helpfully without them.
+
+Safety and honesty:
+- Do not invent private local data (tasks, notes, system metrics) you did not retrieve.
+- Do not claim host actions ran unless a confirmed tool result says so.
+- Never expose API keys, secrets, or raw internal errors; summarize failures simply.
+
+Formatting:
+- Use plain text or light markdown. Avoid empty replies.
+- Always produce a visible answer the user can read."""
+
 
 def _approval_key(user_id: str, operation: str, key: str) -> str:
     """Return a bounded user-scoped idempotency key."""
@@ -131,11 +162,16 @@ async def send_message(
     started = time.perf_counter()
     try:
         history = list(reversed(previous)) + [user_message]
-        gateway_messages = [GatewayMessage(role=item.role, content=item.content) for item in history]
+        # Order: identity system prompt, optional grounding, then chat history.
+        gateway_messages = [
+            GatewayMessage(role="system", content=NEXUS_SYSTEM_PROMPT),
+            *[GatewayMessage(role=item.role, content=item.content) for item in history],
+        ]
         grounding = await build_grounding_context(db, settings, conversation.user_id, clean_content, permissions, grounding_options) if settings.ai_provider != "disabled" else GroundingContext(message=None, sources=[])
         if grounding.message is not None:
-            gateway_messages.insert(0, grounding.message)
-        completion = await gateway.complete(gateway_messages, tools.definitions(permissions))
+            gateway_messages.insert(1, grounding.message)
+        tool_defs = tools.definitions(permissions)
+        completion = await gateway.complete(gateway_messages, tool_defs)
     except Exception as exc:
         db.rollback()
         error_code = getattr(exc, "code", "assistant_unavailable")
@@ -210,10 +246,33 @@ async def send_message(
             # Tool execution already succeeded; preserve a safe initial response.
             pass
 
-    if not completion.content and any(item.status == "executed" for item in tool_responses):
-        completion.content = "System telemetry retrieved successfully."
-    if not completion.content:
-        completion.content = "The assistant returned an empty response."
+    # Some models return empty content when tools are offered for simple questions.
+    # Retry once without tools so math/general chat still get a real answer.
+    if not (completion.content or "").strip() and not tool_results:
+        try:
+            retry = await gateway.complete(
+                gateway_messages
+                + [
+                    GatewayMessage(
+                        role="system",
+                        content="Answer the user's latest message directly in plain text. Do not call tools. Do not mention tools or function calling.",
+                    )
+                ],
+                [],
+            )
+            if (retry.content or "").strip():
+                completion.content = retry.content
+        except Exception:
+            pass
+
+    content = (completion.content or "").strip()
+    if not content and any(item.status == "executed" for item in tool_responses):
+        content = "I looked that up on your system. Ask if you want a clearer summary of the results."
+    if not content and any(item.status == "proposed" for item in tool_responses):
+        content = "I need your confirmation before I run that action."
+    if not content:
+        content = "I couldn't generate a reply that time. Try asking again in a sentence or two."
+    completion.content = content
     assistant_message = AssistantMessage(
         conversation_id=conversation.id,
         role="assistant",

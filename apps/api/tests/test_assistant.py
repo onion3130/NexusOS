@@ -17,7 +17,7 @@ from app.modules.assistant.gateway import DisabledGateway, OpenAICompatibleGatew
 from app.modules.assistant.schemas import GatewayCompletion
 from app.modules.assistant.schemas import GatewayMessage, GroundingOptions, ProposedToolCall, ProviderDisabledError, ToolValidationError
 from app.modules.assistant.context import build_grounding_context
-from app.modules.assistant.service import send_message
+from app.modules.assistant.service import NEXUS_SYSTEM_PROMPT, send_message
 from app.modules.assistant.tools.registry import ToolRegistry
 from app.modules.identity.service import bootstrap_owner
 from app.modules.system.service import SystemService
@@ -174,6 +174,141 @@ def test_disabled_provider_skips_grounding(client, monkeypatch) -> None:
 
         asyncio.run(run())
         assert called is False
+    finally:
+        db.close()
+
+
+def test_send_message_includes_nexus_system_prompt(client, monkeypatch) -> None:
+    """Every gateway call starts with Nexus identity so models do not invent tool meta-personas."""
+    import app.modules.assistant.service as service_module
+
+    _bootstrap_owner()
+    db = get_session_factory()()
+    try:
+        user = db.query(User).first()
+        conversation = Conversation(user_id=user.id)
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
+
+        captured: list[list[GatewayMessage]] = []
+
+        class CaptureGateway:
+            async def complete(self, messages, tools):
+                captured.append(list(messages))
+                return GatewayCompletion(
+                    content="9801",
+                    tool_calls=[],
+                    provider="openai_compatible",
+                    model="test-model",
+                    input_tokens=10,
+                    output_tokens=2,
+                )
+
+        class NoTools:
+            def definitions(self, _permissions):
+                return []
+
+            def requires_confirmation(self, _key):
+                return False
+
+        async def no_grounding(*_args, **_kwargs):
+            return service_module.GroundingContext(message=None, sources=[])
+
+        monkeypatch.setattr(service_module, "build_grounding_context", no_grounding)
+        settings = get_settings().model_copy(update={"ai_provider": "openai_compatible"})
+
+        async def run() -> None:
+            result = await send_message(
+                db,
+                settings,
+                conversation,
+                "what is 99 times 99",
+                CaptureGateway(),
+                NoTools(),
+                {"notes.read"},
+                GroundingOptions(enabled=False),
+            )
+            assert result.assistant_message.content == "9801"
+
+        asyncio.run(run())
+        assert captured
+        assert captured[0][0].role == "system"
+        assert captured[0][0].content == NEXUS_SYSTEM_PROMPT
+        assert "You are Nexus" in NEXUS_SYSTEM_PROMPT
+        assert "tool-calling" in NEXUS_SYSTEM_PROMPT.lower() or "function" in NEXUS_SYSTEM_PROMPT.lower()
+        assert any(item.role == "user" and "99 times 99" in item.content for item in captured[0])
+    finally:
+        db.close()
+
+
+def test_send_message_retries_empty_completion_without_tools(client, monkeypatch) -> None:
+    """Empty first completions (common with tool-enabled small models) get one no-tools retry."""
+    import app.modules.assistant.service as service_module
+
+    _bootstrap_owner()
+    db = get_session_factory()()
+    try:
+        user = db.query(User).first()
+        conversation = Conversation(user_id=user.id)
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
+
+        calls = 0
+
+        class EmptyThenAnswerGateway:
+            async def complete(self, messages, tools):
+                nonlocal calls
+                calls += 1
+                if calls == 1:
+                    return GatewayCompletion(
+                        content="",
+                        tool_calls=[],
+                        provider="openai_compatible",
+                        model="test-model",
+                        input_tokens=10,
+                        output_tokens=0,
+                    )
+                assert tools == []
+                assert any(item.role == "system" and "plain text" in item.content for item in messages)
+                return GatewayCompletion(
+                    content="99 × 99 = 9801",
+                    tool_calls=[],
+                    provider="openai_compatible",
+                    model="test-model",
+                    input_tokens=12,
+                    output_tokens=6,
+                )
+
+        class NoTools:
+            def definitions(self, _permissions):
+                return [{"would": "be ignored by fake gateway"}]
+
+            def requires_confirmation(self, _key):
+                return False
+
+        async def no_grounding(*_args, **_kwargs):
+            return service_module.GroundingContext(message=None, sources=[])
+
+        monkeypatch.setattr(service_module, "build_grounding_context", no_grounding)
+        settings = get_settings().model_copy(update={"ai_provider": "openai_compatible"})
+
+        async def run() -> None:
+            result = await send_message(
+                db,
+                settings,
+                conversation,
+                "what is 99 times 99",
+                EmptyThenAnswerGateway(),
+                NoTools(),
+                set(),
+                GroundingOptions(enabled=False),
+            )
+            assert result.assistant_message.content == "99 × 99 = 9801"
+
+        asyncio.run(run())
+        assert calls == 2
     finally:
         db.close()
 

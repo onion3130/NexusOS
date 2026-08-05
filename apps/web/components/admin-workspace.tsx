@@ -630,13 +630,35 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
                       </button>
                     </div>
                   )}
-                  <label>
-                    Filter models
-                    <input onChange={(event) => setModelFilter(event.target.value)} placeholder="Search llama, gemma, embed…" value={modelFilter} />
-                  </label>
+                  <div className="admin-model-search">
+                    <label htmlFor="admin-model-search-input">
+                      Search models
+                      <div className="admin-model-search-row">
+                        <input
+                          autoComplete="off"
+                          id="admin-model-search-input"
+                          onChange={(event) => setModelFilter(event.target.value)}
+                          placeholder="Search llama, gemma, mistral, embed, nv-…"
+                          spellCheck={false}
+                          type="search"
+                          value={modelFilter}
+                        />
+                        {modelFilter ? (
+                          <button className="text-button" onClick={() => setModelFilter("")} type="button">
+                            Clear
+                          </button>
+                        ) : null}
+                      </div>
+                    </label>
+                    <p className="form-help">
+                      {modelFilter.trim()
+                        ? `Showing ${filteredChatModels.length} chat and ${filteredEmbeddingModels.length} embedding matches for “${modelFilter.trim()}”.`
+                        : "Type to filter the live NVIDIA catalog by name or model id."}
+                    </p>
+                  </div>
                   <div className="admin-model-block">
                     <div className="admin-model-heading">
-                      <strong>Chat model ({filteredChatModels.length})</strong>
+                      <strong>Chat model ({filteredChatModels.length}{modelFilter.trim() ? ` of ${chatModels.length}` : ""})</strong>
                       <button className="text-button" onClick={() => setCustomModel((value) => !value)} type="button">
                         {customModel ? "Pick from list" : "Custom model id"}
                       </button>
@@ -649,7 +671,11 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
                     ) : (
                       <div className="admin-preset-grid admin-preset-grid-scroll">
                         {filteredChatModels.length === 0 ? (
-                          <p className="form-help">No chat models loaded yet. Paste a key and click Load models from NVIDIA.</p>
+                          <p className="form-help">
+                            {chatModels.length === 0
+                              ? "No chat models loaded yet. Click Load models from NVIDIA (API key optional for the public catalog)."
+                              : `No chat models match “${modelFilter.trim()}”. Try another search or clear the filter.`}
+                          </p>
                         ) : (
                           filteredChatModels.map((preset) => (
                             <button
@@ -677,7 +703,7 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
                   {embeddings && (
                     <div className="admin-model-block">
                       <div className="admin-model-heading">
-                        <strong>Embedding model ({filteredEmbeddingModels.length})</strong>
+                        <strong>Embedding model ({filteredEmbeddingModels.length}{modelFilter.trim() ? ` of ${embeddingModels.length}` : ""})</strong>
                         <button className="text-button" onClick={() => setCustomEmbedding((value) => !value)} type="button">
                           {customEmbedding ? "Pick from list" : "Custom model id"}
                         </button>
@@ -690,7 +716,11 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
                       ) : (
                         <div className="admin-preset-grid admin-preset-grid-scroll">
                           {filteredEmbeddingModels.length === 0 ? (
-                            <p className="form-help">No embedding models loaded yet.</p>
+                            <p className="form-help">
+                              {embeddingModels.length === 0
+                                ? "No embedding models loaded yet. Load the NVIDIA catalog above."
+                                : `No embedding models match “${modelFilter.trim()}”. Try another search or clear the filter.`}
+                            </p>
                           ) : (
                             filteredEmbeddingModels.map((preset) => (
                               <button
