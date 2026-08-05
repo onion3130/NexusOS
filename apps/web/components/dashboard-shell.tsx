@@ -193,6 +193,8 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         {activeView === "assistant" ? (
           <AssistantWorkspace
             onOpenAdmin={isOwner ? () => setActiveView("admin") : undefined}
+            onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }}
+            onOpenSource={() => setActiveView("sources")}
           />
         ) : activeView === "tasks" ? (
           <TaskWorkspace />
@@ -235,7 +237,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
               <div className="hero-copy">
                 <span className="status-pill"><span /> System online</span>
                 <h2>Your private <em>command center.</em></h2>
-                <p>Local-first OS for your Pi — Open WebUI assistant linked to Nexus files, services, and tools in one dashboard.</p>
+                <p>Local-first OS for your Pi — modern assistant, services, and tools in one clean dashboard.</p>
                 <div className="hero-actions">
                   {isOwner && (
                     <button className="primary-button" onClick={() => setActiveView("admin")} type="button">
