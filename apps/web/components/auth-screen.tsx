@@ -54,22 +54,29 @@ export function LoginScreen({ onLogin }: { onLogin: (user: User) => void }) {
       <section aria-labelledby="login-heading" className="auth-card">
         <div className="brand auth-brand">
           <div className="brand-mark">N</div>
-          <div><strong>NexusOS</strong><span>Personal command center</span></div>
+          <div>
+            <strong>NexusOS</strong>
+            <span>Personal control plane</span>
+          </div>
         </div>
-        <p className="eyebrow">Private workspace</p>
-        <h1 id="login-heading">Welcome back.</h1>
-        <p className="auth-copy">Sign in to your local NexusOS workspace.</p>
+        <p className="eyebrow">Secure sign-in</p>
+        <h1 id="login-heading">Welcome back</h1>
+        <p className="auth-copy">Sign in to your local NexusOS workspace on this network.</p>
         <form className="auth-form" onSubmit={submit}>
           <label htmlFor="username">Username</label>
           <input autoComplete="username" id="username" onChange={(event) => setUsername(event.target.value)} required value={username} />
           <label htmlFor="password">Password</label>
           <input autoComplete="current-password" id="password" onChange={(event) => setPassword(event.target.value)} required type="password" value={password} />
-          {error && <p className="form-error" role="alert">{error}</p>}
+          {error ? (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          ) : null}
           <button className="primary-button auth-submit" disabled={submitting} type="submit">
             {submitting ? "Signing in…" : "Sign in"}
           </button>
         </form>
-        <p className="auth-footnote">Local-first. Private by default.</p>
+        <p className="auth-footnote">Local-first · Private by default · No cloud account required</p>
       </section>
     </main>
   );
