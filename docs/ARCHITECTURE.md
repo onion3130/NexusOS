@@ -17,7 +17,7 @@ NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an exte
 - `apps/api/app/modules/plugins`: validated manifests, approved-directory discovery, secret-free JSON-stdio subprocess broker, bounded run history, and capability/risk enforcement.
 - `apps/api/app/worker.py`: dedicated bounded SQLite reminder, confirmed host-action, replication, notification-delivery, media-rescan, and embedding worker.
 - `apps/api/app/db`: SQLAlchemy engine/session and all persisted models.
-- `apps/api/migrations`: explicit Alembic migration history through `0018_external_sources`.
+- `apps/api/migrations`: explicit Alembic migration history through `0019_source_sync`.
 - `apps/web`: authenticated Next.js shell with overview, assistant, tasks, notifications, and notification settings.
 - `docker-compose.yml`: ARM64 development topology with API, web, and real worker services; proxy and optional AI remain placeholders.
 
@@ -33,6 +33,7 @@ FastAPI
   ├── tasks service -> tasks/categories/tags/reminders/notifications
   ├── notes service -> notes/tags/search projection/retrieval chunks
   ├── sources service -> server-owned source storage -> durable ingestion -> versions/chunks -> retrieval
+  ├── source synchronization -> approved-root revalidation -> bounded sync jobs -> existing ingestion pipeline
   ├── host-actions service -> typed proposals -> confirmed job queue -> fixed backup/integrity adapters
   ├── workspace-views service -> approved-root file/project/Git adapters -> optional Docker metadata adapter
   ├── backup-replication service -> bounded AES-GCM encryption -> operator-mounted destination adapter
@@ -116,7 +117,7 @@ Notes are canonical user-authored sources. A derived search projection feeds SQL
 
 ## External source architecture
 
-External source uploads are stored with generated filenames beneath `DATA_DIR/sources`; the browser never selects a destination. Approved-file imports use opaque server-issued file IDs and revalidate the configured root, symlink state, size, hash, and UTF-8 content immediately before copying. The worker processes short, leased ingestion jobs, verifies the stored digest, parses only UTF-8 text/Markdown, creates immutable versions and deterministic chunks, and records bounded audit events. Source content participates in lexical retrieval as untrusted reference material; it cannot authorize tools or mutate the system.
+External source uploads are stored with generated filenames beneath `DATA_DIR/sources`; the browser never selects a destination. Approved-file imports use opaque server-issued file IDs and revalidate the configured root, symlink state, size, hash, and UTF-8 content immediately before copying. Optional synchronization stores only the approved root key, relative path, opaque file identifier, bounded interval, and redacted timestamps; every worker check rescans and revalidates the configured root before reading. Changed content is copied atomically into generated private storage and sent through the existing leased ingestion pipeline. The worker uses bounded batches, retries, and no-change hash checks. Source content participates in lexical retrieval as untrusted reference material; it cannot authorize tools or mutate the system.
 
 ## Deferred scope
 

@@ -10,15 +10,16 @@ All notable NexusOS changes are recorded here. NexusOS releases use Semantic Ver
 - Encrypts browser-managed NIM settings under the private data volume using a key derived from the server JWT secret; keys never enter SQLite, browser storage, logs, or API responses.
 - Added redacted source/status reporting, disable support, CSRF/permission enforcement, audit events, and restart guidance for the API and worker.
 
-### External source ingestion
+### External source ingestion and synchronization
 
-NexusOS v1.5.0 adds bounded external source ingestion and source-aware grounding while preserving the local-first security model.
+NexusOS v1.5.0 adds bounded external source ingestion, approved-root synchronization, and source-aware grounding while preserving the local-first security model.
 
 - Added bounded UTF-8 text and Markdown uploads with server-generated storage names and background ingestion jobs.
 - Added approved-root text-file discovery/import without accepting client filesystem paths.
 - Added immutable source versions, deterministic chunks, lifecycle controls, ownership checks, audit events, and source-aware lexical retrieval.
 - Added the Sources workspace with upload, import, processing, retry, archive, restore, and delete states.
-- Added migration `0018_external_sources` and coverage for ingestion, ownership, migration reversibility, unsafe files, and retrieval.
+- Added migration `0018_external_sources` and migration `0019_source_sync`, with coverage for ingestion, ownership, migration reversibility, unsafe files, retrieval, and synchronization.
+- Added opt-in approved-root synchronization with bounded worker polling, changed-file detection, versioned re-ingestion, manual sync, retry recovery, and redacted status.
 - PDF, arbitrary URLs, crawling, OCR, autonomous memory extraction, and model-written notes remain deferred.
 
 ### NVIDIA NIM Assistant integration

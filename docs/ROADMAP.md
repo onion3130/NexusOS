@@ -1,7 +1,7 @@
 # NexusOS roadmap
 
 **Current milestone:** v1.5 — external source ingestion and source lifecycle management (unreleased)
-**Next milestone:** v1.6 — source synchronization, richer document parsing, and streaming Assistant responses
+**Next milestone:** v1.6 — richer document parsing and streaming Assistant responses
 **Last updated:** 2026-08-04
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
@@ -237,15 +237,17 @@ Known limitations:
 Implemented:
 
 - Migration `0018_external_sources` with user-owned sources, immutable versions, deterministic chunks, and source permissions.
+- Migration `0019_source_sync` with optional approved-root synchronization policies and bounded worker scheduling.
 - Bounded UTF-8 text and Markdown uploads stored beneath a server-owned data directory with generated filenames.
 - Approved-root text-file discovery and opaque file identifiers; client paths are never accepted.
 - Durable worker ingestion with bounded retries, integrity hashing, versioned chunks, audit events, and lifecycle states.
 - Sources workspace with upload/import, processing, retry, archive, restore, delete, loading, and error states.
 - Shared lexical retrieval and grounded Assistant provenance support for external sources.
+- Opt-in approved-root synchronization with bounded worker polling, change detection, versioned re-ingestion, manual sync, retry recovery, and redacted status.
 
 Known limitations:
 
-- PDF, OCR, arbitrary URLs, web crawling, automatic synchronization, autonomous memory extraction, model-written notes, and streaming remain deferred.
+- PDF, OCR, arbitrary URLs, web crawling, autonomous memory extraction, model-written notes, and streaming remain deferred.
 - Source-aware semantic indexing will follow the existing provider-neutral embedding boundary in a future increment.
 - Docker and Raspberry Pi sustained-ingestion validation remain target-environment checks.
 

@@ -88,7 +88,7 @@ External sources are read-only reference material. The source worker creates imm
 - Streaming responses
 - Provider health dashboards
 - Autonomous semantic memory and model-written notes
-- PDF/OCR parsing, external URLs, crawling, and automatic source synchronization
+- PDF/OCR parsing, external URLs, crawling, and autonomous source-selection; approved-root synchronization is implemented as a worker-side source lifecycle feature
 - Autonomous memory and model-written notes
 - Additional integrations
 - Privileged host control, assistant-triggered restore, cloud/object-storage replication, and autonomous memory

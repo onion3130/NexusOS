@@ -16,6 +16,7 @@ from app.modules.notifications.worker import process_notification_deliveries
 from app.modules.media.service import configured_media_roots, process_media_rescans
 from app.modules.embeddings.service import process_embeddings
 from app.modules.sources.service import process_source_ingestion
+from app.modules.sources.sync import process_source_sync
 from app.core.runtime_config import mark_runtime_nim_active
 
 _running = True
@@ -53,6 +54,7 @@ def main() -> int:
             process_notification_deliveries(session, settings=settings, batch_size=settings.notification_delivery_batch_size)
             process_media_rescans(session, data_dir=settings.data_dir, media_roots=configured_media_roots(settings), max_size_bytes=settings.media_index_max_size_mb * 1024 * 1024, max_dimension=settings.media_thumbnail_max_dimension)
             process_embeddings(session, settings, batch_size=settings.embedding_batch_size)
+            process_source_sync(session, settings, batch_size=2)
             process_source_ingestion(session, settings, batch_size=2)
         except Exception:
             # A malformed item must not terminate the scheduler. Each module

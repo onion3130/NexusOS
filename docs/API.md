@@ -145,6 +145,22 @@ Return owned source metadata, immutable ingestion versions, or current-version b
 
 Queues a bounded source re-ingestion job.
 
+#### `GET /api/v1/sources/{id}/sync`
+
+Returns redacted synchronization status for an approved-file source. The response contains only enabled state, bounded interval, timestamps, next check time, and a safe error code; it never returns paths or file content.
+
+#### `POST /api/v1/sources/{id}/sync`
+
+Enables or updates approved-root synchronization. Accepts `{ "enabled": true, "interval_seconds": 3600 }`; intervals are limited to 15 minutes through 24 hours. The server revalidates the existing opaque approved-file reference.
+
+#### `DELETE /api/v1/sources/{id}/sync`
+
+Disables synchronization while retaining bounded status metadata.
+
+#### `POST /api/v1/sources/{id}/sync-now`
+
+Queues one worker-side synchronization check and returns a bounded job status. File reading and ingestion never occur in the request process.
+
 #### `POST /api/v1/sources/{id}/archive` / `POST /api/v1/sources/{id}/restore` / `DELETE /api/v1/sources/{id}`
 
 Perform owned source lifecycle transitions. Delete is soft deletion and never accepts a path.
@@ -302,7 +318,7 @@ Returns the current user's bounded host-action proposal, confirmation, rejection
 - Cookie-authenticated mutations require CSRF validation.
 - CORS allows `PATCH` in addition to existing methods.
 - Database migrations are explicit; startup never mutates schema.
-- Readiness verifies the current Alembic head `0018_external_sources` and the notes FTS5 table.
+- Readiness verifies the current Alembic head `0019_source_sync` and the notes FTS5 table.
 - Notifications are persistent records; optional outbound email/push channels are server-configured and delivery is worker-side only.
 - No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, or provider URLs from a client.
 - Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf. Restore is the highest-risk action and additionally requires a verified source, a fresh safety backup, staged digest/integrity verification, and an atomic swap. Retention cleanup accepts no input and prunes only per the server policy with last-backup protection; key rotation accepts no input and uses only environment-configured keys.

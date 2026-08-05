@@ -1,7 +1,7 @@
 # NexusOS development
 
 **Current milestone:** v1.5 — external source ingestion and source lifecycle management (unreleased)
-**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, optional semantic/hybrid retrieval, grounded assistant note context and provenance, confirmation-gated host maintenance, confirmation-gated restore, retention cleanup, encryption key rotation, read-only workspace views, encrypted directory replication, and outbound email/push notification channels are implemented. PDF/OCR parsing, external URLs, automatic source synchronization, autonomous memory, and privileged host control remain deferred.
+**Status:** Identity/assistant persistence, session authentication, responsive shell, read-only Pi telemetry, bounded assistant gateway, task API/UI, reminder worker, notes/search, optional semantic/hybrid retrieval, grounded assistant note context and provenance, confirmation-gated host maintenance, confirmation-gated restore, retention cleanup, encryption key rotation, read-only workspace views, encrypted directory replication, outbound email/push notification channels, and approved-root source synchronization are implemented. PDF/OCR parsing, external URLs, autonomous memory, and privileged host control remain deferred.
 **Last updated:** 2026-08-04
 
 Read this document with [`README.md`](../README.md), [`ARCHITECTURE.md`](ARCHITECTURE.md), [`API.md`](API.md), [`DATABASE.md`](DATABASE.md), [`AI_SYSTEM.md`](AI_SYSTEM.md), [`SECURITY.md`](SECURITY.md), and [`ROADMAP.md`](ROADMAP.md) before changing code.
@@ -37,6 +37,9 @@ Backend:
 - `migrations/versions/0011_backup_lifecycle.py`: reversible `backup_records.pruned_at` migration.
 - `tests/test_backup_lifecycle.py`: retention boundaries, pruning safety, path confinement, rotation idempotency, preview endpoint, and proposal pipeline coverage.
 - `app/modules/workspace_views/`: approved-root Files, Projects, Git, and optional Docker adapters.
+- `app/modules/sources/sync.py`: bounded approved-root source synchronization, leases, retries, and existing-ingestion handoff.
+- `migrations/versions/0019_source_sync.py`: reversible synchronization policy migration.
+- `tests/test_source_sync.py`: synchronization ownership, CSRF, no-change, change, disable, and worker coverage.
 - `app/api/routes/workspace_views.py`: authenticated read-only workspace routes.
 - `tests/test_workspace_views.py`: adapter, permission, authentication, and redaction coverage.
 - `tests/test_host_actions.py`: proposal, CSRF, ownership, expiry, worker, backup, and audit coverage.
@@ -75,7 +78,7 @@ python -m alembic heads
 python -m alembic check  # may report pre-existing SQLite FTS5/legacy-index model drift; upgrade and migration tests remain authoritative
 ```
 
-The current expected migration head is `0018_external_sources`. The migration suite also verifies upgrades from the legacy `0006_v1_hardening` head used by earlier deployments. The readiness check also requires the SQLite FTS5 notes index. Embeddings remain disabled unless an operator configures an approved provider.
+The current expected migration head is `0019_source_sync`. The migration suite also verifies upgrades from the legacy `0006_v1_hardening` head used by earlier deployments. The readiness check also requires the SQLite FTS5 notes index. Embeddings remain disabled unless an operator configures an approved provider.
 
 ## Frontend validation
 

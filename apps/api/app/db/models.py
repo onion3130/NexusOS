@@ -430,6 +430,33 @@ class Source(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     versions: Mapped[list[SourceVersion]] = relationship(back_populates="source", cascade="all, delete-orphan")
     chunks: Mapped[list[SourceChunk]] = relationship(back_populates="source", cascade="all, delete-orphan")
+    sync_config: Mapped[SourceSyncConfig | None] = relationship(back_populates="source", cascade="all, delete-orphan", uselist=False)
+
+
+class SourceSyncConfig(Base):
+    """An optional approved-root synchronization policy for one source."""
+
+    __tablename__ = "source_sync_configs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    source_id: Mapped[str] = mapped_column(ForeignKey("sources.id", ondelete="CASCADE"), unique=True, index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    root_key: Mapped[str] = mapped_column(String(64))
+    relative_path: Mapped[str] = mapped_column(String(512))
+    file_id: Mapped[str] = mapped_column(String(128))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    interval_seconds: Mapped[int] = mapped_column(Integer, default=3600, nullable=False)
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error_code: Mapped[str | None] = mapped_column(String(96), nullable=True)
+    last_observed_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_observed_mtime_ns: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    last_observed_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    next_check_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    source: Mapped[Source] = relationship(back_populates="sync_config")
+    __table_args__ = (UniqueConstraint("user_id", "root_key", "relative_path", name="uq_source_sync_configs_file"),)
 
 
 class SourceVersion(Base):

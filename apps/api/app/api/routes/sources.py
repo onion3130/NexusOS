@@ -10,6 +10,8 @@ from app.db.models import Source, SourceChunk, SourceVersion
 from app.db.session import get_db
 from app.modules.identity.dependencies import AuthContext, get_auth_context, require_csrf, require_permission
 from app.modules.sources.schemas import ApprovedFileListResponse, ApprovedFileResponse, SourceChunksResponse, SourceImportRequest, SourceListResponse, SourceResponse, SourceVersionResponse, SourceVersionsResponse
+from app.modules.sources.sync import configure_sync, disable_sync, queue_manual_sync, sync_response
+from app.modules.sources.sync_schemas import SourceSyncJobResponse, SourceSyncResponse, SourceSyncUpdate
 from app.modules.sources.service import archive_source, create_upload, delete_source, discover_approved_files, get_source, import_approved_file, list_sources, restore_source, reindex_source, source_chunks, source_response, source_versions
 
 router = APIRouter(prefix="/api/v1/sources", tags=["sources"])
@@ -77,6 +79,55 @@ def import_file(payload: SourceImportRequest, request: Request, settings: Settin
         return _response(import_approved_file(db, settings, context.user.id, payload))
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+@router.get("/{source_id}/sync", response_model=SourceSyncResponse | None)
+def get_sync(source_id: str, db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context)):
+    require_permission("sources.read", context)
+    source = get_source(db, context.user.id, source_id)
+    if source is None:
+        raise HTTPException(404, "Source not found")
+    return sync_response(source.sync_config)
+
+
+@router.post("/{source_id}/sync", response_model=SourceSyncResponse)
+def update_sync(source_id: str, payload: SourceSyncUpdate, request: Request, settings: Settings = Depends(get_settings), db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context)):
+    require_csrf(request, context)
+    require_permission("sources.write", context)
+    source = get_source(db, context.user.id, source_id)
+    if source is None:
+        raise HTTPException(404, "Source not found")
+    try:
+        return sync_response(configure_sync(db, settings, context.user.id, source, enabled=payload.enabled, interval_seconds=payload.interval_seconds))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.delete("/{source_id}/sync", response_model=SourceSyncResponse)
+def remove_sync(source_id: str, request: Request, db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context)):
+    require_csrf(request, context)
+    require_permission("sources.write", context)
+    source = get_source(db, context.user.id, source_id)
+    if source is None:
+        raise HTTPException(404, "Source not found")
+    result = disable_sync(db, context.user.id, source)
+    if result is None:
+        raise HTTPException(404, "Source synchronization not configured")
+    return sync_response(result)
+
+
+@router.post("/{source_id}/sync-now", response_model=SourceSyncJobResponse, status_code=status.HTTP_202_ACCEPTED)
+def sync_now(source_id: str, request: Request, db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context)):
+    require_csrf(request, context)
+    require_permission("sources.write", context)
+    source = get_source(db, context.user.id, source_id)
+    if source is None:
+        raise HTTPException(404, "Source not found")
+    try:
+        job = queue_manual_sync(db, context.user.id, source)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return SourceSyncJobResponse(id=job.id, source_id=source.id, status=job.status, attempts=job.attempts, error_code=job.last_error_code, created_at=job.created_at, completed_at=job.completed_at)
 
 
 @router.get("/{source_id}", response_model=SourceResponse)

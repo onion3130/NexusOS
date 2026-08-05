@@ -48,11 +48,11 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 | Item | Status |
 | --- | --- |
-| **Current milestone** | v1.5 — external source ingestion ✅ (unreleased) |
+| **Current milestone** | v1.5 — external source ingestion and approved-root sync ✅ (unreleased) |
 | **Current version** | `1.3.2` — latest released Docker health and migration compatibility fixes |
-| **Next milestone** | v1.6 — external synchronization and richer document parsers |
+| **Next milestone** | v1.6 — richer document parsing and streaming Assistant responses |
 
-NexusOS v1.5 adds bounded external text/Markdown ingestion, source lifecycle controls, background versioned chunking, source-aware retrieval, and Assistant provenance while preserving the private, local-first Raspberry Pi architecture. NVIDIA NIM remains optional and disabled by default. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
+NexusOS v1.5 adds bounded external text/Markdown ingestion, approved-root synchronization, source lifecycle controls, background versioned chunking, source-aware retrieval, and Assistant provenance while preserving the private, local-first Raspberry Pi architecture. NVIDIA NIM remains optional and disabled by default. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
 
 ## Technology stack
 

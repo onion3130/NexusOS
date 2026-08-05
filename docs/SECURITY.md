@@ -21,6 +21,7 @@
 - Source records, versions, chunks, and ingestion jobs are user-scoped; source mutations require permissions, cookie CSRF, idempotency conventions, and audit events.
 - Worker ingestion verifies the stored SHA-256, uses bounded reads/chunks/retries, and records redacted error codes. Source content is never executed or rendered as trusted HTML.
 - External source chunks are treated as untrusted prompt context and cannot authorize tools, permissions, host actions, or policy changes.
+- Approved-root synchronization is opt-in, restricted to previously imported approved files, and stores no client path or content. Each worker check revalidates root confinement, symlink state, extension, size, hash, and UTF-8 content before copying changed bytes into generated private storage.
 
 ## Notes, search, and retrieval controls
 

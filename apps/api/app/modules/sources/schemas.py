@@ -7,6 +7,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.modules.sources.sync_schemas import SourceSyncResponse
+
 SourceKind = Literal["upload", "approved_file"]
 SourceStatus = Literal["processing", "ready", "failed", "archived"]
 
@@ -26,6 +28,7 @@ class SourceResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None
+    sync: SourceSyncResponse | None = None
 
 
 class SourceListResponse(BaseModel):

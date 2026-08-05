@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings
 from app.db.base import utc_now
-from app.db.models import Job, Source, SourceChunk, SourceVersion
+from app.db.models import Job, Source, SourceChunk, SourceSyncConfig, SourceVersion
 from app.modules.identity.service import add_audit_event
 from app.modules.notes.service import _split_chunks
 from app.modules.sources.schemas import SourceImportRequest
@@ -142,11 +142,13 @@ def _resolve_approved_file(settings: Settings, file_id: str) -> tuple[Path, dict
 
 
 def _job_for_source(db: OrmSession, source_id: str) -> Job | None:
+    """Return only an active source-ingestion job, not a sync-check job."""
     return db.scalar(select(Job).where(Job.job_type == SOURCE_JOB_TYPE, Job.payload_json == source_id, Job.status.in_(("queued", "processing"))).order_by(Job.created_at.desc()))
 
 
 def _source_response_fields(source: Source) -> dict[str, object]:
-    return {"id": source.id, "kind": source.kind, "title": source.title, "original_name": source.original_name, "mime_type": source.mime_type, "size_bytes": source.size_bytes, "sha256": source.sha256, "status": source.status, "current_version": source.current_version, "last_ingested_at": source.last_ingested_at, "last_error_code": source.last_error_code, "created_at": source.created_at, "updated_at": source.updated_at, "archived_at": source.archived_at}
+    sync = source.sync_config
+    return {"id": source.id, "kind": source.kind, "title": source.title, "original_name": source.original_name, "mime_type": source.mime_type, "size_bytes": source.size_bytes, "sha256": source.sha256, "status": source.status, "current_version": source.current_version, "last_ingested_at": source.last_ingested_at, "last_error_code": source.last_error_code, "created_at": source.created_at, "updated_at": source.updated_at, "archived_at": source.archived_at, "sync": {"id": sync.id, "enabled": sync.enabled, "interval_seconds": sync.interval_seconds, "last_checked_at": sync.last_checked_at, "last_changed_at": sync.last_changed_at, "last_success_at": sync.last_success_at, "last_error_code": sync.last_error_code, "next_check_at": sync.next_check_at} if sync is not None else None}
 
 
 def create_upload(db: OrmSession, settings: Settings, user_id: str, filename: str, content: bytes, title: str | None = None) -> Source:
@@ -237,7 +239,22 @@ def import_approved_file(db: OrmSession, settings: Settings, user_id: str, paylo
         raise ValueError("approved_file_not_found") from exc
     source = create_upload(db, settings, user_id, str(info["name"]), content, payload.title)
     source.kind = "approved_file"
+    if source.sync_config is None:
+        db.add(SourceSyncConfig(
+            source_id=source.id,
+            user_id=user_id,
+            root_key=str(info["root_key"]),
+            relative_path=str(info["relative_path"]),
+            file_id=str(info["file_id"]),
+            enabled=False,
+            interval_seconds=3600,
+        ))
+    else:
+        source.sync_config.root_key = str(info["root_key"])
+        source.sync_config.relative_path = str(info["relative_path"])
+        source.sync_config.file_id = str(info["file_id"])
     db.commit()
+    db.refresh(source)
     return source
 
 
