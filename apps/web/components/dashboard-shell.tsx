@@ -231,8 +231,8 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         </aside>
       ) : null}
 
-      <section className={`content${activeView === "admin" ? " content-admin" : ""}`} id="main-content">
-        {activeView !== "admin" ? (
+      <section className={`content${activeView === "admin" ? " content-admin" : ""}${activeView === "assistant" ? " content-chat" : ""}`} id="main-content">
+        {activeView !== "admin" && activeView !== "assistant" ? (
           <header className="topbar">
             <div className="mobile-topbar-row">
               <button
@@ -273,6 +273,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         {activeView === "assistant" ? (
           <AssistantWorkspace
             onOpenAdmin={isOwner ? () => setActiveView("admin") : undefined}
+            onOpenHome={() => setActiveView("overview")}
             onOpenNote={(id) => {
               setNoteToOpen(id);
               setActiveView("notes");

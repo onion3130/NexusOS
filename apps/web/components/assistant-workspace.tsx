@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   approveToolCall,
   createConversation,
@@ -12,9 +12,17 @@ import {
   type AssistantProviderStatus,
   type Conversation,
   type ConversationSummary,
+  type Message,
 } from "../lib/assistant";
 import { AssistantActionConfirmation } from "./assistant-action-confirmation";
 import { AssistantSourceCitations } from "./assistant-source-citations";
+
+const SUGGESTIONS: Array<{ title: string; prompt: string; hint: string }> = [
+  { title: "System status", prompt: "What's my Pi CPU, memory, and temperature right now?", hint: "Live telemetry" },
+  { title: "My tasks", prompt: "List my open tasks and what I should do next.", hint: "Tasks on NexusOS" },
+  { title: "Search notes", prompt: "Search my notes for anything about networking or setup.", hint: "Grounded retrieval" },
+  { title: "Who are you?", prompt: "Who are you and what can you access on NexusOS?", hint: "Identity + scope" },
+];
 
 function formatTime(iso: string): string {
   try {
@@ -24,6 +32,74 @@ function formatTime(iso: string): string {
   }
 }
 
+/** Lightweight markdown-ish rendering for chat messages (no HTML). */
+function MessageBody({ content }: { content: string }) {
+  const blocks = content.replace(/\r\n/g, "\n").split(/\n{2,}/);
+  return (
+    <div className="gpt-md">
+      {blocks.map((block, index) => {
+        const trimmed = block.trim();
+        if (!trimmed) return null;
+        if (trimmed.startsWith("```")) {
+          const lines = trimmed.split("\n");
+          const body = lines.slice(1, lines[lines.length - 1]?.startsWith("```") ? -1 : undefined).join("\n");
+          return (
+            <pre className="gpt-code" key={index}>
+              <code>{body}</code>
+            </pre>
+          );
+        }
+        if (/^[-*•]\s/m.test(trimmed) || /^\d+\.\s/m.test(trimmed)) {
+          const items = trimmed.split("\n").filter(Boolean);
+          return (
+            <ul className="gpt-list" key={index}>
+              {items.map((item, i) => (
+                <li key={i}>{inlineFormat(item.replace(/^([-*•]|\d+\.)\s+/, ""))}</li>
+              ))}
+            </ul>
+          );
+        }
+        return (
+          <p key={index}>
+            {trimmed.split("\n").map((line, i, arr) => (
+              <span key={i}>
+                {inlineFormat(line)}
+                {i < arr.length - 1 ? <br /> : null}
+              </span>
+            ))}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+function inlineFormat(text: string): ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const re = /(`[^`]+`|\*\*[^*]+\*\*)/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  let key = 0;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    const token = match[0];
+    if (token.startsWith("`")) {
+      parts.push(
+        <code className="gpt-inline-code" key={key++}>
+          {token.slice(1, -1)}
+        </code>,
+      );
+    } else {
+      parts.push(
+        <strong key={key++}>{token.slice(2, -2)}</strong>,
+      );
+    }
+    last = match.index + token.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 function ConversationSidebar({
   items,
   selected,
@@ -31,6 +107,11 @@ function ConversationSidebar({
   onCreate,
   query,
   onQuery,
+  open,
+  onClose,
+  providerLabel,
+  onOpenAdmin,
+  onOpenHome,
 }: {
   items: ConversationSummary[];
   selected: string | null;
@@ -38,58 +119,111 @@ function ConversationSidebar({
   onCreate: () => void;
   query: string;
   onQuery: (value: string) => void;
+  open: boolean;
+  onClose: () => void;
+  providerLabel: string;
+  onOpenAdmin?: () => void;
+  onOpenHome?: () => void;
 }) {
   const filtered = items.filter((item) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
-    return (item.title ?? "new conversation").toLowerCase().includes(q);
+    return (item.title ?? "new chat").toLowerCase().includes(q);
   });
 
   return (
-    <aside aria-label="Conversations" className="nx-chat-sidebar">
-      <div className="nx-chat-sidebar-head">
-        <div>
-          <p className="eyebrow">Nexus</p>
-          <strong>Chats</strong>
+    <>
+      {open ? <button aria-label="Close sidebar" className="gpt-sidebar-scrim" onClick={onClose} type="button" /> : null}
+      <aside aria-label="Conversations" className={`gpt-sidebar${open ? " open" : ""}`}>
+        <div className="gpt-sidebar-top">
+          <button className="gpt-new-chat" onClick={onCreate} type="button">
+            <span aria-hidden="true">＋</span> New chat
+          </button>
         </div>
-        <button aria-label="New conversation" className="nx-chat-new" onClick={onCreate} type="button">
-          +
-        </button>
-      </div>
-      <label className="nx-chat-search">
-        <span aria-hidden="true">⌕</span>
-        <input
-          onChange={(event) => onQuery(event.target.value)}
-          placeholder="Search chats…"
-          type="search"
-          value={query}
-        />
-      </label>
-      <div className="nx-chat-sidebar-list">
-        {filtered.length === 0 ? (
-          <p className="nx-chat-sidebar-empty">{items.length === 0 ? "No chats yet. Start one." : "No matches."}</p>
-        ) : (
-          filtered.map((item) => (
-            <button
-              className={`nx-chat-thread${item.id === selected ? " selected" : ""}`}
-              key={item.id}
-              onClick={() => onSelect(item.id)}
-              type="button"
-            >
-              <span className="nx-chat-thread-avatar" aria-hidden="true">
-                ✦
-              </span>
-              <span className="nx-chat-thread-copy">
-                <strong>{item.title ?? "New conversation"}</strong>
-                <span>
-                  {item.message_count} message{item.message_count === 1 ? "" : "s"}
+        <label className="gpt-sidebar-search">
+          <span aria-hidden="true">⌕</span>
+          <input onChange={(e) => onQuery(e.target.value)} placeholder="Search chats" type="search" value={query} />
+        </label>
+        <div className="gpt-sidebar-list">
+          <p className="gpt-sidebar-label">Chats</p>
+          {filtered.length === 0 ? (
+            <p className="gpt-sidebar-empty">{items.length === 0 ? "No chats yet" : "No matches"}</p>
+          ) : (
+            filtered.map((item) => (
+              <button
+                className={`gpt-thread${item.id === selected ? " selected" : ""}`}
+                key={item.id}
+                onClick={() => {
+                  onSelect(item.id);
+                  onClose();
+                }}
+                type="button"
+              >
+                <span className="gpt-thread-icon" aria-hidden="true">
+                  💬
                 </span>
-              </span>
+                <span className="gpt-thread-title">{item.title ?? "New chat"}</span>
+              </button>
+            ))
+          )}
+        </div>
+        <div className="gpt-sidebar-foot">
+          <div className="gpt-sidebar-model" title={providerLabel}>
+            <span className="gpt-model-dot" aria-hidden="true" />
+            <div>
+              <strong>Nexus</strong>
+              <span>{providerLabel}</span>
+            </div>
+          </div>
+          {onOpenHome ? (
+            <button className="gpt-sidebar-link" onClick={onOpenHome} type="button">
+              ← NexusOS home
             </button>
-          ))
-        )}
+          ) : null}
+          {onOpenAdmin ? (
+            <button className="gpt-sidebar-link" onClick={onOpenAdmin} type="button">
+              AI settings
+            </button>
+          ) : null}
+        </div>
+      </aside>
+    </>
+  );
+}
+
+function ChatRow({
+  message,
+  onOpenNote,
+  onOpenSource,
+}: {
+  message: Message;
+  onOpenNote?: (id: string) => void;
+  onOpenSource?: (id: string) => void;
+}) {
+  const isUser = message.role === "user";
+  return (
+    <article className={`gpt-row ${message.role}`}>
+      <div className="gpt-row-inner">
+        <div className={`gpt-avatar ${isUser ? "user" : "assistant"}`} aria-hidden="true">
+          {isUser ? "Y" : "N"}
+        </div>
+        <div className="gpt-row-body">
+          <div className="gpt-row-meta">
+            <strong>{isUser ? "You" : "Nexus"}</strong>
+            <time dateTime={message.created_at}>{formatTime(message.created_at)}</time>
+          </div>
+          {isUser ? <p className="gpt-user-text">{message.content}</p> : <MessageBody content={message.content} />}
+          {!isUser ? (
+            <AssistantSourceCitations
+              onOpenSource={(source) =>
+                source.source_type === "note" ? onOpenNote?.(source.source_id) : onOpenSource?.(source.source_id)
+              }
+              sources={message.sources}
+            />
+          ) : null}
+        </div>
       </div>
-    </aside>
+    </article>
   );
 }
 
@@ -97,10 +231,12 @@ export function AssistantWorkspace({
   onOpenNote,
   onOpenSource,
   onOpenAdmin,
+  onOpenHome,
 }: {
   onOpenNote?: (id: string) => void;
   onOpenSource?: (id: string) => void;
   onOpenAdmin?: () => void;
+  onOpenHome?: () => void;
 }) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -114,6 +250,7 @@ export function AssistantWorkspace({
   const [groundingMode, setGroundingMode] = useState<"lexical" | "semantic" | "hybrid">("hybrid");
   const [provider, setProvider] = useState<AssistantProviderStatus | null>(null);
   const [sidebarQuery, setSidebarQuery] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -150,7 +287,7 @@ export function AssistantWorkspace({
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "0px";
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [draft]);
 
   async function selectConversation(id: string) {
@@ -170,6 +307,7 @@ export function AssistantWorkspace({
       setConversations((items) => [created, ...items]);
       setConversation({ ...created, messages: [] });
       setErrorKind(null);
+      setSidebarOpen(false);
       textareaRef.current?.focus();
     } catch (reason) {
       setErrorKind("load");
@@ -199,8 +337,8 @@ export function AssistantWorkspace({
     }
   }
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submit(event?: FormEvent) {
+    event?.preventDefault();
     const content = draft.trim();
     if (!content || !conversation || sending) return;
     setSending(true);
@@ -244,228 +382,217 @@ export function AssistantWorkspace({
     }
   }
 
+  function useSuggestion(prompt: string) {
+    setDraft(prompt);
+    textareaRef.current?.focus();
+  }
+
   const providerReady = provider?.state === "configured";
   const providerLabel =
     provider?.state === "configured"
       ? `${provider.label}${provider.model ? ` · ${provider.model}` : ""}`
       : provider?.label ?? "Checking provider…";
+  const empty = !loading && conversation && conversation.messages.length === 0;
 
   return (
-    <section aria-labelledby="assistant-heading" className="nx-chat section-block">
-      <div className="nx-chat-top">
-        <div>
-          <p className="eyebrow">{provider?.provider === "nvidia_nim" ? "NVIDIA NIM" : "Private by default"}</p>
-          <h2 id="assistant-heading">Assistant</h2>
-        </div>
-        <div className="nx-chat-top-meta">
-          <span className={`nx-chat-pill${provider?.state === "disabled" ? " muted" : " live"}`}>{providerLabel}</span>
-          {onOpenAdmin ? (
-            <button className="text-button" onClick={onOpenAdmin} type="button">
-              AI settings
-            </button>
-          ) : null}
-        </div>
-      </div>
+    <section aria-label="Nexus Assistant" className="gpt-chat">
+      <ConversationSidebar
+        items={conversations}
+        onClose={() => setSidebarOpen(false)}
+        onCreate={() => void newConversation()}
+        onOpenAdmin={onOpenAdmin}
+        onOpenHome={onOpenHome}
+        onQuery={setSidebarQuery}
+        onSelect={(id) => void selectConversation(id)}
+        open={sidebarOpen}
+        providerLabel={providerLabel}
+        query={sidebarQuery}
+        selected={conversation?.id ?? null}
+      />
 
-      <div className="nx-chat-shell">
-        <ConversationSidebar
-          items={conversations}
-          onCreate={() => void newConversation()}
-          onQuery={setSidebarQuery}
-          onSelect={(id) => void selectConversation(id)}
-          query={sidebarQuery}
-          selected={conversation?.id ?? null}
-        />
-
-        <div className="nx-chat-main">
-          {loading ? (
-            <div className="nx-chat-empty" role="status">
-              <span className="nx-chat-spinner" aria-hidden="true" />
-              <strong>Loading conversations…</strong>
+      <div className="gpt-main">
+        <header className="gpt-topbar">
+          <button
+            aria-label="Open chats"
+            className="gpt-icon-btn gpt-menu-btn"
+            onClick={() => setSidebarOpen(true)}
+            type="button"
+          >
+            ☰
+          </button>
+          <div className="gpt-model-chip" title={providerLabel}>
+            <span className={`gpt-status-dot${providerReady ? " on" : ""}`} />
+            <div>
+              <strong>Nexus</strong>
+              <span>{provider?.model ?? providerLabel}</span>
             </div>
-          ) : conversation ? (
-            <>
-              <div className="nx-chat-main-head">
-                <div>
-                  <strong>{conversation.title ?? "New conversation"}</strong>
-                  <span>{conversation.message_count} messages · local · server-side model</span>
-                </div>
-                <button className="text-button" onClick={() => void newConversation()} type="button">
-                  New chat
-                </button>
+          </div>
+          <div className="gpt-topbar-actions">
+            <button className="gpt-icon-btn" onClick={() => void newConversation()} title="New chat" type="button">
+              ＋
+            </button>
+            {onOpenAdmin ? (
+              <button className="gpt-text-btn" onClick={onOpenAdmin} type="button">
+                Settings
+              </button>
+            ) : null}
+          </div>
+        </header>
+
+        <div aria-live="polite" className="gpt-scroll">
+          {loading ? (
+            <div className="gpt-empty" role="status">
+              <span className="gpt-spinner" aria-hidden="true" />
+              <p>Loading chats…</p>
+            </div>
+          ) : !conversation ? (
+            <div className="gpt-empty">
+              <div className="gpt-logo" aria-hidden="true">
+                ✦
               </div>
-
-              <div aria-live="polite" className="nx-chat-messages">
-                {conversation.messages.length === 0 ? (
-                  <div className="nx-chat-empty">
-                    <div className="nx-chat-empty-orb" aria-hidden="true">
-                      ✦
-                    </div>
-                    <strong>{provider?.state === "disabled" ? "Connect a model to start" : "How can Nexus help?"}</strong>
-                    <span>
-                      {provider?.state === "disabled"
-                        ? "Open Admin, paste your NVIDIA API key, choose a model, and save. No SSH required."
-                        : "Ask about your system, tasks, notes, or anything you’re building. Tools run on this Pi with confirmation when needed."}
-                    </span>
-                    {provider?.state === "disabled" && onOpenAdmin ? (
-                      <button className="primary-button" onClick={onOpenAdmin} type="button">
-                        Open Admin
-                      </button>
-                    ) : (
-                      <div className="nx-chat-suggestions">
-                        {["Who are you?", "What is 99 × 99?", "/model", "/model list"].map((prompt) => (
-                          <button
-                            className="nx-chat-chip"
-                            key={prompt}
-                            onClick={() => {
-                              setDraft(prompt);
-                              textareaRef.current?.focus();
-                            }}
-                            type="button"
-                          >
-                            {prompt}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  conversation.messages.map((message) => (
-                    <article className={`nx-chat-bubble ${message.role}`} key={message.id}>
-                      <div className="nx-chat-bubble-meta">
-                        <span className="nx-chat-avatar" aria-hidden="true">
-                          {message.role === "user" ? "You" : "N"}
-                        </span>
-                        <span className="nx-chat-name">{message.role === "user" ? "You" : "Nexus"}</span>
-                        <time dateTime={message.created_at}>{formatTime(message.created_at)}</time>
-                      </div>
-                      <div className="nx-chat-bubble-body">
-                        <p>{message.content}</p>
-                        {message.role === "assistant" ? (
-                          <AssistantSourceCitations
-                            onOpenSource={(source) =>
-                              source.source_type === "note" ? onOpenNote?.(source.source_id) : onOpenSource?.(source.source_id)
-                            }
-                            sources={message.sources}
-                          />
-                        ) : null}
-                      </div>
-                    </article>
-                  ))
-                )}
-                {sending ? (
-                  <article className="nx-chat-bubble assistant typing">
-                    <div className="nx-chat-bubble-meta">
-                      <span className="nx-chat-avatar" aria-hidden="true">
-                        N
-                      </span>
-                      <span className="nx-chat-name">Nexus</span>
-                    </div>
-                    <div className="nx-chat-bubble-body">
-                      <span className="nx-chat-typing" aria-label="Thinking">
-                        <i />
-                        <i />
-                        <i />
-                      </span>
-                    </div>
-                  </article>
-                ) : null}
-                <div ref={messageEndRef} />
-              </div>
-
-              {pendingAction ? (
-                <AssistantActionConfirmation
-                  arguments={pendingAction.arguments}
-                  onApprove={() => void approvePending()}
-                  onReject={() => void rejectPending()}
-                  tool={pendingAction.tool}
-                />
-              ) : null}
-
-              {error ? (
-                <div className="inline-state error-state nx-chat-error" role="alert">
-                  <strong>Assistant unavailable.</strong>
-                  <span>{error === "ai_provider_disabled" ? "Connect NVIDIA NIM in Admin to send messages." : error}</span>
-                  {error === "ai_provider_disabled" && onOpenAdmin ? (
-                    <button className="text-button" onClick={onOpenAdmin} type="button">
-                      Open Admin
-                    </button>
-                  ) : errorKind === "send" ? (
-                    <button
-                      className="text-button"
-                      onClick={() => {
-                        setError(null);
-                        setErrorKind(null);
-                      }}
-                      type="button"
-                    >
-                      Dismiss
-                    </button>
-                  ) : (
-                    <button className="text-button" onClick={() => void loadConversations()} type="button">
-                      Retry
-                    </button>
-                  )}
-                </div>
-              ) : null}
-
-              <form className="nx-chat-composer" onSubmit={submit}>
-                <div className="nx-chat-composer-tools">
-                  <label className="nx-chat-toggle">
-                    <input checked={groundingEnabled} onChange={(event) => setGroundingEnabled(event.target.checked)} type="checkbox" />
-                    Use my notes
-                  </label>
-                  {groundingEnabled ? (
-                    <label className="nx-chat-mode">
-                      Mode
-                      <select
-                        aria-label="Grounding retrieval mode"
-                        onChange={(event) => setGroundingMode(event.target.value as typeof groundingMode)}
-                        value={groundingMode}
-                      >
-                        <option value="hybrid">Hybrid</option>
-                        <option value="lexical">Lexical</option>
-                        <option value="semantic">Semantic</option>
-                      </select>
-                    </label>
-                  ) : null}
-                </div>
-                <div className="nx-chat-composer-box">
-                  <textarea
-                    aria-label="Message assistant"
-                    maxLength={4000}
-                    onChange={(event) => setDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        event.currentTarget.form?.requestSubmit();
-                      }
-                    }}
-                    placeholder="Message Nexus… Try /model · Enter to send"
-                    ref={textareaRef}
-                    rows={1}
-                    value={draft}
-                  />
-                  <button className="nx-chat-send" disabled={!draft.trim() || sending || !providerReady} type="submit">
-                    {sending ? "…" : "Send"}
-                  </button>
-                </div>
-                <div className="nx-chat-composer-foot">
-                  <span>
-                    {draft.length}/4000 · Provider stays server-side
-                    {!providerReady ? " · model not connected" : ""}
-                  </span>
-                </div>
-              </form>
-            </>
-          ) : (
-            <div className="nx-chat-empty">
-              <strong>No conversation selected</strong>
-              <button className="primary-button" onClick={() => void newConversation()} type="button">
-                Start chatting
+              <h2>Nexus</h2>
+              <p>Start a chat to talk to your local assistant.</p>
+              <button className="gpt-primary" onClick={() => void newConversation()} type="button">
+                New chat
               </button>
             </div>
+          ) : empty ? (
+            <div className="gpt-empty gpt-welcome">
+              <div className="gpt-logo" aria-hidden="true">
+                ✦
+              </div>
+              <h2>{provider?.state === "disabled" ? "Connect a model to start" : "What can I help with?"}</h2>
+              <p className="gpt-welcome-copy">
+                {provider?.state === "disabled"
+                  ? "Open Admin, add your NVIDIA API key, pick a model, and save. Keys stay on this Pi."
+                  : "ChatGPT-style chat on your Pi — with access to NexusOS notes, tasks, system telemetry, files, and more when you ask."}
+              </p>
+              {provider?.state === "disabled" && onOpenAdmin ? (
+                <button className="gpt-primary" onClick={onOpenAdmin} type="button">
+                  Open Admin
+                </button>
+              ) : (
+                <div className="gpt-suggestion-grid">
+                  {SUGGESTIONS.map((item) => (
+                    <button className="gpt-suggestion" key={item.title} onClick={() => useSuggestion(item.prompt)} type="button">
+                      <strong>{item.title}</strong>
+                      <span>{item.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="gpt-thread-view">
+              {conversation.messages.map((message) => (
+                <ChatRow key={message.id} message={message} onOpenNote={onOpenNote} onOpenSource={onOpenSource} />
+              ))}
+              {sending ? (
+                <article className="gpt-row assistant">
+                  <div className="gpt-row-inner">
+                    <div className="gpt-avatar assistant" aria-hidden="true">
+                      N
+                    </div>
+                    <div className="gpt-row-body">
+                      <div className="gpt-row-meta">
+                        <strong>Nexus</strong>
+                      </div>
+                      <span className="gpt-typing" aria-label="Thinking">
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                    </div>
+                  </div>
+                </article>
+              ) : null}
+              <div ref={messageEndRef} />
+            </div>
           )}
+        </div>
+
+        {pendingAction ? (
+          <div className="gpt-confirm-wrap">
+            <AssistantActionConfirmation
+              arguments={pendingAction.arguments}
+              onApprove={() => void approvePending()}
+              onReject={() => void rejectPending()}
+              tool={pendingAction.tool}
+            />
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="gpt-error" role="alert">
+            <div>
+              <strong>Something went wrong</strong>
+              <span>{error}</span>
+            </div>
+            {errorKind === "send" ? (
+              <button className="gpt-text-btn" onClick={() => { setError(null); setErrorKind(null); }} type="button">
+                Dismiss
+              </button>
+            ) : (
+              <button className="gpt-text-btn" onClick={() => void loadConversations()} type="button">
+                Retry
+              </button>
+            )}
+          </div>
+        ) : null}
+
+        <div className="gpt-composer-wrap">
+          <form className="gpt-composer" onSubmit={(e) => void submit(e)}>
+            <div className="gpt-composer-tools">
+              <label className={`gpt-pill-toggle${groundingEnabled ? " on" : ""}`}>
+                <input checked={groundingEnabled} onChange={(e) => setGroundingEnabled(e.target.checked)} type="checkbox" />
+                NexusOS context
+              </label>
+              {groundingEnabled ? (
+                <label className="gpt-mode">
+                  <span className="sr-only">Retrieval mode</span>
+                  <select
+                    aria-label="Grounding retrieval mode"
+                    onChange={(e) => setGroundingMode(e.target.value as typeof groundingMode)}
+                    value={groundingMode}
+                  >
+                    <option value="hybrid">Hybrid</option>
+                    <option value="lexical">Lexical</option>
+                    <option value="semantic">Semantic</option>
+                  </select>
+                </label>
+              ) : null}
+              <span className="gpt-composer-hint">Notes · tasks · system · files</span>
+            </div>
+            <div className="gpt-composer-box">
+              <textarea
+                aria-label="Message Nexus"
+                maxLength={4000}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void submit();
+                  }
+                }}
+                placeholder={providerReady ? "Message Nexus… Ask anything, or about your Pi" : "Connect a model in Admin to chat"}
+                ref={textareaRef}
+                rows={1}
+                value={draft}
+              />
+              <button
+                aria-label="Send message"
+                className="gpt-send"
+                disabled={!draft.trim() || sending || !providerReady || !conversation}
+                type="submit"
+              >
+                {sending ? "…" : "↑"}
+              </button>
+            </div>
+            <p className="gpt-disclaimer">
+              Nexus can use your NexusOS data when context is on. Sensitive actions need your confirmation.{" "}
+              <kbd>/model</kbd> switches models.
+            </p>
+          </form>
         </div>
       </div>
     </section>
