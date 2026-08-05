@@ -10,7 +10,7 @@ from app.core.config import Settings, get_settings
 from app.db.models import User
 from app.db.session import get_session_factory
 from app.modules.system.admin import _provider_status
-from app.core.runtime_config import mark_runtime_nim_active, runtime_path
+from app.core.runtime_config import runtime_path
 from app.modules.identity.service import bootstrap_owner
 from app.modules.system.adapters.network import read_interfaces
 from app.modules.system.adapters.procfs import read_memory, read_uptime
@@ -118,10 +118,9 @@ def test_browser_nvidia_nim_setup_is_encrypted_redacted_and_disableable(client) 
     csrf = client.cookies.get("nexus_csrf")
     response = client.post("/api/v1/system/admin/nvidia-nim", headers={"X-CSRF-Token": csrf}, json={"api_key": api_key, "model": "meta/llama-3.1-8b-instruct", "embeddings_enabled": False})
     assert response.status_code == 200, response.text
-    assert response.json()["nvidia_nim"] == {"configured": True, "source": "browser", "model": "meta/llama-3.1-8b-instruct", "embeddings_enabled": False, "restart_required": True}
+    assert response.json()["nvidia_nim"] == {"configured": True, "source": "browser", "model": "meta/llama-3.1-8b-instruct", "embeddings_enabled": False, "restart_required": False}
     assert api_key not in response.text
     settings = get_settings()
-    mark_runtime_nim_active(settings.data_dir)
     get_settings.cache_clear()
     refreshed = client.get("/api/v1/system/admin/status")
     assert refreshed.status_code == 200
@@ -129,10 +128,43 @@ def test_browser_nvidia_nim_setup_is_encrypted_redacted_and_disableable(client) 
     encrypted = runtime_path(settings.data_dir)
     assert encrypted.is_file()
     assert api_key.encode() not in encrypted.read_bytes()
+    # Owners can change models without re-entering the saved key.
+    updated = client.post("/api/v1/system/admin/nvidia-nim", headers={"X-CSRF-Token": csrf}, json={"model": "meta/llama-3.1-70b-instruct", "embeddings_enabled": True, "embedding_model": "nvidia/nv-embedqa-e5-v5"})
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["nvidia_nim"]["model"] == "meta/llama-3.1-70b-instruct"
+    assert updated.json()["nvidia_nim"]["embeddings_enabled"] is True
+    assert api_key not in updated.text
     disabled = client.delete("/api/v1/system/admin/nvidia-nim", headers={"X-CSRF-Token": csrf})
     assert disabled.status_code == 200
     assert disabled.json()["nvidia_nim"]["source"] == "none"
     assert not encrypted.exists()
+
+
+def test_nvidia_nim_options_and_test_require_admin(client, monkeypatch) -> None:
+    """Model presets are owner-readable; connection tests stay CSRF-protected."""
+    assert client.get("/api/v1/system/admin/nvidia-nim/options").status_code == 401
+    _bootstrap_owner()
+    login = client.post("/api/v1/auth/login", json={"username": "owner", "password": "correct horse battery staple"})
+    assert login.status_code == 200
+    options = client.get("/api/v1/system/admin/nvidia-nim/options")
+    assert options.status_code == 200
+    body = options.json()
+    assert body["chat_models"]
+    assert body["embedding_models"]
+    assert "nvapi" not in options.text.lower()
+    csrf = client.cookies.get("nexus_csrf")
+    missing_csrf = client.post("/api/v1/system/admin/nvidia-nim/test", json={"api_key": "nvapi-" + "s" * 40, "model": "meta/llama-3.1-8b-instruct"})
+    assert missing_csrf.status_code == 403
+
+    async def _fake_test(settings, *, api_key=None, model=None):
+        from app.modules.system.nim_setup import NimTestResult
+        return NimTestResult(ok=True, detail="Connection successful.", model=model or "meta/llama-3.1-8b-instruct")
+
+    monkeypatch.setattr("app.api.routes.system.test_nim_connection", _fake_test)
+    tested = client.post("/api/v1/system/admin/nvidia-nim/test", headers={"X-CSRF-Token": csrf}, json={"api_key": "nvapi-" + "s" * 40, "model": "meta/llama-3.1-8b-instruct"})
+    assert tested.status_code == 200
+    assert tested.json()["ok"] is True
+    assert "nvapi" not in tested.text
 
 
 def test_browser_nvidia_nim_setup_requires_csrf_and_admin(client) -> None:

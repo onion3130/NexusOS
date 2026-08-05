@@ -15,9 +15,10 @@ type CommandPaletteProps = {
   onLogout: () => void;
   onToggleTheme: () => void;
   onSearch: () => void;
+  onAdmin?: () => void;
 };
 
-export function CommandPalette({ onClose, onLogout, onToggleTheme, onSearch }: CommandPaletteProps) {
+export function CommandPalette({ onClose, onLogout, onToggleTheme, onSearch, onAdmin }: CommandPaletteProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -33,6 +34,7 @@ export function CommandPalette({ onClose, onLogout, onToggleTheme, onSearch }: C
   const commands: Command[] = [
     { id: "overview", label: "Open overview", hint: "Workspace", icon: "◈", action: onClose },
     { id: "search", label: "Search notes", hint: "Sources", icon: "⌕", action: onSearch },
+    ...(onAdmin ? [{ id: "admin", label: "Open Admin / NVIDIA NIM", hint: "Owner setup", icon: "★", action: onAdmin }] : []),
     { id: "theme", label: "Toggle appearance", hint: "Theme", icon: "☼", action: onToggleTheme },
     { id: "logout", label: "Sign out", hint: "Account", icon: "↪", action: onLogout },
   ];

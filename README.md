@@ -21,7 +21,8 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 
 ## Features
 
-- 🤖 **AI assistant** — bounded provider gateway with optional NVIDIA NIM chat models configured server-side
+- 🤖 **AI assistant** — bounded provider gateway with optional NVIDIA NIM chat models configured from the owner Admin panel (no SSH required)
+- ★ **Beginner Admin panel** — connect, test, update, and disable hosted NVIDIA NIM with encrypted on-device key storage
 - ✅ **Task management** — due dates, priorities, categories, tags, recurring schedules, and reminders
 - 📝 **Private notes** — versioned source notes with tags, archive, and soft deletion
 - ◇ **External sources** — bounded UTF-8 text/Markdown uploads and approved-file imports with background ingestion

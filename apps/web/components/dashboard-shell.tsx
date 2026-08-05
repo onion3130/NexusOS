@@ -22,10 +22,30 @@ import { DockerWorkspace } from "./docker-workspace";
 import { SourcesWorkspace } from "./sources-workspace";
 import { NotificationSettingsWorkspace } from "./notification-settings";
 import { AdminStatusPanel } from "./admin-status-panel";
+import { AdminWorkspace } from "./admin-workspace";
 import { LockedState, StatusCard } from "./ui/status-card";
 import type { User } from "../lib/auth";
 
-const navigation = [
+type WorkspaceView =
+  | "overview"
+  | "assistant"
+  | "tasks"
+  | "notifications"
+  | "notes"
+  | "sources"
+  | "search"
+  | "calendar"
+  | "finance"
+  | "media"
+  | "plugins"
+  | "maintenance"
+  | "files"
+  | "projects"
+  | "git"
+  | "docker"
+  | "admin";
+
+const baseNavigation = [
   { label: "Overview", icon: "◈", available: true },
   { label: "Assistant", icon: "✦", available: true },
   { label: "Tasks", icon: "□", available: true },
@@ -48,11 +68,59 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
   const { toggleTheme } = useTheme();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [activeView, setActiveView] = useState<"overview" | "assistant" | "tasks" | "notifications" | "notes" | "sources" | "search" | "calendar" | "finance" | "media" | "plugins" | "maintenance" | "files" | "projects" | "git" | "docker">("overview");
+  const [activeView, setActiveView] = useState<WorkspaceView>("overview");
   const [noteToOpen, setNoteToOpen] = useState<string | null>(null);
+  const isOwner = user.permissions.includes("admin.manage_users");
+  const navigation = isOwner
+    ? [...baseNavigation, { label: "Admin", icon: "★", available: true }]
+    : baseNavigation;
 
-  function viewKey(label: string): typeof activeView {
-    return label.toLowerCase() as typeof activeView;
+  function viewKey(label: string): WorkspaceView {
+    return label.toLowerCase() as WorkspaceView;
+  }
+
+  function titleForView(view: WorkspaceView): string {
+    switch (view) {
+      case "assistant":
+        return "Your assistant workspace.";
+      case "tasks":
+        return "Make progress visible.";
+      case "notifications":
+        return "Stay in the loop.";
+      case "notes":
+        return "Capture what matters.";
+      case "sources":
+        return "Bring your knowledge together.";
+      case "search":
+        return "Find your sources.";
+      case "calendar":
+        return "Make time visible.";
+      case "finance":
+        return "Know your numbers.";
+      case "media":
+        return "See your library.";
+      case "plugins":
+        return "Extend your command center safely.";
+      case "maintenance":
+        return "Keep your host healthy.";
+      case "files":
+        return "See what is changing.";
+      case "projects":
+        return "Your projects, in one place.";
+      case "git":
+        return "Review repository status.";
+      case "docker":
+        return "Inspect your containers.";
+      case "admin":
+        return "Set up NVIDIA NIM without SSH.";
+      default:
+        return `Good morning, ${user.username}.`;
+    }
+  }
+
+  function breadcrumbForView(view: WorkspaceView): string {
+    if (view === "overview") return "Workspace / Overview";
+    return `Workspace / ${view.charAt(0).toUpperCase()}${view.slice(1)}`;
   }
 
   useEffect(() => {
@@ -108,7 +176,10 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
         <header className="topbar">
           <div className="mobile-topbar-row">
             <button aria-controls="mobile-navigation" aria-expanded={mobileNavOpen} aria-label="Toggle navigation" className="menu-button" onClick={() => setMobileNavOpen((open) => !open)} type="button">☰</button>
-            <div><p className="breadcrumb">Workspace / {activeView === "assistant" ? "Assistant" : activeView === "tasks" ? "Tasks" : activeView === "notifications" ? "Notifications" : activeView === "notes" ? "Notes" : activeView === "sources" ? "Sources" : activeView === "search" ? "Search" : activeView === "calendar" ? "Calendar" : activeView === "finance" ? "Finance" : activeView === "media" ? "Media" : activeView === "plugins" ? "Plugins" : activeView === "maintenance" ? "Maintenance" : activeView === "files" ? "Files" : activeView === "projects" ? "Projects" : activeView === "git" ? "Git" : activeView === "docker" ? "Docker" : "Overview"}</p><h1>{activeView === "assistant" ? "Your assistant workspace." : activeView === "tasks" ? "Make progress visible." : activeView === "notifications" ? "Stay in the loop." : activeView === "notes" ? "Capture what matters." : activeView === "sources" ? "Bring your knowledge together." : activeView === "search" ? "Find your sources." : activeView === "calendar" ? "Make time visible." : activeView === "finance" ? "Know your numbers." : activeView === "media" ? "See your library." : activeView === "plugins" ? "Extend your command center safely." : activeView === "maintenance" ? "Keep your host healthy." : activeView === "files" ? "See what is changing." : activeView === "projects" ? "Your projects, in one place." : activeView === "git" ? "Review repository status." : activeView === "docker" ? "Inspect your containers." : `Good morning, ${user.username}.`}</h1></div>
+            <div>
+              <p className="breadcrumb">{breadcrumbForView(activeView)}</p>
+              <h1>{titleForView(activeView)}</h1>
+            </div>
           </div>
           <div className="topbar-actions">
             <NotificationCenter />
@@ -118,37 +189,116 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
           </div>
         </header>
 
-        {activeView === "assistant" ? <AssistantWorkspace onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }} onOpenSource={() => setActiveView("sources")} /> : activeView === "tasks" ? <TaskWorkspace /> : activeView === "notifications" ? <NotificationSettingsWorkspace /> : activeView === "notes" ? <NotesWorkspace initialNoteId={noteToOpen} onSearch={() => setActiveView("search")} /> : activeView === "sources" ? <SourcesWorkspace /> : activeView === "search" ? <SearchWorkspace onBack={() => setActiveView("notes")} onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }} /> : activeView === "calendar" ? <CalendarWorkspace /> : activeView === "finance" ? <FinanceWorkspace /> : activeView === "media" ? <MediaWorkspace /> : activeView === "plugins" ? <PluginsWorkspace /> : activeView === "maintenance" ? <MaintenanceWorkspace /> : activeView === "files" ? <FilesWorkspace /> : activeView === "projects" ? <ProjectsWorkspace /> : activeView === "git" ? <GitWorkspace /> : activeView === "docker" ? <DockerWorkspace /> : <>
-        <div className="hero-card">
-          <div className="hero-copy">
-            <span className="status-pill"><span /> NexusOS v1.3.2 ready</span>
-            <h2>Your digital life, <em>connected.</em></h2>
-            <p>Your private workspace is authenticated and ready. The shell keeps deferred capabilities visible without pretending they are live.</p>
-            <button className="primary-button" onClick={() => setPaletteOpen(true)} type="button">Explore commands <span aria-hidden="true">⌘ K</span></button>
-          </div>
-          <div aria-hidden="true" className="hero-orbit"><div className="orbit orbit-one"><span>AI</span></div><div className="orbit orbit-two"><span>SYS</span></div><div className="orbit orbit-three"><span>✦</span></div><div className="core">N</div></div>
-        </div>
+        {activeView === "assistant" ? (
+          <AssistantWorkspace
+            onOpenAdmin={isOwner ? () => setActiveView("admin") : undefined}
+            onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }}
+            onOpenSource={() => setActiveView("sources")}
+          />
+        ) : activeView === "tasks" ? (
+          <TaskWorkspace />
+        ) : activeView === "notifications" ? (
+          <NotificationSettingsWorkspace />
+        ) : activeView === "notes" ? (
+          <NotesWorkspace initialNoteId={noteToOpen} onSearch={() => setActiveView("search")} />
+        ) : activeView === "sources" ? (
+          <SourcesWorkspace />
+        ) : activeView === "search" ? (
+          <SearchWorkspace onBack={() => setActiveView("notes")} onOpenNote={(id) => { setNoteToOpen(id); setActiveView("notes"); }} />
+        ) : activeView === "calendar" ? (
+          <CalendarWorkspace />
+        ) : activeView === "finance" ? (
+          <FinanceWorkspace />
+        ) : activeView === "media" ? (
+          <MediaWorkspace />
+        ) : activeView === "plugins" ? (
+          <PluginsWorkspace />
+        ) : activeView === "maintenance" ? (
+          <MaintenanceWorkspace />
+        ) : activeView === "files" ? (
+          <FilesWorkspace />
+        ) : activeView === "projects" ? (
+          <ProjectsWorkspace />
+        ) : activeView === "git" ? (
+          <GitWorkspace />
+        ) : activeView === "docker" ? (
+          <DockerWorkspace />
+        ) : activeView === "admin" && isOwner ? (
+          <AdminWorkspace onOpenAssistant={() => setActiveView("assistant")} />
+        ) : (
+          <>
+            <div className="hero-card">
+              <div className="hero-copy">
+                <span className="status-pill"><span /> NexusOS v1.3.2 ready</span>
+                <h2>Your digital life, <em>connected.</em></h2>
+                <p>Your private workspace is authenticated and ready. Connect NVIDIA NIM from Admin when you want the Assistant online — no SSH needed.</p>
+                <div className="hero-actions">
+                  {isOwner && (
+                    <button className="primary-button" onClick={() => setActiveView("admin")} type="button">
+                      Open Admin
+                    </button>
+                  )}
+                  <button className="refresh-button" onClick={() => setPaletteOpen(true)} type="button">
+                    Explore commands <span aria-hidden="true">⌘ K</span>
+                  </button>
+                </div>
+              </div>
+              <div aria-hidden="true" className="hero-orbit">
+                <div className="orbit orbit-one"><span>AI</span></div>
+                <div className="orbit orbit-two"><span>SYS</span></div>
+                <div className="orbit orbit-three"><span>✦</span></div>
+                <div className="core">N</div>
+              </div>
+            </div>
 
-        {user.permissions.includes("admin.manage_users") && <section aria-labelledby="status-heading" className="section-block">
-          <div className="section-heading"><div><p className="eyebrow">At a glance</p><h2 id="status-heading">System status</h2></div><span className="updated">Authenticated locally</span></div>
-          <AdminStatusPanel />
-        </section>}
+            {isOwner && (
+              <section aria-labelledby="status-heading" className="section-block">
+                <div className="section-heading">
+                  <div>
+                    <p className="eyebrow">At a glance</p>
+                    <h2 id="status-heading">System status</h2>
+                  </div>
+                  <span className="updated">Authenticated locally</span>
+                </div>
+                <AdminStatusPanel onOpenAdmin={() => setActiveView("admin")} />
+              </section>
+            )}
 
-        <SystemOverview />
+            <SystemOverview />
 
-        <section aria-labelledby="next-heading" className="section-block">
-          <div className="section-heading"><div><p className="eyebrow">Workspace status</p><h2 id="next-heading">Build your personal workspace</h2></div><span className="updated">No feature data loaded</span></div>
-          <StatusCard action={<span className="lock-label">v1.0 foundation live</span>} description="The assistant gateway is available with owned conversations, bounded provider calls, and read-only system tools." eyebrow="Now available" icon="✦" title="Your assistant is ready" />
-        </section>
+            <section aria-labelledby="next-heading" className="section-block">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Workspace status</p>
+                  <h2 id="next-heading">Build your personal workspace</h2>
+                </div>
+                <span className="updated">No feature data loaded</span>
+              </div>
+              <StatusCard
+                action={<span className="lock-label">v1.0 foundation live</span>}
+                description="The assistant gateway is available with owned conversations, bounded provider calls, and read-only system tools."
+                eyebrow="Now available"
+                icon="✦"
+                title="Your assistant is ready"
+              />
+            </section>
 
-        <section aria-label="Workspace modules" className="locked-grid">
-          <LockedState description="Notes and scoped search are available from the workspace navigation." title="Notes" />
-        </section>
-
-        </>}
+            <section aria-label="Workspace modules" className="locked-grid">
+              <LockedState description="Notes and scoped search are available from the workspace navigation." title="Notes" />
+            </section>
+          </>
+        )}
         <footer>Local-first. Private by default. <span>NexusOS 1.3.2</span></footer>
       </section>
-      {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} onLogout={signOut} onSearch={() => { setPaletteOpen(false); setActiveView("search"); }} onToggleTheme={() => { toggleTheme(); setPaletteOpen(false); }} />}
+      {paletteOpen && (
+        <CommandPalette
+          onAdmin={isOwner ? () => { setPaletteOpen(false); setActiveView("admin"); } : undefined}
+          onClose={() => setPaletteOpen(false)}
+          onLogout={signOut}
+          onSearch={() => { setPaletteOpen(false); setActiveView("search"); }}
+          onToggleTheme={() => { toggleTheme(); setPaletteOpen(false); }}
+        />
+      )}
     </main>
   );
 }

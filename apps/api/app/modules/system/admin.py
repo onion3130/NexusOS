@@ -21,7 +21,7 @@ def assistant_provider_status(settings: Settings) -> AssistantProviderStatus:
             label="AI disabled",
             state="disabled",
             model=None,
-            detail="Configure NVIDIA NIM on the server to enable the Assistant",
+            detail="Open Admin and connect NVIDIA NIM to enable the Assistant — no SSH required",
         )
     label = {
         "nvidia_nim": "NVIDIA NIM",

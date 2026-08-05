@@ -25,14 +25,54 @@ export type AdminStatus = {
   nvidia_nim: NimStatus;
 };
 
+export type NimChatPreset = {
+  id: string;
+  label: string;
+  description: string;
+  recommended?: boolean;
+};
+
+export type NimEmbeddingPreset = {
+  id: string;
+  label: string;
+  description: string;
+  recommended?: boolean;
+};
+
+export type NimOptions = {
+  chat_endpoint: string;
+  embedding_endpoint: string;
+  chat_models: NimChatPreset[];
+  embedding_models: NimEmbeddingPreset[];
+  help_text: string;
+};
+
+export type NimTestResult = {
+  ok: boolean;
+  detail: string;
+  model: string | null;
+  embeddings_tested: boolean;
+};
+
+async function parseError(response: Response, fallback: string): Promise<string> {
+  const body = await response.json().catch(() => null) as { detail?: string } | null;
+  return body?.detail ?? fallback;
+}
+
 export async function readAdminStatus(): Promise<AdminStatus> {
   const response = await authenticatedFetch("/api/v1/system/admin/status", { cache: "no-store" });
   if (!response.ok) throw new Error(`Admin status request failed with ${response.status}`);
   return response.json() as Promise<AdminStatus>;
 }
 
+export async function readNimOptions(): Promise<NimOptions> {
+  const response = await authenticatedFetch("/api/v1/system/admin/nvidia-nim/options", { cache: "no-store" });
+  if (!response.ok) throw new Error(`NVIDIA NIM options request failed with ${response.status}`);
+  return response.json() as Promise<NimOptions>;
+}
+
 export async function configureNvidiaNim(payload: {
-  api_key: string;
+  api_key?: string;
   model: string;
   embeddings_enabled: boolean;
   embedding_model?: string;
@@ -42,11 +82,18 @@ export async function configureNvidiaNim(payload: {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!response.ok) {
-    const body = await response.json().catch(() => null) as { detail?: string } | null;
-    throw new Error(body?.detail ?? `NVIDIA NIM setup failed with ${response.status}`);
-  }
+  if (!response.ok) throw new Error(await parseError(response, `NVIDIA NIM setup failed with ${response.status}`));
   return response.json() as Promise<AdminStatus>;
+}
+
+export async function testNvidiaNim(payload: { api_key?: string; model?: string } = {}): Promise<NimTestResult> {
+  const response = await authenticatedFetch("/api/v1/system/admin/nvidia-nim/test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) throw new Error(await parseError(response, `NVIDIA NIM test failed with ${response.status}`));
+  return response.json() as Promise<NimTestResult>;
 }
 
 export async function disableNvidiaNim(): Promise<AdminStatus> {

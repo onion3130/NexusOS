@@ -29,12 +29,17 @@ def _stop(_signum, _frame) -> None:
 
 
 def main() -> int:
-    """Poll due reminders with bounded batches until shutdown."""
-    settings = get_settings()
-    mark_runtime_nim_active(settings.data_dir)
+    """Poll due reminders with bounded batches until shutdown.
+
+    Settings are reloaded every cycle so browser-managed NVIDIA NIM changes
+    apply without SSH or a manual container restart.
+    """
     signal.signal(signal.SIGTERM, _stop)
     signal.signal(signal.SIGINT, _stop)
     while _running:
+        get_settings.cache_clear()
+        settings = get_settings()
+        mark_runtime_nim_active(settings.data_dir)
         session = get_session_factory()()
         try:
             process_due_reminders(session, batch_size=settings.task_worker_batch_size)

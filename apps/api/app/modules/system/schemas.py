@@ -113,12 +113,60 @@ class NimStatus(BaseModel):
 
 
 class NimSetupRequest(BaseModel):
-    """Bounded browser setup payload; the API never echoes the key."""
+    """Bounded browser setup payload; the API never echoes the key.
 
-    api_key: str = Field(min_length=20, max_length=512)
+    ``api_key`` may be omitted when updating an existing browser-managed
+    configuration so owners can change models without re-entering secrets.
+    """
+
+    api_key: str | None = Field(default=None, min_length=20, max_length=512)
     model: str = Field(min_length=1, max_length=160)
     embeddings_enabled: bool = False
     embedding_model: str | None = Field(default=None, max_length=160)
+
+
+class NimTestRequest(BaseModel):
+    """Optional temporary credentials for a bounded NIM connection test."""
+
+    api_key: str | None = Field(default=None, min_length=20, max_length=512)
+    model: str | None = Field(default=None, min_length=1, max_length=160)
+
+
+class NimTestResponse(BaseModel):
+    """Redacted connection-test result for the owner admin panel."""
+
+    ok: bool
+    detail: str
+    model: str | None = None
+    embeddings_tested: bool = False
+
+
+class NimChatPreset(BaseModel):
+    """Beginner-friendly hosted chat model choice."""
+
+    id: str
+    label: str
+    description: str
+    recommended: bool = False
+
+
+class NimEmbeddingPreset(BaseModel):
+    """Beginner-friendly hosted embedding model choice."""
+
+    id: str
+    label: str
+    description: str
+    recommended: bool = False
+
+
+class NimOptionsResponse(BaseModel):
+    """Static setup guidance and model presets for the admin UI."""
+
+    chat_endpoint: str
+    embedding_endpoint: str
+    chat_models: list[NimChatPreset]
+    embedding_models: list[NimEmbeddingPreset]
+    help_text: str
 
 
 class AdminStatusResponse(BaseModel):

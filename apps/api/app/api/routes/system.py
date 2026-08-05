@@ -5,14 +5,23 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session as OrmSession
 
-from app.core.runtime_config import RuntimeNimConfig, delete_runtime_nim, write_runtime_nim
+from app.core.runtime_config import delete_runtime_nim, mark_runtime_nim_active, write_runtime_nim
 
 from app.core.config import Settings, get_settings
 from app.modules.identity.dependencies import AuthContext, get_auth_context
 from app.modules.identity.dependencies import require_permission
 from app.db.session import get_db
 from app.modules.system.admin import collect_admin_status
-from app.modules.system.schemas import AdminStatusResponse, AssistantProviderStatus, NimSetupRequest, SystemOverviewResponse
+from app.modules.system.nim_setup import nim_options, resolve_runtime_config, test_nim_connection
+from app.modules.system.schemas import (
+    AdminStatusResponse,
+    AssistantProviderStatus,
+    NimOptionsResponse,
+    NimSetupRequest,
+    NimTestRequest,
+    NimTestResponse,
+    SystemOverviewResponse,
+)
 from app.modules.system.service import SystemService
 
 router = APIRouter(prefix="/api/v1/system", tags=["system"])
@@ -39,6 +48,28 @@ def assistant_provider(
     return assistant_provider_status(settings)
 
 
+@router.get("/admin/nvidia-nim/options", response_model=NimOptionsResponse)
+def nvidia_nim_options(context: AuthContext = Depends(get_auth_context)) -> NimOptionsResponse:
+    """Return beginner-friendly model presets and setup guidance."""
+    require_permission("admin.manage_users", context)
+    return nim_options()
+
+
+@router.post("/admin/nvidia-nim/test", response_model=NimTestResponse)
+async def test_nvidia_nim(
+    payload: NimTestRequest,
+    request: Request,
+    context: AuthContext = Depends(get_auth_context),
+    settings: Settings = Depends(get_settings),
+) -> NimTestResponse:
+    """Run one bounded hosted-NIM request without returning credentials."""
+    from app.modules.identity.dependencies import require_csrf
+    require_csrf(request, context)
+    require_permission("admin.manage_users", context)
+    result = await test_nim_connection(settings, api_key=payload.api_key, model=payload.model)
+    return NimTestResponse(ok=result.ok, detail=result.detail, model=result.model, embeddings_tested=result.embeddings_tested)
+
+
 @router.post("/admin/nvidia-nim", response_model=AdminStatusResponse)
 def configure_nvidia_nim(
     payload: NimSetupRequest,
@@ -53,11 +84,16 @@ def configure_nvidia_nim(
     require_csrf(request, context)
     require_permission("admin.manage_users", context)
     try:
-        config = RuntimeNimConfig(api_key=payload.api_key, model=payload.model, embeddings_enabled=payload.embeddings_enabled, embedding_model=payload.embedding_model)
-        if config.embeddings_enabled and not config.embedding_model:
-            raise ValueError("embedding_model is required when embeddings are enabled")
+        config = resolve_runtime_config(
+            settings,
+            api_key=payload.api_key,
+            model=payload.model,
+            embeddings_enabled=payload.embeddings_enabled,
+            embedding_model=payload.embedding_model,
+        )
         write_runtime_nim(settings.data_dir, settings.jwt_secret.get_secret_value(), config)
-        add_audit_event(db, action="system.nvidia_nim_configure", result="success", actor_user_id=context.user.id)
+        mark_runtime_nim_active(settings.data_dir)
+        add_audit_event(db, action="system.nvidia_nim_configure", result="success", actor_user_id=context.user.id, metadata={"model": config.model, "embeddings_enabled": config.embeddings_enabled})
         db.commit()
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

@@ -4,6 +4,14 @@ All notable NexusOS changes are recorded here. NexusOS releases use Semantic Ver
 
 ## [Unreleased]
 
+### Beginner Admin workspace for NVIDIA NIM
+
+- Added a dedicated owner-only **Admin** workspace with step-by-step NVIDIA NIM setup so beginners never need SSH or terminal edits for normal AI configuration.
+- Supports connecting, testing, updating (including model changes without re-entering the key), disabling, chat/embedding model presets, and custom hosted model ids.
+- Encrypts browser-managed NIM settings under the private data volume using a key derived from the server JWT secret; keys never enter SQLite, browser storage, logs, or API responses.
+- Activates saved configuration immediately for the API and hot-reloads it in the worker each cycle so container restarts are not required.
+- Added Admin status summary on Overview, Assistant empty-state guidance that links to Admin, command-palette entry, CSRF/permission enforcement, audit events, and redacted options/test endpoints.
+
 ### NVIDIA NIM browser setup
 
 - Added an owner-only System status setup form for connecting hosted NVIDIA NIM with an API key and model.
