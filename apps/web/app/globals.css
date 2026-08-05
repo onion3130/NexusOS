@@ -203,3 +203,17 @@ footer { color: var(--muted); font-size: 10px; margin-top: 54px; } footer span {
     transform: none !important;
   }
 }
+
+.admin-section-nav-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.admin-update-meta { display: grid; gap: 10px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.admin-update-meta div { background: color-mix(in srgb, var(--panel-hover) 70%, transparent); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 4px; padding: 12px 14px; }
+.admin-update-meta strong { color: var(--muted); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+.admin-update-meta span { font-size: 13px; overflow-wrap: anywhere; }
+.admin-update-log { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 12px; color: var(--muted-strong); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; line-height: 1.5; margin: 0; max-height: 220px; overflow: auto; padding: 12px 14px; white-space: pre-wrap; }
+.admin-update-card { gap: 16px; }
+@media (max-width: 900px) {
+  .admin-section-nav-5, .admin-update-meta { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 800px) {
+  .admin-section-nav-5, .admin-update-meta { grid-template-columns: 1fr; }
+}

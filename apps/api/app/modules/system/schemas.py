@@ -182,6 +182,33 @@ class AdminStatusResponse(BaseModel):
     nvidia_nim: NimStatus = Field(default_factory=lambda: NimStatus(configured=False, source="none"))
 
 
+class SoftwareUpdateRequest(BaseModel):
+    """Owner request for a fixed host-side software update or check."""
+
+    model_config = {"extra": "forbid"}
+
+    action: Literal["check", "apply"] = "apply"
+    confirm: bool = False
+
+
+class SoftwareUpdateStatusResponse(BaseModel):
+    """Redacted software-update handshake status for the Admin panel."""
+
+    state: Literal["idle", "queued", "running", "succeeded", "failed", "agent_missing"]
+    action: Literal["check", "apply"] | None = None
+    request_id: str | None = None
+    message: str
+    agent_available: bool = False
+    current_version: str
+    current_commit: str | None = None
+    target_commit: str | None = None
+    requested_at: datetime | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    log_tail: str | None = None
+    can_request: bool = True
+
+
 class SystemOverviewResponse(BaseModel):
     """Authenticated read-only Raspberry Pi system overview."""
 

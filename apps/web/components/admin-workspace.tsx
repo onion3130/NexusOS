@@ -6,14 +6,17 @@ import {
   disableNvidiaNim,
   readAdminStatus,
   readNimOptions,
+  readSoftwareUpdateStatus,
+  requestSoftwareUpdate,
   testNvidiaNim,
   type AdminStatus,
   type AdminStatusCard,
   type NimOptions,
   type NimTestResult,
+  type SoftwareUpdateStatus,
 } from "../lib/admin";
 
-type AdminSection = "overview" | "ai" | "operations" | "host";
+type AdminSection = "overview" | "ai" | "updates" | "operations" | "host";
 
 type AdminNavigateTarget =
   | "assistant"
@@ -138,13 +141,20 @@ export function AdminWorkspace({ onOpenAssistant, onNavigate }: AdminWorkspacePr
   const [embeddingModel, setEmbeddingModel] = useState("nvidia/nv-embedqa-e5-v5");
   const [customEmbedding, setCustomEmbedding] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<SoftwareUpdateStatus | null>(null);
+  const [updateBusy, setUpdateBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [nextStatus, nextOptions] = await Promise.all([readAdminStatus(), readNimOptions()]);
+      const [nextStatus, nextOptions, nextUpdate] = await Promise.all([
+        readAdminStatus(),
+        readNimOptions(),
+        readSoftwareUpdateStatus(),
+      ]);
       setStatus(nextStatus);
       setOptions(nextOptions);
+      setUpdateStatus(nextUpdate);
       if (nextStatus.nvidia_nim.model) {
         const known = nextOptions.chat_models.some((item) => item.id === nextStatus.nvidia_nim.model);
         setModel(nextStatus.nvidia_nim.model);
@@ -162,6 +172,16 @@ export function AdminWorkspace({ onOpenAssistant, onNavigate }: AdminWorkspacePr
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!updateStatus || !["queued", "running"].includes(updateStatus.state)) return;
+    const timer = window.setInterval(() => {
+      void readSoftwareUpdateStatus()
+        .then(setUpdateStatus)
+        .catch(() => undefined);
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [updateStatus?.state]);
 
   async function saveNim(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -234,15 +254,46 @@ export function AdminWorkspace({ onOpenAssistant, onNavigate }: AdminWorkspacePr
     onNavigate?.(target);
   }
 
+  async function runUpdate(action: "check" | "apply") {
+    if (action === "apply") {
+      const ok = window.confirm(
+        "Update NexusOS from GitHub now?\n\nThis will pull the latest main branch, rebuild Docker images, run migrations, and restart containers. The UI may briefly disconnect.",
+      );
+      if (!ok) return;
+    }
+    setUpdateBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const next = await requestSoftwareUpdate(action, action === "apply");
+      setUpdateStatus(next);
+      setNotice(action === "check" ? "Checking for updates on the host…" : "Update queued on the host agent…");
+      setSection("updates");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Software update request failed");
+    } finally {
+      setUpdateBusy(false);
+    }
+  }
+
   const configured = Boolean(status?.nvidia_nim.configured);
   const source = status?.nvidia_nim.source ?? "none";
   const canSave = Boolean(model.trim()) && (Boolean(apiKey.trim()) || (configured && source === "browser"));
   const sections: Array<{ id: AdminSection; label: string; hint: string }> = [
     { id: "overview", label: "Overview", hint: "Health at a glance" },
     { id: "ai", label: "AI setup", hint: "NVIDIA NIM" },
+    { id: "updates", label: "Updates", hint: "Pull & rebuild" },
     { id: "operations", label: "Operations", hint: "Web control center" },
     { id: "host", label: "Host only", hint: "What still needs SSH" },
   ];
+  const updateBadgeState =
+    updateStatus?.state === "succeeded"
+      ? "ready"
+      : updateStatus?.state === "failed" || updateStatus?.state === "agent_missing"
+        ? "attention"
+        : updateStatus?.state === "running" || updateStatus?.state === "queued"
+          ? "attention"
+          : "disabled";
 
   return (
     <section aria-labelledby="admin-heading" className="workspace-view section-block admin-workspace">
@@ -257,11 +308,11 @@ export function AdminWorkspace({ onOpenAssistant, onNavigate }: AdminWorkspacePr
       </div>
 
       <p className="workspace-help admin-lead">
-        Day-to-day setup lives here and in linked workspaces — no terminal for normal AI, backups, notifications testing, sources, or plugins.
-        Install, upgrades, and host secrets stay on the Pi for safety.
+        Day-to-day setup lives here and in linked workspaces — no terminal for normal AI, software updates, backups, sources, or plugins.
+        First-time host secrets and agent install stay on the Pi for safety.
       </p>
 
-      <nav aria-label="Admin sections" className="admin-section-nav">
+      <nav aria-label="Admin sections" className="admin-section-nav admin-section-nav-5">
         {sections.map((item) => (
           <button
             aria-current={section === item.id ? "page" : undefined}
@@ -330,8 +381,8 @@ export function AdminWorkspace({ onOpenAssistant, onNavigate }: AdminWorkspacePr
                   <h3>No terminal needed</h3>
                   <ul>
                     <li>Connect / test / update / disable NVIDIA NIM</li>
+                    <li>Check for updates and apply GitHub pulls</li>
                     <li>Backups, restore, retention (Maintenance)</li>
-                    <li>Notification test-send status</li>
                     <li>Sources upload, import, sync</li>
                     <li>Plugin rescan and lifecycle</li>
                     <li>Tasks, notes, calendar, finance, media</li>
@@ -340,8 +391,8 @@ export function AdminWorkspace({ onOpenAssistant, onNavigate }: AdminWorkspacePr
                     <button className="primary-button" onClick={() => setSection("ai")} type="button">
                       Set up AI
                     </button>
-                    <button className="refresh-button" onClick={() => setSection("operations")} type="button">
-                      Browse operations
+                    <button className="refresh-button" onClick={() => setSection("updates")} type="button">
+                      Software updates
                     </button>
                   </div>
                 </article>
@@ -349,17 +400,95 @@ export function AdminWorkspace({ onOpenAssistant, onNavigate }: AdminWorkspacePr
                   <p className="eyebrow">Still on the Pi host</p>
                   <h3>First install & advanced</h3>
                   <ul>
-                    <li>Docker install, image rebuild, compose upgrades</li>
+                    <li>One-time update-agent install (systemd)</li>
                     <li>JWT secret and base <code>.env</code> creation</li>
                     <li>Email/push channel secrets (env for now)</li>
                     <li>Workspace/media roots, backup encryption keys</li>
-                    <li>Owner bootstrap and DB migration apply</li>
+                    <li>Initial Docker install and first owner bootstrap</li>
                   </ul>
                   <button className="text-button" onClick={() => setSection("host")} type="button">
                     See full host-only list
                   </button>
                 </article>
               </div>
+            </div>
+          )}
+
+          {section === "updates" && (
+            <div className="admin-stack">
+              <article className="admin-host-card admin-fade-in admin-update-card">
+                <div className="admin-nim-header">
+                  <div>
+                    <p className="eyebrow">Software updates</p>
+                    <h3>Update NexusOS from GitHub</h3>
+                    <p>
+                      Queue a fixed host update: pull <code>main</code>, rebuild Docker images, run migrations, and restart services. The API never
+                      runs shell commands — the host update agent does the work.
+                    </p>
+                  </div>
+                  <span className="admin-nim-status-pill" data-state={updateBadgeState}>
+                    {updateStatus?.state ?? "idle"}
+                  </span>
+                </div>
+
+                <div className="admin-update-meta">
+                  <div>
+                    <strong>App version</strong>
+                    <span>{updateStatus?.current_version ?? status.version}</span>
+                  </div>
+                  <div>
+                    <strong>Current commit</strong>
+                    <span>{updateStatus?.current_commit ?? "—"}</span>
+                  </div>
+                  <div>
+                    <strong>Target commit</strong>
+                    <span>{updateStatus?.target_commit ?? "—"}</span>
+                  </div>
+                  <div>
+                    <strong>Host agent</strong>
+                    <span>{updateStatus?.agent_available ? "Online" : "Not seen recently"}</span>
+                  </div>
+                </div>
+
+                <p className="form-help">{updateStatus?.message ?? "Loading update status…"}</p>
+
+                {updateStatus?.state === "agent_missing" && (
+                  <div className="inline-state warning-state" role="status">
+                    <strong>Host agent required once.</strong>
+                    <span>
+                      Enable <code>nexus-update-agent.service</code> on the Pi. After that, updates stay fully web-driven.
+                    </span>
+                  </div>
+                )}
+
+                <div className="admin-nim-actions">
+                  <button
+                    className="refresh-button"
+                    disabled={updateBusy || updateStatus?.can_request === false}
+                    onClick={() => void runUpdate("check")}
+                    type="button"
+                  >
+                    {updateBusy ? "Working…" : "Check for updates"}
+                  </button>
+                  <button
+                    className="primary-button"
+                    disabled={updateBusy || updateStatus?.can_request === false}
+                    onClick={() => void runUpdate("apply")}
+                    type="button"
+                  >
+                    {updateBusy ? "Queueing…" : "Update now"}
+                  </button>
+                  <button className="text-button" disabled={loading} onClick={() => void refresh()} type="button">
+                    Refresh status
+                  </button>
+                </div>
+
+                {updateStatus?.log_tail && (
+                  <pre className="admin-update-log" tabIndex={0}>
+                    {updateStatus.log_tail}
+                  </pre>
+                )}
+              </article>
             </div>
           )}
 
@@ -619,10 +748,10 @@ export function AdminWorkspace({ onOpenAssistant, onNavigate }: AdminWorkspacePr
                 </p>
                 <div className="admin-host-grid">
                   <div>
-                    <strong>Install & updates</strong>
+                    <strong>One-time / rare</strong>
                     <ul>
-                      <li>Clone/pull the repo and rebuild Docker images</li>
-                      <li>Apply database migrations (<code>alembic upgrade</code>)</li>
+                      <li>Install Docker and first clone</li>
+                      <li>Enable <code>nexus-update-agent</code> once</li>
                       <li>Bootstrap the first owner account</li>
                       <li>Hardened proxy / systemd unit setup</li>
                     </ul>
@@ -642,15 +771,16 @@ export function AdminWorkspace({ onOpenAssistant, onNavigate }: AdminWorkspacePr
                     <strong>Never from the browser</strong>
                     <ul>
                       <li>Arbitrary shell, reboot, package installs</li>
-                      <li>Docker daemon control / compose rebuild</li>
+                      <li>Unconstrained Docker/daemon control</li>
                       <li>Editing host filesystem paths from clients</li>
                       <li>Exposing private provider endpoints</li>
                     </ul>
                   </div>
                 </div>
                 <p className="form-help">
-                  Daily AI setup, assistant use, productivity apps, source sync, and confirmed maintenance actions are already web-native.
-                  Host-only items stay terminal on purpose so a stolen session cannot reconfigure the machine.
+                  Software updates are web-native after the host agent is installed. AI setup, assistant use, productivity apps, source sync, and
+                  confirmed maintenance actions are already web-native. Remaining host-only items stay terminal so a stolen session cannot reconfigure
+                  the machine.
                 </p>
               </article>
             </div>

@@ -20,9 +20,12 @@ from app.modules.system.schemas import (
     NimSetupRequest,
     NimTestRequest,
     NimTestResponse,
+    SoftwareUpdateRequest,
+    SoftwareUpdateStatusResponse,
     SystemOverviewResponse,
 )
 from app.modules.system.service import SystemService
+from app.modules.system.software_update import read_software_update_status, request_software_update
 
 router = APIRouter(prefix="/api/v1/system", tags=["system"])
 
@@ -131,3 +134,49 @@ def admin_status(
     """Return redacted system/provider/storage status for authorized owners."""
     require_permission("admin.manage_users", context)
     return collect_admin_status(settings)
+
+
+@router.get("/admin/update", response_model=SoftwareUpdateStatusResponse)
+def software_update_status(
+    context: AuthContext = Depends(get_auth_context),
+    settings: Settings = Depends(get_settings),
+) -> SoftwareUpdateStatusResponse:
+    """Return redacted software-update status for the host update agent handshake."""
+    require_permission("admin.manage_users", context)
+    return SoftwareUpdateStatusResponse.model_validate(read_software_update_status(settings).model_dump())
+
+
+@router.post("/admin/update", response_model=SoftwareUpdateStatusResponse)
+def software_update_request(
+    payload: SoftwareUpdateRequest,
+    request: Request,
+    context: AuthContext = Depends(get_auth_context),
+    settings: Settings = Depends(get_settings),
+    db: OrmSession = Depends(get_db),
+) -> SoftwareUpdateStatusResponse:
+    """Queue a fixed host-side check or apply update without executing shell in-process."""
+    from app.modules.identity.dependencies import require_csrf
+    from app.modules.identity.service import add_audit_event
+    require_csrf(request, context)
+    require_permission("admin.manage_users", context)
+    try:
+        status = request_software_update(settings, user_id=context.user.id, action=payload.action, confirm=payload.confirm)
+    except ValueError as exc:
+        code = str(exc)
+        if code == "confirm_required":
+            raise HTTPException(status_code=422, detail="confirm_required") from exc
+        if code == "update_busy":
+            raise HTTPException(status_code=409, detail="update_busy") from exc
+        raise HTTPException(status_code=422, detail=code) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=503, detail="update_storage_unavailable") from exc
+    add_audit_event(
+        db,
+        action="system.software_update_request",
+        result="success",
+        actor_user_id=context.user.id,
+        target=status.request_id,
+        metadata={"action": payload.action},
+    )
+    db.commit()
+    return SoftwareUpdateStatusResponse.model_validate(status.model_dump())

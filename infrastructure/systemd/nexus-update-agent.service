@@ -1,0 +1,30 @@
+[Unit]
+Description=NexusOS host software update agent
+Documentation=file:///home/pi/NexusOS/docs/DEPLOYMENT.md
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/NexusOS
+Environment=NEXUS_REPO_DIR=/home/pi/NexusOS
+Environment=NEXUS_DATA_DIR=/home/pi/nexus-data/db
+Environment=NEXUS_UPDATE_BRANCH=main
+Environment=NEXUS_UPDATE_POLL_SECONDS=10
+Environment=NEXUS_COMPOSE_ENV_FILE=.env
+ExecStart=/bin/bash /home/pi/NexusOS/scripts/nexus-update-agent.sh
+Restart=always
+RestartSec=5
+# Builds on Raspberry Pi can take a long time.
+TimeoutStartSec=0
+TimeoutStopSec=30
+
+# The agent only runs fixed git/compose steps from configured absolute paths.
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

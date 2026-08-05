@@ -101,3 +101,35 @@ export async function disableNvidiaNim(): Promise<AdminStatus> {
   if (!response.ok) throw new Error(`NVIDIA NIM disable failed with ${response.status}`);
   return response.json() as Promise<AdminStatus>;
 }
+
+export type SoftwareUpdateStatus = {
+  state: "idle" | "queued" | "running" | "succeeded" | "failed" | "agent_missing";
+  action: "check" | "apply" | null;
+  request_id: string | null;
+  message: string;
+  agent_available: boolean;
+  current_version: string;
+  current_commit: string | null;
+  target_commit: string | null;
+  requested_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  log_tail: string | null;
+  can_request: boolean;
+};
+
+export async function readSoftwareUpdateStatus(): Promise<SoftwareUpdateStatus> {
+  const response = await authenticatedFetch("/api/v1/system/admin/update", { cache: "no-store" });
+  if (!response.ok) throw new Error(`Software update status failed with ${response.status}`);
+  return response.json() as Promise<SoftwareUpdateStatus>;
+}
+
+export async function requestSoftwareUpdate(action: "check" | "apply", confirm = false): Promise<SoftwareUpdateStatus> {
+  const response = await authenticatedFetch("/api/v1/system/admin/update", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, confirm }),
+  });
+  if (!response.ok) throw new Error(await parseError(response, `Software update request failed with ${response.status}`));
+  return response.json() as Promise<SoftwareUpdateStatus>;
+}

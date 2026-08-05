@@ -23,6 +23,30 @@
 
 The worker shares the API's SQLite data mount and read-only `/var/lib/nexus/plugins` mount, publishes no host port, and runs `python -m app.worker`. It also performs bounded approved-root source synchronization checks; synchronization reads only server-configured `WORKSPACE_ROOTS` and remains disabled unless explicitly enabled per imported approved file. Run exactly one worker in the current deployment topology. If hosted NVIDIA NIM is enabled, the API and worker receive the server-side credential through the private environment contract or the encrypted browser-managed runtime file; never expose it to the web container or browser. From the owner System status panel, enter the NIM key and model, then restart `nexus-api` and `nexus-worker` so both processes reload the encrypted configuration. Plugin code is trusted operator-installed code; use a separate VM/container boundary for untrusted extensions.
 
+## Web UI software updates
+
+NexusOS can be updated from **Admin → Updates** without SSH after a one-time host agent install.
+
+1. The owner confirms **Update now** in the browser.
+2. The API writes a bounded request under `${DATA_DIR}/db/runtime/update/` (never runs shell itself).
+3. `nexus-update-agent.service` on the Pi claims the request and runs only fixed steps:
+   - `git fetch` + fast-forward merge of `main`
+   - `docker compose build` for api/web/worker
+   - `alembic upgrade head`
+   - `docker compose up -d`
+4. Status and a short log tail return to the Admin panel.
+
+Install the agent once on the Pi (paths match the current `pi@` layout):
+
+```sh
+sudo cp /home/pi/NexusOS/infrastructure/systemd/nexus-update-agent.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now nexus-update-agent.service
+systemctl status nexus-update-agent.service --no-pager
+```
+
+Set `NEXUS_REPO_DIR` and `NEXUS_DATA_DIR` in the unit if your checkout or data volume paths differ. `NEXUS_DATA_DIR` must be the host path mounted into the containers as `/var/lib/nexus/data` (for example `/home/pi/nexus-data/db`).
+
 ## Development deployment
 
 1. Verify the external SSD mount and create `${DATA_DIR}/db` and `${DATA_DIR}/logs`.

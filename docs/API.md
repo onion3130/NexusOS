@@ -35,6 +35,14 @@ Owner-only, CSRF-protected setup endpoint. Accepts `{ "api_key?", "model", "embe
 
 Owner-only, CSRF-protected endpoint that removes browser-managed NIM configuration and returns redacted status. Environment-provided NIM configuration is not modified.
 
+#### `GET /api/v1/system/admin/update`
+
+Owner-only software-update status for the host agent handshake. Returns redacted state (`idle`, `queued`, `running`, `succeeded`, `failed`, `agent_missing`), optional commit SHAs, a short log tail, and whether a new request is allowed. It never returns host paths or shell output secrets.
+
+#### `POST /api/v1/system/admin/update`
+
+Owner-only, CSRF-protected queue endpoint. Accepts `{ "action": "check" | "apply", "confirm": true }` (`confirm` is required for `apply`). Writes a request file for the host update agent and returns status. The API process does not execute git or Docker commands.
+
 The existing health, identity, system, and conversation routes remain as documented in the previous milestone. The assistant gateway is server-configured, provider credentials remain server-side, and `AI_PROVIDER=disabled` remains safe. Preferred beginner setup is the Admin workspace; environment variables remain supported for operators. When NIM is enabled, the Assistant uses NVIDIA's OpenAI-compatible chat endpoint. Grounded responses can retrieve owned notes through bounded lexical, semantic, or hybrid retrieval when the request enables grounding and the authenticated user has the required note permissions. Retrieved material is untrusted context and responses expose server-derived source provenance.
 
 ### Productivity routes

@@ -4,6 +4,12 @@ All notable NexusOS changes are recorded here. NexusOS releases use Semantic Ver
 
 ## [Unreleased]
 
+### Web UI software updates
+
+- Added owner-only Admin **Updates** controls to check for updates and apply a fixed host update from GitHub `main`.
+- The API only queues a bounded request file under the private data volume; a host `nexus-update-agent` performs git pull, Docker rebuild, migrations, and restart.
+- Status polling, audit events, CSRF/permission checks, confirmation for apply, and a one-time systemd unit for the Pi agent are included.
+
 ### Beginner Admin workspace for NVIDIA NIM
 
 - Added a dedicated owner-only **Admin** workspace with step-by-step NVIDIA NIM setup so beginners never need SSH or terminal edits for normal AI configuration.
