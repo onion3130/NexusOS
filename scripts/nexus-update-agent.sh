@@ -35,8 +35,15 @@ STATUS_FILE="$UPDATE_DIR/status.json"
 LOG_FILE="$UPDATE_DIR/log.txt"
 LOCK_FILE="$UPDATE_DIR/agent.lock"
 
-mkdir -p "$UPDATE_DIR"
-chmod 700 "$UPDATE_DIR" 2>/dev/null || true
+# Shared with the containerized API (uid 10001). Keep the update handshake dir
+# group/world-writable on single-owner Pi deployments so both sides can write.
+mkdir -p "$UPDATE_DIR" || true
+chmod 777 "$DATA_DIR/runtime" "$UPDATE_DIR" 2>/dev/null || true
+if [[ ! -d "$UPDATE_DIR" || ! -w "$UPDATE_DIR" ]]; then
+  echo "Cannot write update handshake directory: $UPDATE_DIR" >&2
+  echo "Fix once with: sudo mkdir -p $UPDATE_DIR && sudo chmod -R 777 $DATA_DIR/runtime" >&2
+  exit 1
+fi
 
 log() {
   local line
