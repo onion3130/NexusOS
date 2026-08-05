@@ -228,6 +228,13 @@ export function AssistantWorkspace({
             : item,
         ),
       );
+      if (content.trim().toLowerCase().startsWith("/model")) {
+        try {
+          setProvider(await readAssistantProvider());
+        } catch {
+          /* keep prior provider badge */
+        }
+      }
     } catch (reason) {
       setDraft(content);
       setErrorKind("send");
@@ -306,7 +313,7 @@ export function AssistantWorkspace({
                       </button>
                     ) : (
                       <div className="nx-chat-suggestions">
-                        {["Who are you?", "What is 99 × 99?", "Summarize my open tasks"].map((prompt) => (
+                        {["Who are you?", "What is 99 × 99?", "/model", "/model list"].map((prompt) => (
                           <button
                             className="nx-chat-chip"
                             key={prompt}
@@ -434,7 +441,7 @@ export function AssistantWorkspace({
                         event.currentTarget.form?.requestSubmit();
                       }
                     }}
-                    placeholder="Message Nexus… Enter to send, Shift+Enter for a new line"
+                    placeholder="Message Nexus… Try /model · Enter to send"
                     ref={textareaRef}
                     rows={1}
                     value={draft}

@@ -27,6 +27,7 @@ from app.modules.assistant.schemas import (
     SourceReference,
     GroundingOptions,
 )
+from app.modules.assistant.commands import handle_slash_command
 from app.modules.assistant.context import GroundingContext, build_grounding_context
 from app.modules.assistant.tools.registry import ToolRegistry
 
@@ -158,6 +159,39 @@ async def send_message(
     db.add(user_message)
     db.commit()
     db.refresh(user_message)
+
+    # Slash commands (e.g. /model) reply locally without calling the provider.
+    slash = handle_slash_command(clean_content, settings, permissions)
+    if slash is not None and slash.handled:
+        model_run = AssistantModelRun(
+            conversation_id=conversation.id,
+            provider="local",
+            model="slash-command",
+            status="succeeded",
+            latency_ms=0,
+            input_tokens=None,
+            output_tokens=None,
+            completed_at=datetime.now(UTC),
+        )
+        db.add(model_run)
+        db.flush()
+        assistant_message = AssistantMessage(
+            conversation_id=conversation.id,
+            role="assistant",
+            content=slash.content[:16000],
+            sequence=next_sequence + 1,
+            model_run_id=model_run.id,
+        )
+        db.add(assistant_message)
+        conversation.updated_at = datetime.now(UTC)
+        db.commit()
+        db.refresh(assistant_message)
+        return SendMessageResponse(
+            user_message=_message_response(db, conversation.user_id, user_message),
+            assistant_message=_message_response(db, conversation.user_id, assistant_message),
+            model_run=ModelRunResponse(id=model_run.id, provider=model_run.provider, model=model_run.model, status=model_run.status, latency_ms=model_run.latency_ms),
+            tool_calls=[],
+        )
 
     started = time.perf_counter()
     try:
