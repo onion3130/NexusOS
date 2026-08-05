@@ -143,25 +143,61 @@ def _recommended_embedding_id(model_ids: list[str]) -> str | None:
     return model_ids[0] if model_ids else None
 
 
-async def list_nvidia_models(settings: Settings, *, api_key: str | None = None) -> NimModelCatalogResponse:
-    """Fetch live models from NVIDIA's OpenAI-compatible /v1/models endpoint."""
-    key = _resolve_api_key(settings, api_key)
-    if not key:
-        raise ValueError("api_key_required")
-
-    # Fixed hosted catalog only — never accept client-supplied base URLs.
-    address = await _validate_provider_target(NIM_MODELS_URL)
-    headers = {"Authorization": f"Bearer {key}", "Accept": "application/json"}
+async def _fetch_nvidia_models_payload(api_key: str | None) -> dict[str, Any]:
+    """GET the fixed OpenAI-compatible models catalog from NVIDIA."""
+    headers = {"Accept": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    timeout = httpx.Timeout(30.0)
+    # Prefer the same DNS-pinning path as chat, but fall back to plain HTTPS if needed.
     try:
-        transport = _PinnedTransport(address, max_response_bytes=1_048_576)
-        timeout = httpx.Timeout(20.0)
+        address = await _validate_provider_target(NIM_MODELS_URL)
+        transport = _PinnedTransport(address, max_response_bytes=4_194_304)
         async with httpx.AsyncClient(timeout=timeout, transport=transport, follow_redirects=False, trust_env=False) as client:
             response = await client.get(NIM_MODELS_URL, headers=headers)
-            payload: dict[str, Any] = response.json()
+            if response.status_code >= 400:
+                raise ValueError(f"nvidia_models_http_{response.status_code}")
+            payload = response.json()
+            if not isinstance(payload, dict):
+                raise ValueError("nvidia_models_invalid")
+            return payload
+    except ValueError:
+        raise
+    except (httpx.TimeoutException, ProviderRequestError, httpx.HTTPError, TypeError, OSError):
+        pass
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False, trust_env=False) as client:
+            response = await client.get(NIM_MODELS_URL, headers=headers)
+            if response.status_code >= 400:
+                raise ValueError(f"nvidia_models_http_{response.status_code}")
+            payload = response.json()
+            if not isinstance(payload, dict):
+                raise ValueError("nvidia_models_invalid")
+            return payload
     except httpx.TimeoutException as exc:
         raise ValueError("nvidia_models_timeout") from exc
-    except (httpx.HTTPError, ProviderRequestError, ValueError, TypeError) as exc:
+    except ValueError:
+        raise
+    except (httpx.HTTPError, TypeError, OSError) as exc:
         raise ValueError("nvidia_models_unavailable") from exc
+
+
+async def list_nvidia_models(settings: Settings, *, api_key: str | None = None) -> NimModelCatalogResponse:
+    """Fetch live models from NVIDIA's OpenAI-compatible /v1/models endpoint.
+
+    The hosted catalog can be listed without a key; a provided/saved key is sent
+    when available so key-scoped catalogs still work.
+    """
+    key = _resolve_api_key(settings, api_key)
+    try:
+        payload = await _fetch_nvidia_models_payload(key)
+    except ValueError:
+        # Retry once without Authorization if an invalid key was rejected.
+        if key:
+            payload = await _fetch_nvidia_models_payload(None)
+        else:
+            raise
 
     raw_items = payload.get("data")
     if not isinstance(raw_items, list):

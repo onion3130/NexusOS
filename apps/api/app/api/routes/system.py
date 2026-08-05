@@ -78,9 +78,13 @@ async def nvidia_nim_models(
         detail = {
             "api_key_required": "Add an NVIDIA API key to load models.",
             "nvidia_models_timeout": "NVIDIA model list timed out. Check outbound internet access from the Pi.",
-            "nvidia_models_unavailable": "NVIDIA model list is unavailable. Check the API key and network access.",
+            "nvidia_models_unavailable": "NVIDIA model list is unavailable. Check network access from the Pi.",
             "nvidia_models_invalid": "NVIDIA returned an unexpected model list payload.",
-            "nvidia_models_empty": "NVIDIA returned no usable models for this key.",
+            "nvidia_models_empty": "NVIDIA returned no usable models.",
+            "nvidia_models_http_401": "NVIDIA rejected the API key (401). Check the key and try again.",
+            "nvidia_models_http_403": "NVIDIA denied access to the model catalog (403).",
+            "nvidia_models_http_404": "NVIDIA model catalog endpoint was not found (404).",
+            "nvidia_models_http_429": "NVIDIA rate-limited the model catalog request (429). Wait and retry.",
         }.get(code, code)
         raise HTTPException(status_code=422, detail=detail) from exc
 

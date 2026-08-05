@@ -291,14 +291,10 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
 
   async function loadLiveModels(forceKey?: string) {
     const key = (forceKey ?? apiKey).trim();
-    const canUseSaved = configured && (source === "browser" || source === "environment");
-    if (!key && !canUseSaved) {
-      setModelsError("Paste an NVIDIA API key first, then load models.");
-      return;
-    }
     setLoadingModels(true);
     setModelsError(null);
     try {
+      // Key is optional for the public catalog; include it when present so key-scoped lists work.
       const catalog = await listNvidiaModels(key || undefined);
       setLiveCatalog(catalog);
       const chatIds = catalog.chat_models.map((item) => item.id);
@@ -323,13 +319,23 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
 
   useEffect(() => {
     if (page !== "ai") return;
-    if (liveCatalog) return;
-    if (configured) {
-      void loadLiveModels();
-    }
-    // Only auto-load once when opening AI with a saved key.
+    if (liveCatalog?.source === "live") return;
+    void loadLiveModels();
+    // Auto-load public/live catalog when opening AI setup.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, configured]);
+  }, [page]);
+
+  useEffect(() => {
+    if (page !== "ai") return;
+    const key = apiKey.trim();
+    if (key.length < 20) return;
+    const timer = window.setTimeout(() => {
+      void loadLiveModels(key);
+    }, 600);
+    return () => window.clearTimeout(timer);
+    // Reload after the user finishes typing a key.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey, page]);
 
   async function runUpdate(action: "check" | "apply") {
     if (action === "apply") {
@@ -568,22 +574,22 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
               </div>
               <Panel title={configured ? "NVIDIA NIM connected" : "Connect NVIDIA NIM"} eyebrow="Live model catalog">
                 <p className="admin-panel-help">
-                  Paste your NVIDIA API key once. NexusOS verifies the OpenAI-compatible base URL{" "}
-                  <code>{liveCatalog?.base_url ?? options?.base_url ?? "https://integrate.api.nvidia.com/v1"}</code> and loads real models from{" "}
-                  <code>/v1/models</code> — no need to browse build.nvidia.com for model ids.
+                  Models load automatically from the OpenAI-compatible catalog at{" "}
+                  <code>{liveCatalog?.base_url ?? options?.base_url ?? "https://integrate.api.nvidia.com/v1"}</code>
+                  <code>/models</code>. Paste your API key to use a model — you do not need to browse build.nvidia.com for model ids.
                 </p>
                 <ol className="admin-setup-steps">
                   <li>
-                    <strong>1 · Paste API key</strong>
-                    <span>Key is required only to authenticate against NVIDIA. Create one once if you do not already have it.</span>
+                    <strong>1 · Models load automatically</strong>
+                    <span>Live chat and embedding models are fetched from NVIDIA when you open this page.</span>
                   </li>
                   <li>
-                    <strong>2 · Load live models</strong>
-                    <span>Pulls the real hosted catalog from integrate.api.nvidia.com (chat + embeddings).</span>
+                    <strong>2 · Paste API key & pick a model</strong>
+                    <span>Key is encrypted on this device. Choose any model from the live list (or search).</span>
                   </li>
                   <li>
                     <strong>3 · Test, then save</strong>
-                    <span>Test a completion, then encrypt the key on this device and enable the Assistant.</span>
+                    <span>Test a completion, then save to enable the Assistant.</span>
                   </li>
                 </ol>
                 <form className="admin-nim-form" onSubmit={(event) => void saveNim(event)}>
@@ -608,15 +614,20 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
                       {loadingModels ? "Loading models…" : liveCatalog?.source === "live" ? "Refresh models from NVIDIA" : "Load models from NVIDIA"}
                     </button>
                     <span className="form-help">
-                      {liveCatalog
-                        ? `${liveCatalog.source === "live" ? "Live" : "Fallback"} · ${liveCatalog.chat_models.length} chat · ${liveCatalog.embedding_models.length} embedding`
-                        : "Models load from NVIDIA after you paste a key (or use a saved key)."}
+                      {loadingModels
+                        ? "Contacting integrate.api.nvidia.com…"
+                        : liveCatalog
+                          ? `${liveCatalog.source === "live" ? "Live" : "Fallback"} · ${liveCatalog.chat_models.length} chat · ${liveCatalog.embedding_models.length} embedding`
+                          : "Waiting to load model catalog…"}
                     </span>
                   </div>
                   {modelsError && (
                     <div className="inline-state error-state" role="alert">
                       <strong>Model list failed.</strong>
                       <span>{modelsError}</span>
+                      <button className="text-button" disabled={loadingModels} onClick={() => void loadLiveModels()} type="button">
+                        Retry
+                      </button>
                     </div>
                   )}
                   <label>

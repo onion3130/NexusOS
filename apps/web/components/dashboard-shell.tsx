@@ -82,39 +82,39 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
   function titleForView(view: WorkspaceView): string {
     switch (view) {
       case "assistant":
-        return "Your assistant workspace.";
+        return "Assistant";
       case "tasks":
-        return "Make progress visible.";
+        return "Tasks";
       case "notifications":
-        return "Stay in the loop.";
+        return "Notifications";
       case "notes":
-        return "Capture what matters.";
+        return "Notes";
       case "sources":
-        return "Bring your knowledge together.";
+        return "Sources";
       case "search":
-        return "Find your sources.";
+        return "Search";
       case "calendar":
-        return "Make time visible.";
+        return "Calendar";
       case "finance":
-        return "Know your numbers.";
+        return "Finance";
       case "media":
-        return "See your library.";
+        return "Media";
       case "plugins":
-        return "Extend your command center safely.";
+        return "Plugins";
       case "maintenance":
-        return "Keep your host healthy.";
+        return "Maintenance";
       case "files":
-        return "See what is changing.";
+        return "Files";
       case "projects":
-        return "Your projects, in one place.";
+        return "Projects";
       case "git":
-        return "Review repository status.";
+        return "Git";
       case "docker":
-        return "Inspect your containers.";
+        return "Docker";
       case "admin":
-        return "Set up NVIDIA NIM without SSH.";
+        return "Admin";
       default:
-        return `Good morning, ${user.username}.`;
+        return `Welcome back, ${user.username}`;
     }
   }
 
@@ -149,7 +149,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
       {mobileNavOpen && <button aria-label="Close navigation" className="mobile-nav-backdrop" onClick={() => setMobileNavOpen(false)} type="button" />}
       {activeView !== "admin" && <aside aria-label="Workspace navigation" className={`sidebar${mobileNavOpen ? " mobile-open" : ""}`} id="mobile-navigation">        <div className="brand">
           <div className="brand-mark">N</div>
-          <div><strong>NexusOS</strong><span>Personal command center</span></div>
+          <div><strong>NexusOS</strong><span>Homelab control plane</span></div>
         </div>
         <nav aria-label="Primary navigation" className="nav-list">
           <p className="eyebrow">Workspace</p>
@@ -235,17 +235,20 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
           <>
             <div className="hero-card">
               <div className="hero-copy">
-                <span className="status-pill"><span /> NexusOS v1.3.2 ready</span>
-                <h2>Your digital life, <em>connected.</em></h2>
-                <p>Your private workspace is authenticated and ready. Connect NVIDIA NIM from Admin when you want the Assistant online — no SSH needed.</p>
+                <span className="status-pill"><span /> System online</span>
+                <h2>Your private <em>command center.</em></h2>
+                <p>Local-first OS for your Pi — assistant, services, and tools in one clean dashboard. Use Admin for NVIDIA NIM and updates without SSH.</p>
                 <div className="hero-actions">
                   {isOwner && (
                     <button className="primary-button" onClick={() => setActiveView("admin")} type="button">
                       Open Admin
                     </button>
                   )}
+                  <button className="refresh-button" onClick={() => setActiveView("assistant")} type="button">
+                    Open Assistant
+                  </button>
                   <button className="refresh-button" onClick={() => setPaletteOpen(true)} type="button">
-                    Explore commands <span aria-hidden="true">⌘ K</span>
+                    Commands ⌘K
                   </button>
                 </div>
               </div>

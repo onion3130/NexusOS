@@ -192,7 +192,7 @@ def test_nvidia_nim_models_lists_live_catalog_without_echoing_key(client, monkey
     csrf = client.cookies.get("nexus_csrf")
 
     async def _fake_list(settings, *, api_key=None):
-        assert api_key and api_key.startswith("nvapi-")
+        # Catalog may be public; key is optional.
         return NimModelCatalogResponse(
             ok=True,
             base_url="https://integrate.api.nvidia.com/v1",

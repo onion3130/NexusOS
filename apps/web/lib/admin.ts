@@ -70,8 +70,14 @@ export type NimTestResult = {
 };
 
 async function parseError(response: Response, fallback: string): Promise<string> {
-  const body = await response.json().catch(() => null) as { detail?: string } | null;
-  return body?.detail ?? fallback;
+  const body = await response.json().catch(() => null) as { detail?: string | Array<{ msg?: string }> } | null;
+  if (!body?.detail) return fallback;
+  if (typeof body.detail === "string") return body.detail;
+  if (Array.isArray(body.detail)) {
+    const first = body.detail[0];
+    if (first && typeof first.msg === "string") return first.msg;
+  }
+  return fallback;
 }
 
 export async function readAdminStatus(): Promise<AdminStatus> {
