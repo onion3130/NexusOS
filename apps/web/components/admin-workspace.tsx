@@ -18,12 +18,12 @@ import {
   type NimTestResult,
   type SoftwareUpdateStatus,
 } from "../lib/admin";
-import type { User } from "../lib/auth";
+import { createUser, listUsers, type User } from "../lib/auth";
 import { listAuditEvents, listBackups, readDeploymentStatus, type AuditEvent, type Backup, type DeploymentStatus } from "../lib/host-actions";
 import { configureOpenWebUI, disableOpenWebUI, readOpenWebUIStatus, type OpenWebUIStatus } from "../lib/openwebui";
 import { readSystemOverview, type HealthLevel, type SystemOverview } from "../lib/system";
 
-type AdminPage = "dashboard" | "ai" | "updates" | "system" | "services" | "operations" | "host";
+type AdminPage = "dashboard" | "ai" | "users" | "updates" | "system" | "services" | "operations" | "host";
 
 type AdminNavigateTarget =
   | "assistant"
@@ -45,6 +45,7 @@ type AdminWorkspaceProps = {
 const NAV: Array<{ id: AdminPage; label: string; icon: string; hint: string }> = [
   { id: "dashboard", label: "Dashboard", icon: "◈", hint: "Summary & tables" },
   { id: "ai", label: "AI / NIM", icon: "✦", hint: "Provider setup" },
+  { id: "users", label: "Users", icon: "☺", hint: "Accounts + Open WebUI" },
   { id: "updates", label: "Updates", icon: "↻", hint: "GitHub pull & rebuild" },
   { id: "system", label: "System", icon: "◎", hint: "Live telemetry" },
   { id: "services", label: "Services", icon: "⌁", hint: "Stack units" },
@@ -164,11 +165,16 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
   const [openWebUIEmbed, setOpenWebUIEmbed] = useState(true);
   const [openWebUIEnabled, setOpenWebUIEnabled] = useState(true);
   const [savingOpenWebUI, setSavingOpenWebUI] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [newUsername, setNewUsername] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newAsOwner, setNewAsOwner] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [nextStatus, nextOptions, nextUpdate, nextSystem, nextAudit, nextBackups, nextDeployment, nextOpenWebUI] = await Promise.all([
+      const [nextStatus, nextOptions, nextUpdate, nextSystem, nextAudit, nextBackups, nextDeployment, nextOpenWebUI, nextUsers] = await Promise.all([
         readAdminStatus(),
         readNimOptions(),
         readSoftwareUpdateStatus(),
@@ -177,6 +183,7 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
         listBackups().catch(() => [] as Backup[]),
         readDeploymentStatus().catch(() => null),
         readOpenWebUIStatus().catch(() => null),
+        listUsers().catch(() => [] as User[]),
       ]);
       setStatus(nextStatus);
       setOptions(nextOptions);
@@ -185,6 +192,7 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
       setAudit(nextAudit);
       setBackups(nextBackups);
       setDeployment(nextDeployment);
+      setUsers(nextUsers);
       if (nextStatus.nvidia_nim.model) {
         setModel(nextStatus.nvidia_nim.model);
       }
@@ -402,6 +410,33 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
       setError(reason instanceof Error ? reason.message : "Unable to clear Open WebUI settings");
     } finally {
       setSavingOpenWebUI(false);
+    }
+  }
+
+  async function submitCreateUser(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCreatingUser(true);
+    setError(null);
+    try {
+      const created = await createUser({
+        username: newUsername.trim(),
+        password: newPassword,
+        as_owner: newAsOwner,
+      });
+      setUsers((items) => [...items, created]);
+      setNewUsername("");
+      setNewPassword("");
+      setNewAsOwner(false);
+      const ow = created.openwebui_status ?? "unknown";
+      setNotice(
+        ow === "created" || ow === "exists"
+          ? `Created ${created.username}. Open WebUI: ${created.openwebui_email ?? "linked"} (${ow}).`
+          : `Created ${created.username}. Open WebUI: ${ow}. Set OPENWEBUI_API_KEY or admin email/password in .env to auto-provision.`,
+      );
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Unable to create user");
+    } finally {
+      setCreatingUser(false);
     }
   }
 
@@ -903,6 +938,71 @@ export function AdminWorkspace({ user, onOpenAssistant, onNavigate, onLogout }: 
                     </p>
                   ) : null}
                 </form>
+              </Panel>
+            </div>
+          )}
+
+          {page === "users" && (
+            <div className="admin-console-stack">
+              <div className="admin-console-title-row">
+                <div>
+                  <p className="eyebrow">Identity</p>
+                  <h2>Users</h2>
+                </div>
+                <span className="admin-badge admin-badge-healthy">{users.length} account{users.length === 1 ? "" : "s"}</span>
+              </div>
+              <Panel title="Create account" eyebrow="Nexus + Open WebUI">
+                <p className="admin-panel-help">
+                  Creating a Nexus user also creates a matching Open WebUI login at <code>{"{username}@nexus.local"}</code> with the{" "}
+                  <strong>same password</strong>, when Open WebUI admin credentials are configured (
+                  <code>OPENWEBUI_API_KEY</code> or <code>OPENWEBUI_ADMIN_EMAIL</code> + <code>OPENWEBUI_ADMIN_PASSWORD</code>).
+                  Existing users are provisioned automatically the next time they sign in to Nexus.
+                </p>
+                <form className="admin-openwebui-form" onSubmit={(event) => void submitCreateUser(event)}>
+                  <label>
+                    Username
+                    <input
+                      autoComplete="off"
+                      maxLength={64}
+                      onChange={(event) => setNewUsername(event.target.value)}
+                      required
+                      value={newUsername}
+                    />
+                  </label>
+                  <label>
+                    Password (min 12 characters)
+                    <input
+                      autoComplete="new-password"
+                      minLength={12}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      required
+                      type="password"
+                      value={newPassword}
+                    />
+                  </label>
+                  <label className="checkbox-row">
+                    <input checked={newAsOwner} onChange={(event) => setNewAsOwner(event.target.checked)} type="checkbox" />
+                    Grant owner role (admin + host controls)
+                  </label>
+                  <div className="admin-nim-actions">
+                    <button className="primary-button" disabled={creatingUser || newUsername.trim().length < 1 || newPassword.length < 12} type="submit">
+                      {creatingUser ? "Creating…" : "Create Nexus + Open WebUI account"}
+                    </button>
+                  </div>
+                </form>
+              </Panel>
+              <Panel title="Accounts" eyebrow="Local directory">
+                <DataTable
+                  columns={["Username", "Roles", "Open WebUI email", "Active", "Created"]}
+                  empty="No users loaded."
+                  rows={users.map((item) => [
+                    item.username,
+                    item.roles.join(", ") || "—",
+                    item.openwebui_email ?? `${item.username}@nexus.local`,
+                    item.is_active ? "Yes" : "No",
+                    new Date(item.created_at).toLocaleString(),
+                  ])}
+                />
               </Panel>
             </div>
           )}

@@ -5,6 +5,8 @@ export type User = {
   permissions: string[];
   is_active: boolean;
   created_at: string;
+  openwebui_email?: string | null;
+  openwebui_status?: string | null;
 };
 
 type AuthResponse = {
@@ -90,4 +92,27 @@ export async function logout(): Promise<void> {
   if (!response.ok && response.status !== 401) {
     throw new Error(`NexusOS logout failed with ${response.status}`);
   }
+}
+
+export async function listUsers(): Promise<User[]> {
+  const response = await authenticatedFetch(`${API_ROOT}/auth/users`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`List users failed with ${response.status}`);
+  return response.json() as Promise<User[]>;
+}
+
+export async function createUser(payload: {
+  username: string;
+  password: string;
+  as_owner?: boolean;
+}): Promise<User> {
+  const response = await authenticatedFetch(`${API_ROOT}/auth/users`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new Error(typeof body?.detail === "string" ? body.detail : `Create user failed with ${response.status}`);
+  }
+  return response.json() as Promise<User>;
 }

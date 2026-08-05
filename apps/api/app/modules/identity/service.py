@@ -55,6 +55,21 @@ OWNER_PERMISSIONS = (
     ("sources.delete", "Archive and delete external sources"),
 )
 
+# Non-owner accounts: workspace features without admin/host control plane.
+MEMBER_PERMISSIONS = tuple(
+    item
+    for item in OWNER_PERMISSIONS
+    if item[0]
+    not in {
+        "admin.manage_users",
+        "system.host_actions",
+        "system.backups.read",
+        "system.audit.read",
+        "plugins.write",
+        "notifications.settings",
+    }
+)
+
 
 def _now() -> datetime:
     """Return an aware UTC timestamp."""
@@ -127,23 +142,33 @@ def permission_names(user: User) -> list[str]:
     return sorted({permission.key for role in user.roles for permission in role.permissions})
 
 
-def ensure_owner_role(db: OrmSession) -> Role:
-    """Create the owner role and its baseline permissions idempotently."""
-    role = db.scalar(select(Role).where(Role.key == "owner").options(selectinload(Role.permissions)))
+def _ensure_role(db: OrmSession, key: str, description: str, permissions: tuple[tuple[str, str], ...]) -> Role:
+    """Create or refresh a role and its permission set."""
+    role = db.scalar(select(Role).where(Role.key == key).options(selectinload(Role.permissions)))
     if role is None:
-        role = Role(key="owner", description="Full local NexusOS owner")
+        role = Role(key=key, description=description)
         db.add(role)
         db.flush()
     existing = {permission.key: permission for permission in role.permissions}
-    for key, description in OWNER_PERMISSIONS:
-        permission = existing.get(key) or db.scalar(select(Permission).where(Permission.key == key))
+    for perm_key, perm_description in permissions:
+        permission = existing.get(perm_key) or db.scalar(select(Permission).where(Permission.key == perm_key))
         if permission is None:
-            permission = Permission(key=key, description=description)
+            permission = Permission(key=perm_key, description=perm_description)
             db.add(permission)
         if permission not in role.permissions:
             role.permissions.append(permission)
     db.flush()
     return role
+
+
+def ensure_owner_role(db: OrmSession) -> Role:
+    """Create the owner role and its baseline permissions idempotently."""
+    return _ensure_role(db, "owner", "Full local NexusOS owner", OWNER_PERMISSIONS)
+
+
+def ensure_member_role(db: OrmSession) -> Role:
+    """Create the standard member role without host/admin privileges."""
+    return _ensure_role(db, "member", "Standard NexusOS member", MEMBER_PERMISSIONS)
 
 
 def bootstrap_owner(db: OrmSession, username: str, password: str) -> User:
@@ -164,6 +189,44 @@ def bootstrap_owner(db: OrmSession, username: str, password: str) -> User:
     db.commit()
     db.refresh(user)
     return user
+
+
+def create_user(db: OrmSession, username: str, password: str, *, actor_user_id: str, as_owner: bool = False) -> User:
+    """Create a local Nexus account (admin-managed). Open WebUI is provisioned by the route layer."""
+    normalized_username = username.strip().lower()
+    if not normalized_username or len(normalized_username) > 64:
+        raise ValueError("username must contain 1-64 characters")
+    if len(password) < 12:
+        raise ValueError("password must contain at least 12 characters")
+    if get_user_by_username(db, normalized_username) is not None:
+        raise ValueError("username_taken")
+    role = ensure_owner_role(db) if as_owner else ensure_member_role(db)
+    user = User(username=normalized_username, password_hash=hash_password(password), roles=[role])
+    db.add(user)
+    db.flush()
+    add_audit_event(
+        db,
+        action="identity.user_create",
+        result="success",
+        actor_user_id=actor_user_id,
+        target=user.id,
+        metadata={"username": normalized_username, "role": role.key},
+    )
+    db.commit()
+    db.refresh(user)
+    return get_user(db, user.id) or user
+
+
+def list_users(db: OrmSession, *, limit: int = 100) -> list[User]:
+    """Return local accounts ordered by creation time."""
+    return list(
+        db.scalars(
+            select(User)
+            .options(selectinload(User.roles).selectinload(Role.permissions))
+            .order_by(User.created_at.asc())
+            .limit(max(1, min(limit, 200)))
+        ).all()
+    )
 
 
 def authenticate(db: OrmSession, username: str, password: str) -> User | None:

@@ -49,6 +49,23 @@ def main() -> int:
     finally:
         db.close()
     print(f"Created owner account: {user.username}")
+    # Best-effort Open WebUI account with the same password.
+    try:
+        from app.modules.system.openwebui_users import provision_openwebui_user_sync
+
+        result = provision_openwebui_user_sync(
+            get_settings(),
+            username=user.username,
+            password=first,
+            is_owner=True,
+            display_name=user.username,
+        )
+        if result.ok:
+            print(f"Open WebUI account: {result.email} ({result.status})")
+        else:
+            print(f"Open WebUI account not created ({result.detail}). Configure OPENWEBUI_* admin credentials and sign in once.")
+    except Exception as exc:  # pragma: no cover - CLI resilience
+        print(f"Open WebUI provision skipped: {exc}")
     return 0
 
 

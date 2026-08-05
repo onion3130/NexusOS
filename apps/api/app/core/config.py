@@ -102,8 +102,14 @@ class Settings(BaseSettings):
     notification_delivery_batch_size: int = Field(default=20, validation_alias="NOTIFICATION_DELIVERY_BATCH_SIZE")
     nvidia_api_key: SecretStr | None = Field(default=None, validation_alias="NVIDIA_API_KEY")
     openai_api_key: SecretStr | None = Field(default=None, validation_alias="OPENAI_API_KEY")
-    # Optional local Open WebUI base URL for the Chat workspace embed (e.g. http://192.168.1.46:8080).
+    # Optional local Open WebUI base URL for the Assistant embed (e.g. http://192.168.1.46:8080).
     openwebui_url: str | None = Field(default=None, validation_alias="OPENWEBUI_URL")
+    # Admin credentials used to auto-create Open WebUI accounts when Nexus users are created.
+    # Prefer an admin API key; email+password sign-in is the fallback.
+    openwebui_api_key: SecretStr | None = Field(default=None, validation_alias="OPENWEBUI_API_KEY")
+    openwebui_admin_email: str | None = Field(default=None, validation_alias="OPENWEBUI_ADMIN_EMAIL")
+    openwebui_admin_password: SecretStr | None = Field(default=None, validation_alias="OPENWEBUI_ADMIN_PASSWORD")
+    openwebui_timeout_seconds: float = Field(default=15.0, validation_alias="OPENWEBUI_TIMEOUT_SECONDS")
 
     @field_validator("cors_origins")
     @classmethod

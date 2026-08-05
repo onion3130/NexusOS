@@ -13,6 +13,16 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=1024)
 
 
+class CreateUserRequest(BaseModel):
+    """Admin-created local account (also provisions Open WebUI when configured)."""
+
+    model_config = {"extra": "forbid"}
+
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=12, max_length=1024)
+    as_owner: bool = False
+
+
 class UserResponse(BaseModel):
     """Safe user representation that never contains password material."""
 
@@ -22,6 +32,8 @@ class UserResponse(BaseModel):
     permissions: list[str]
     is_active: bool
     created_at: datetime
+    openwebui_email: str | None = None
+    openwebui_status: str | None = None
 
 
 class SessionResponse(BaseModel):
