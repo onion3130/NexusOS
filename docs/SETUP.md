@@ -8,6 +8,7 @@
 - Python 3.11+ locally; API/worker image uses Python 3.12+
 - Node.js 20+ and npm
 - Docker Engine and Docker Compose v2 for the full ARM64 stack
+- OpenSSL (`openssl`) for generating the local JWT secret in the Pi one-liner
 - Raspberry Pi deployments additionally require Raspberry Pi OS Lite 64-bit and an external SSD
 
 ## Local configuration
@@ -15,6 +16,25 @@
 ```sh
 cp .env.example .env
 python scripts/validate_env.py --env-file .env
+```
+
+## Raspberry Pi LAN one-liner
+
+For a fresh Raspberry Pi 5 checkout, this single command installs and starts the ARM64 UI on the local network at `http://<pi-ip>:3000`, runs migrations, and interactively creates the first owner account named `admin`:
+
+```sh
+git clone https://github.com/onion3130/NexusOS.git /home/pi/NexusOS && cd /home/pi/NexusOS && cp .env.example .env && sed -i "s/^JWT_SECRET=.*/JWT_SECRET=$(openssl rand -hex 32)/" .env && printf 'services:\n  nexus-web:\n    ports:\n      - \"0.0.0.0:3000:3000\"\n' > docker-compose.override.yml && docker compose --env-file .env build nexus-api nexus-web nexus-worker && docker compose --env-file .env run --rm -it nexus-api python -m alembic upgrade head && docker compose --env-file .env run --rm -it nexus-api python -m app.cli.bootstrap_owner --username admin && docker compose --env-file .env up -d
+```
+
+When prompted, enter and confirm the password for `admin`. The bootstrap step uses `-it`, so run the one-liner from an interactive SSH terminal; the password is read interactively and is not embedded in the command. Then open `http://<pi-ip>:3000` and sign in. After the first login, the owner can create additional accounts and passwords from **Admin → Users**.
+
+> **LAN security warning:** This override publishes the UI on every network interface. Use it only on a trusted private LAN, protect the Pi with a firewall, and never port-forward port `3000` to the public Internet. For HTTPS and a controlled LAN boundary, use the hardened Compose deployment instead. The API remains bound to loopback by default.
+
+The generated `docker-compose.override.yml` is a local deployment file and is ignored by Git. To return to loopback-only publishing, remove that file and recreate the web service:
+
+```sh
+rm docker-compose.override.yml
+docker compose --env-file .env up -d --force-recreate nexus-web
 ```
 
 Replace `JWT_SECRET` with a random value of at least 32 characters. Keep `AI_PROVIDER=disabled` until a provider is intentionally configured. To use hosted NVIDIA NIM, set `AI_PROVIDER=nvidia_nim`, `AI_MODEL` to an NVIDIA-supported chat model, and `NVIDIA_API_KEY`; the hosted chat and embeddings endpoints are defaulted automatically unless you set explicit reviewed public-compatible `AI_BASE_URL` or `EMBEDDING_BASE_URL` values. Configure `TASK_WORKER_INTERVAL_SECONDS` and `TASK_WORKER_BATCH_SIZE` only within their documented bounds. Leave `PLUGINS_DIR` empty unless you are deliberately installing trusted operator-approved plugins.

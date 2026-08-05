@@ -49,6 +49,8 @@ Set `NEXUS_REPO_DIR` and `NEXUS_DATA_DIR` in the unit if your checkout or data v
 
 ## Development deployment
 
+For a quick trusted-LAN installation, see the [Raspberry Pi LAN one-liner in the setup guide](SETUP.md#raspberry-pi-lan-one-liner). It creates a local Compose override that publishes only the web UI on port `3000` and prompts for the first `admin` password. That override is intentionally not suitable for public Internet exposure.
+
 1. Verify the external SSD mount and create `${DATA_DIR}/db` and `${DATA_DIR}/logs`.
 2. Ensure UID 10001 can write the API and worker database/log mounts.
 3. Copy `.env.example` to `.env` and replace the JWT placeholder.
