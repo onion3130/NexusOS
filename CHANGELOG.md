@@ -4,6 +4,12 @@ All notable NexusOS changes are recorded here. NexusOS releases use Semantic Ver
 
 ## [Unreleased]
 
+### Full Admin console layout
+
+- Rebuilt the owner Admin experience into a dedicated console with fixed left navigation, sticky top header (search, profile, refresh), and a data-dense main area.
+- Dashboard page includes summary cards, quick actions, system metrics tables, stack services, audit events, backups, and deployment snapshot.
+- AI, Updates, System, Services, Operations, and Host-only sections keep function-oriented workflows without leaving the admin shell.
+
 ### System overview health auto-detection
 
 - System overview now auto-classifies CPU, memory, storage, temperature, network, and stack services as Healthy / Warning / Critical.

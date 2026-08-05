@@ -144,11 +144,10 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
   }
 
   return (
-    <main className="shell">
+    <main className={`shell${activeView === "admin" ? " shell-admin" : ""}`}>
       <a className="skip-link" href="#main-content">Skip to main content</a>
       {mobileNavOpen && <button aria-label="Close navigation" className="mobile-nav-backdrop" onClick={() => setMobileNavOpen(false)} type="button" />}
-      <aside aria-label="Workspace navigation" className={`sidebar${mobileNavOpen ? " mobile-open" : ""}`} id="mobile-navigation">
-        <div className="brand">
+      {activeView !== "admin" && <aside aria-label="Workspace navigation" className={`sidebar${mobileNavOpen ? " mobile-open" : ""}`} id="mobile-navigation">        <div className="brand">
           <div className="brand-mark">N</div>
           <div><strong>NexusOS</strong><span>Personal command center</span></div>
         </div>
@@ -170,9 +169,10 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
           <div className="connection-dot" />
           <div><strong>Local mode</strong><span>Private by default</span></div>
         </div>
-      </aside>
+      </aside>}
 
-      <section className="content" id="main-content">
+      <section className={`content${activeView === "admin" ? " content-admin" : ""}`} id="main-content">
+        {activeView !== "admin" && (
         <header className="topbar">
           <div className="mobile-topbar-row">
             <button aria-controls="mobile-navigation" aria-expanded={mobileNavOpen} aria-label="Toggle navigation" className="menu-button" onClick={() => setMobileNavOpen((open) => !open)} type="button">☰</button>
@@ -188,6 +188,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
             <button aria-label="Sign out" className="avatar" onClick={signOut} type="button">↪</button>
           </div>
         </header>
+        )}
 
         {activeView === "assistant" ? (
           <AssistantWorkspace
@@ -225,8 +226,10 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
           <DockerWorkspace />
         ) : activeView === "admin" && isOwner ? (
           <AdminWorkspace
-            onNavigate={(target) => setActiveView(target)}
+            onLogout={signOut}
+            onNavigate={(target) => setActiveView(target === "overview" ? "overview" : target)}
             onOpenAssistant={() => setActiveView("assistant")}
+            user={user}
           />
         ) : (
           <>
@@ -291,7 +294,7 @@ export function DashboardShell({ user, onLogout }: { user: User; onLogout: () =>
             </section>
           </>
         )}
-        <footer>Local-first. Private by default. <span>NexusOS 1.3.2</span></footer>
+        {activeView !== "admin" && <footer>Local-first. Private by default. <span>NexusOS 1.3.2</span></footer>}
       </section>
       {paletteOpen && (
         <CommandPalette
