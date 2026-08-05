@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
 from datetime import UTC, datetime, timedelta
 
@@ -61,6 +62,61 @@ Safety and honesty:
 Formatting:
 - Use plain text or light markdown. Avoid empty replies.
 - Always produce a visible answer the user can read."""
+
+# Offer tools only when the user likely needs live local data / actions.
+# Many hosted models (e.g. GLM) return empty or meta replies when tools are always attached.
+_TOOL_INTENT = re.compile(
+    r"\b("
+    r"cpu|memory|ram|temp(?:erature)?|thermal|disk|storage|uptime|load|"
+    r"task|tasks|todo|reminder|reminders|"
+    r"note|notes|search my|look up my|"
+    r"backup|backups|restore|"
+    r"file|files|folder|project|projects|git|docker|container|containers|"
+    r"plugin|plugins|system|overview|telemetry|status of|"
+    r"what'?s my|how much|how hot|list my|show my|check my"
+    r")\b",
+    re.IGNORECASE,
+)
+_BAD_REPLY = re.compile(
+    r"("
+    r"tool[- ]?call|"
+    r"function[- ]?call|"
+    r"tool calling|"
+    r"if the function exists|"
+    r"function exists in the library|"
+    r"provide (a |the )?function|"
+    r"returned an empty response|"
+    r"i am a helpful assistant with tool"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def _should_offer_tools(user_text: str) -> bool:
+    """Return whether this turn likely needs local tool access."""
+    return bool(_TOOL_INTENT.search(user_text or ""))
+
+
+def _is_unusable_reply(text: str) -> bool:
+    """Detect empty or meta tool-protocol answers that should be retried."""
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return True
+    if len(cleaned) < 8 and cleaned.lower() in {"ok", "done", "none", "n/a", "..."}:
+        return True
+    return bool(_BAD_REPLY.search(cleaned))
+
+
+def _history_for_gateway(messages: list) -> list[GatewayMessage]:
+    """Drop poisoned meta replies from prior turns so the model does not keep echoing them."""
+    gateway: list[GatewayMessage] = []
+    for item in messages:
+        if item.role == "assistant" and _is_unusable_reply(item.content):
+            continue
+        if item.role not in {"user", "assistant", "system", "tool"}:
+            continue
+        gateway.append(GatewayMessage(role=item.role, content=item.content))
+    return gateway
 
 
 def _approval_key(user_id: str, operation: str, key: str) -> str:
@@ -194,18 +250,37 @@ async def send_message(
         )
 
     started = time.perf_counter()
+    grounding = GroundingContext(message=None, sources=[])
     try:
         history = list(reversed(previous)) + [user_message]
         # Order: identity system prompt, optional grounding, then chat history.
+        # Skip prior unusable/meta assistant turns so they cannot poison this reply.
         gateway_messages = [
             GatewayMessage(role="system", content=NEXUS_SYSTEM_PROMPT),
-            *[GatewayMessage(role=item.role, content=item.content) for item in history],
+            *_history_for_gateway(history),
         ]
         grounding = await build_grounding_context(db, settings, conversation.user_id, clean_content, permissions, grounding_options) if settings.ai_provider != "disabled" else GroundingContext(message=None, sources=[])
         if grounding.message is not None:
             gateway_messages.insert(1, grounding.message)
-        tool_defs = tools.definitions(permissions)
+        all_tool_defs = tools.definitions(permissions)
+        # Only attach tools when the user likely needs live local data. Always
+        # attaching tools breaks several hosted models (empty / meta replies).
+        tool_defs = all_tool_defs if (_should_offer_tools(clean_content) and all_tool_defs) else []
         completion = await gateway.complete(gateway_messages, tool_defs)
+        # If tools were offered and the model still failed, answer once without tools.
+        if tool_defs and (_is_unusable_reply(completion.content) and not completion.tool_calls):
+            retry_plain = await gateway.complete(
+                gateway_messages
+                + [
+                    GatewayMessage(
+                        role="system",
+                        content="Answer the user's latest message directly in plain text. Do not call tools.",
+                    )
+                ],
+                [],
+            )
+            if not _is_unusable_reply(retry_plain.content):
+                completion = retry_plain
     except Exception as exc:
         db.rollback()
         error_code = getattr(exc, "code", "assistant_unavailable")
@@ -280,32 +355,32 @@ async def send_message(
             # Tool execution already succeeded; preserve a safe initial response.
             pass
 
-    # Some models return empty content when tools are offered for simple questions.
-    # Retry once without tools so math/general chat still get a real answer.
-    if not (completion.content or "").strip() and not tool_results:
+    # Final safety net: empty or meta replies with no successful tool work.
+    if _is_unusable_reply(completion.content) and not tool_results:
         try:
             retry = await gateway.complete(
-                gateway_messages
-                + [
+                [
+                    GatewayMessage(role="system", content=NEXUS_SYSTEM_PROMPT),
                     GatewayMessage(
                         role="system",
                         content="Answer the user's latest message directly in plain text. Do not call tools. Do not mention tools or function calling.",
-                    )
+                    ),
+                    GatewayMessage(role="user", content=clean_content),
                 ],
                 [],
             )
-            if (retry.content or "").strip():
+            if not _is_unusable_reply(retry.content):
                 completion.content = retry.content
         except Exception:
             pass
 
     content = (completion.content or "").strip()
-    if not content and any(item.status == "executed" for item in tool_responses):
+    if _is_unusable_reply(content) and any(item.status == "executed" for item in tool_responses):
         content = "I looked that up on your system. Ask if you want a clearer summary of the results."
-    if not content and any(item.status == "proposed" for item in tool_responses):
+    elif _is_unusable_reply(content) and any(item.status == "proposed" for item in tool_responses):
         content = "I need your confirmation before I run that action."
-    if not content:
-        content = "I couldn't generate a reply that time. Try asking again in a sentence or two."
+    elif _is_unusable_reply(content):
+        content = "I couldn't generate a reply that time. Try a new conversation, or ask again in a short sentence."
     completion.content = content
     assistant_message = AssistantMessage(
         conversation_id=conversation.id,

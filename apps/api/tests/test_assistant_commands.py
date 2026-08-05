@@ -48,6 +48,15 @@ def test_model_set_requires_owner(client) -> None:
     assert "owner" in result.content.lower()
 
 
+def test_should_offer_tools_for_local_intents() -> None:
+    from app.modules.assistant.service import _should_offer_tools
+
+    assert _should_offer_tools("what's my CPU temperature?") is True
+    assert _should_offer_tools("list my tasks") is True
+    assert _should_offer_tools("what is 99 times 99") is False
+    assert _should_offer_tools("who are you") is False
+
+
 def test_send_message_handles_model_slash(client, monkeypatch) -> None:
     """Slash commands short-circuit the provider gateway."""
     import app.modules.assistant.service as service_module
