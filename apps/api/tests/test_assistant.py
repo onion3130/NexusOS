@@ -14,8 +14,9 @@ from pydantic import SecretStr
 from app.core.config import Settings, get_settings
 from app.db.session import get_session_factory
 from app.modules.assistant.gateway import DisabledGateway, OpenAICompatibleGateway, _validate_provider_target
+from app.modules.assistant.streaming import stream_message
 from app.modules.assistant.schemas import GatewayCompletion
-from app.modules.assistant.schemas import GatewayMessage, GroundingOptions, ProposedToolCall, ProviderDisabledError, ToolValidationError
+from app.modules.assistant.schemas import AssistantIdempotencyError, GatewayMessage, GroundingOptions, ProposedToolCall, ProviderDisabledError, ProviderTimeoutError, ToolValidationError
 from app.modules.assistant.context import build_grounding_context
 from app.modules.assistant.service import NEXUS_SYSTEM_PROMPT, send_message
 from app.modules.assistant.tools.registry import ToolRegistry
@@ -56,6 +57,9 @@ def test_conversation_ownership_and_disabled_provider_persistence(client) -> Non
     assert detail.json()["messages"] == []
 
     response = client.post(f"/api/v1/conversations/{conversation_id}/messages", json={"content": "Check the system"})
+    assert response.status_code == 403
+    csrf = client.cookies.get("nexus_csrf")
+    response = client.post(f"/api/v1/conversations/{conversation_id}/messages", headers={"X-CSRF-Token": csrf}, json={"content": "Check the system"})
     assert response.status_code == 503
     assert response.json()["detail"] == "ai_provider_disabled"
     detail = client.get(f"/api/v1/conversations/{conversation_id}").json()
@@ -71,9 +75,10 @@ def test_message_validation_and_missing_conversation(client) -> None:
     _login(client)
     assert client.get("/api/v1/conversations/not-a-conversation").status_code == 404
     created = client.post("/api/v1/conversations", json={}).json()
-    response = client.post(f"/api/v1/conversations/{created['id']}/messages", json={"content": " "})
+    csrf = client.cookies.get("nexus_csrf")
+    response = client.post(f"/api/v1/conversations/{created['id']}/messages", headers={"X-CSRF-Token": csrf}, json={"content": " "})
     assert response.status_code == 422
-    response = client.post(f"/api/v1/conversations/{created['id']}/messages", json={"content": "x" * 4001})
+    response = client.post(f"/api/v1/conversations/{created['id']}/messages", headers={"X-CSRF-Token": csrf}, json={"content": "x" * 4001})
     assert response.status_code == 422
 
 
@@ -372,6 +377,220 @@ def test_message_source_endpoint_is_ownership_scoped(client) -> None:
         assert response.status_code == 200
         assert response.json()["sources"][0]["title"] == "Private note"
         assert client.get(f"/api/v1/conversations/{conversation.id}/messages/{conversation.id}/sources").status_code == 404
+    finally:
+        db.close()
+
+
+def test_stream_message_persists_bounded_text_response(client, monkeypatch) -> None:
+    """The streaming service emits deltas and persists one final assistant message."""
+    import app.modules.assistant.streaming as streaming_module
+
+    _bootstrap_owner()
+    db = get_session_factory()()
+    try:
+        user = db.query(User).first()
+        conversation = Conversation(user_id=user.id)
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
+
+        class FakeGateway:
+            async def stream(self, _messages):
+                yield "Hello "
+                yield "from Nexus."
+
+        async def no_grounding(*_args, **_kwargs):
+            return streaming_module.GroundingContext(message=None, sources=[])
+
+        monkeypatch.setattr(streaming_module, "build_grounding_context", no_grounding)
+        settings = get_settings().model_copy(update={"ai_provider": "openai_compatible", "ai_model": "test-model"})
+
+        async def run() -> list[dict[str, object]]:
+            return [item async for item in stream_message(db, settings, conversation, "hello", FakeGateway(), set(), GroundingOptions(enabled=False))]
+
+        events = asyncio.run(run())
+        assert [item["content"] for item in events if item["type"] == "delta"] == ["Hello ", "from Nexus."]
+        done = next(item for item in events if item["type"] == "done")
+        assert done["assistant_message"]["content"] == "Hello from Nexus."
+        persisted = db.query(AssistantMessage).filter(AssistantMessage.conversation_id == conversation.id, AssistantMessage.role == "assistant").one()
+        assert persisted.content == "Hello from Nexus."
+    finally:
+        db.close()
+
+
+def test_stream_message_is_idempotent_and_replays_completed_response(client, monkeypatch) -> None:
+    """A retried stream key replays the stored response without duplicate messages."""
+    import app.modules.assistant.streaming as streaming_module
+
+    _bootstrap_owner()
+    db = get_session_factory()()
+    try:
+        user = db.query(User).first()
+        conversation = Conversation(user_id=user.id)
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
+
+        class FakeGateway:
+            calls = 0
+
+            async def stream(self, _messages):
+                self.calls += 1
+                yield "one response"
+
+        async def no_grounding(*_args, **_kwargs):
+            return streaming_module.GroundingContext(message=None, sources=[])
+
+        monkeypatch.setattr(streaming_module, "build_grounding_context", no_grounding)
+        gateway = FakeGateway()
+        settings = get_settings().model_copy(update={"ai_provider": "openai_compatible", "ai_model": "test-model"})
+
+        async def run() -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+            first = [item async for item in stream_message(db, settings, conversation, "hello", gateway, set(), GroundingOptions(enabled=False), "stream-key")]
+            second = [item async for item in stream_message(db, settings, conversation, "hello", gateway, set(), GroundingOptions(enabled=False), "stream-key")]
+            return first, second
+
+        first, second = asyncio.run(run())
+        assert gateway.calls == 1
+        assert next(item for item in first if item["type"] == "done")["assistant_message"]["content"] == "one response"
+        assert next(item for item in second if item["type"] == "done")["assistant_message"]["content"] == "one response"
+        assert db.query(AssistantMessage).filter(AssistantMessage.conversation_id == conversation.id).count() == 2
+    finally:
+        db.close()
+
+
+def test_stream_message_recovers_failed_reservation_without_duplicate_input(client, monkeypatch) -> None:
+    """A failed retry reuses the original persisted user message."""
+    import app.modules.assistant.streaming as streaming_module
+
+    _bootstrap_owner()
+    db = get_session_factory()()
+    try:
+        user = db.query(User).first()
+        conversation = Conversation(user_id=user.id)
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
+
+        class FailingGateway:
+            async def stream(self, _messages):
+                raise RuntimeError("provider failed")
+                yield "never"
+
+        class WorkingGateway:
+            async def stream(self, _messages):
+                yield "recovered"
+
+        async def no_grounding(*_args, **_kwargs):
+            return streaming_module.GroundingContext(message=None, sources=[])
+
+        monkeypatch.setattr(streaming_module, "build_grounding_context", no_grounding)
+        settings = get_settings().model_copy(update={"ai_provider": "openai_compatible"})
+
+        async def run() -> None:
+            with pytest.raises(RuntimeError):
+                async for _ in stream_message(db, settings, conversation, "original", FailingGateway(), set(), GroundingOptions(enabled=False), "recover-key"):
+                    pass
+            events = [item async for item in stream_message(db, settings, conversation, "original", WorkingGateway(), set(), GroundingOptions(enabled=False), "recover-key")]
+            assert next(item for item in events if item["type"] == "done")["assistant_message"]["content"] == "recovered"
+
+        asyncio.run(run())
+        assert db.query(AssistantMessage).filter(AssistantMessage.conversation_id == conversation.id, AssistantMessage.role == "user").count() == 1
+    finally:
+        db.close()
+
+
+def test_stream_message_rejects_idempotency_reuse_with_different_content(client, monkeypatch) -> None:
+    """A stream key cannot be reused for different content."""
+    import app.modules.assistant.streaming as streaming_module
+
+    _bootstrap_owner()
+    db = get_session_factory()()
+    try:
+        user = db.query(User).first()
+        conversation = Conversation(user_id=user.id)
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
+
+        class FakeGateway:
+            async def stream(self, _messages):
+                yield "response"
+
+        async def no_grounding(*_args, **_kwargs):
+            return streaming_module.GroundingContext(message=None, sources=[])
+
+        monkeypatch.setattr(streaming_module, "build_grounding_context", no_grounding)
+        settings = get_settings().model_copy(update={"ai_provider": "openai_compatible"})
+
+        async def run() -> None:
+            async for _ in stream_message(db, settings, conversation, "original", FakeGateway(), set(), GroundingOptions(enabled=False), "stream-key"):
+                pass
+            with pytest.raises(AssistantIdempotencyError):
+                async for _ in stream_message(db, settings, conversation, "different", FakeGateway(), set(), GroundingOptions(enabled=False), "stream-key"):
+                    pass
+
+        asyncio.run(run())
+    finally:
+        db.close()
+
+
+def test_stream_message_requires_idempotency_key(client) -> None:
+    """The HTTP streaming contract requires retry-safe request identity."""
+    _bootstrap_owner()
+    _login(client)
+    conversation = client.post("/api/v1/conversations", json={}).json()
+    csrf = client.cookies.get("nexus_csrf")
+    response = client.post(f"/api/v1/conversations/{conversation['id']}/messages/stream", headers={"X-CSRF-Token": csrf}, json={"content": "hello"})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Idempotency-Key is required"
+
+
+def test_stream_message_fails_closed_when_provider_disabled(client) -> None:
+    """Streaming preserves the disabled-provider safety default."""
+    _bootstrap_owner()
+    db = get_session_factory()()
+    try:
+        user = db.query(User).first()
+        conversation = Conversation(user_id=user.id)
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
+
+        async def run() -> None:
+            with pytest.raises(ProviderDisabledError):
+                async for _ in stream_message(db, get_settings(), conversation, "hello", DisabledGateway(), set(), GroundingOptions(enabled=False)):
+                    pass
+
+        asyncio.run(run())
+    finally:
+        db.close()
+
+
+def test_stream_timeout_uses_provider_timeout_code(client) -> None:
+    """The absolute stream deadline preserves the normal timeout error contract."""
+    _bootstrap_owner()
+    db = get_session_factory()()
+    try:
+        user = db.query(User).first()
+        conversation = Conversation(user_id=user.id)
+        db.add(conversation)
+        db.commit()
+        db.refresh(conversation)
+
+        class SlowGateway:
+            async def stream(self, _messages):
+                await asyncio.sleep(0.05)
+                yield "late"
+
+        settings = get_settings().model_copy(update={"ai_provider": "openai_compatible", "ai_timeout_seconds": 0.001})
+
+        async def run() -> None:
+            with pytest.raises(ProviderTimeoutError):
+                async for _ in stream_message(db, settings, conversation, "hello", SlowGateway(), set(), GroundingOptions(enabled=False)):
+                    pass
+
+        asyncio.run(run())
     finally:
         db.close()
 

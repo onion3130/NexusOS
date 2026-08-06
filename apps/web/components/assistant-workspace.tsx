@@ -9,6 +9,7 @@ import {
   readConversation,
   rejectToolCall,
   sendMessage,
+  sendMessageStream,
   type AssistantProviderStatus,
   type Conversation,
   type ConversationSummary,
@@ -347,7 +348,36 @@ export function AssistantWorkspace({
     setErrorKind(null);
     setDraft("");
     try {
-      const result = await sendMessage(conversation.id, content, { enabled: groundingEnabled, mode: groundingMode, limit: 6 });
+      const needsTools = /\b(cpu|memory|ram|temp(?:erature)?|thermal|disk|storage|uptime|load|task|tasks|todo|todos|reminder|reminders|note|notes|search my|look up my|find my|in my notes|backup|backups|restore|file|files|folder|folders|project|projects|git|docker|container|containers|plugin|plugins|system|overview|telemetry|status of|on (?:my )?(?:pi|nexus|nexusos)|calendar|event|events|finance|budget|spending|transaction|media|photo|photos|notification|notifications|what'?s my|how much|how hot|list my|show my|check my|my open)\b/i.test(content);
+      let result: import("../lib/assistant").AssistantResult;
+      if (needsTools) {
+        result = await sendMessage(conversation.id, content, { enabled: groundingEnabled, mode: groundingMode, limit: 6 });
+        setConversation((current) => current ? { ...current, messages: [...current.messages, result.user_message, result.assistant_message] } : current);
+      } else {
+        let streamedAssistant = "";
+        result = await sendMessageStream(
+          conversation.id,
+          content,
+          { enabled: groundingEnabled, mode: groundingMode, limit: 6 },
+          (userMessage) => {
+            setConversation((current) => current ? { ...current, messages: [...current.messages, userMessage] } : current);
+          },
+          (delta) => {
+            streamedAssistant += delta;
+            setConversation((current) => {
+              if (!current) return current;
+              const messages = [...current.messages];
+              const last = messages[messages.length - 1];
+              if (last?.role === "assistant" && last.id === "streaming") {
+                messages[messages.length - 1] = { ...last, content: streamedAssistant };
+              } else {
+                messages.push({ id: "streaming", role: "assistant", content: streamedAssistant, sequence: messages.length, created_at: new Date().toISOString(), sources: [] });
+              }
+              return { ...current, messages };
+            });
+          },
+        );
+      }
       const proposal = result.tool_calls.find((call) => call.requires_confirmation && call.status === "proposed");
       setPendingAction(proposal ? { id: proposal.id, tool: proposal.tool_key, arguments: proposal.arguments } : null);
       setConversation((current) =>
@@ -356,7 +386,7 @@ export function AssistantWorkspace({
               ...current,
               message_count: current.message_count + 2,
               updated_at: result.assistant_message.created_at,
-              messages: [...current.messages, result.user_message, result.assistant_message],
+              messages: needsTools ? current.messages : [...current.messages.filter((message) => message.id !== "streaming"), result.assistant_message],
             }
           : current,
       );
@@ -376,6 +406,12 @@ export function AssistantWorkspace({
       }
     } catch (reason) {
       setDraft(content);
+      try {
+        const reconciled = await readConversation(conversation.id);
+        setConversation(reconciled);
+      } catch {
+        setConversation((current) => current ? { ...current, messages: current.messages.filter((message) => message.id !== "streaming") } : current);
+      }
       setErrorKind("send");
       setError(reason instanceof Error ? reason.message : "Assistant unavailable");
     } finally {
@@ -488,7 +524,7 @@ export function AssistantWorkspace({
               {conversation.messages.map((message) => (
                 <ChatRow key={message.id} message={message} onOpenNote={onOpenNote} onOpenSource={onOpenSource} />
               ))}
-              {sending ? (
+              {sending && !conversation.messages.some((message) => message.id === "streaming") ? (
                 <article className="gpt-row assistant">
                   <div className="gpt-row-inner">
                     <div className="gpt-avatar assistant" aria-hidden="true">

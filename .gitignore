@@ -40,7 +40,7 @@ out/
 Thumbs.db
 
 # Local agent instructions
-agent.md
+agents.md
 
 # Local Docker overrides
 compose.override.yml

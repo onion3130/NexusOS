@@ -6,6 +6,22 @@ All notable NexusOS changes are recorded here. NexusOS releases use Semantic Ver
 
 _No unreleased changes._
 
+## [1.6.0] — 2026-08-06
+
+### Streaming Assistant responses
+
+- Added an opt-in Server-Sent Events endpoint at `POST /api/v1/conversations/{conversation_id}/messages/stream`.
+- Added bounded streaming support to the provider-neutral OpenAI-compatible gateway, including hosted NVIDIA NIM.
+- Added incremental Assistant rendering in the web workspace for ordinary conversational prompts.
+- Preserved the buffered endpoint for tool-intent requests, task actions, live system lookups, and explicit confirmation workflows.
+- Kept streaming text-only, capped at the existing output limit, CSRF-protected, authenticated, ownership-scoped, and source-grounded with persisted provenance.
+- Added backend streaming regression coverage and preserved ARM64/Docker-compatible dependencies.
+
+### Release limitations
+
+- PDF/OCR parsing, arbitrary URLs, crawling, autonomous memory extraction, and model-written notes remain deferred.
+- Docker and Raspberry Pi 5 runtime validation require a Docker-enabled ARM64 host.
+
 ## [1.5.0] — 2026-08-05
 
 ### Live NVIDIA model catalog
@@ -255,4 +271,5 @@ This release is intended for private, local-first use. Docker and Raspberry Pi r
 [1.3.1]: https://github.com/onion3130/NexusOS/releases/tag/v1.3.1
 [1.3.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.3.0
 [1.5.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.5.0
-[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.5.0...HEAD
+[1.6.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.6.0
+[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.6.0...HEAD

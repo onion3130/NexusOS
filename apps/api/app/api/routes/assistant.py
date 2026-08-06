@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+import json
+
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session as OrmSession
 
 from app.core.config import Settings, get_settings
@@ -10,6 +13,7 @@ from app.db.session import get_db
 from app.modules.assistant.gateway import gateway_from_settings
 from app.modules.assistant.schemas import AssistantError, AssistantSourcesResponse, ConversationCreate, ConversationResponse, ConversationSummary, SendMessageRequest, SendMessageResponse, ToolValidationError
 from app.modules.assistant.service import approve_tool_call, conversation_response, create_conversation, get_conversation, list_conversations, reject_tool_call, send_message
+from app.modules.assistant.streaming import stream_message
 from app.modules.assistant.tools.registry import ToolRegistry
 from app.modules.workspace_views.service import WorkspaceViewService
 from app.modules.identity.dependencies import AuthContext, get_auth_context, require_csrf, require_permission
@@ -58,8 +62,9 @@ def sources(conversation_id: str, message_id: str, db: OrmSession = Depends(get_
 
 
 @router.post("/{conversation_id}/messages", response_model=SendMessageResponse)
-async def message(conversation_id: str, payload: SendMessageRequest, db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context), settings: Settings = Depends(get_settings)) -> SendMessageResponse:
+async def message(conversation_id: str, payload: SendMessageRequest, request: Request, db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context), settings: Settings = Depends(get_settings)) -> SendMessageResponse:
     """Send one bounded message through the configured assistant gateway."""
+    require_csrf(request, context)
     conversation = _owned_or_404(db, context, conversation_id)
     try:
         return await send_message(db, settings, conversation, payload.content, gateway_from_settings(settings), ToolRegistry(SystemService(settings.data_dir), db, context.user.id, WorkspaceViewService(settings), settings), set(permission_names(context.user)), payload.grounding)
@@ -67,6 +72,43 @@ async def message(conversation_id: str, payload: SendMessageRequest, db: OrmSess
         raise HTTPException(status_code=exc.status_code, detail=exc.code) from exc
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="assistant_unavailable") from exc
+
+
+@router.post("/{conversation_id}/messages/stream")
+async def stream(
+    conversation_id: str,
+    payload: SendMessageRequest,
+    request: Request,
+    db: OrmSession = Depends(get_db),
+    context: AuthContext = Depends(get_auth_context),
+    settings: Settings = Depends(get_settings),
+) -> StreamingResponse:
+    """Stream a plain-text assistant response as bounded server-sent events.
+
+    Streaming intentionally excludes model tool calls. Mutating or live local
+    requests continue through the buffered confirmation-gated endpoint.
+    """
+    require_csrf(request, context)
+    idempotency_key = request.headers.get("Idempotency-Key")
+    if not idempotency_key:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Idempotency-Key is required")
+    conversation = _owned_or_404(db, context, conversation_id)
+    permissions = set(permission_names(context.user))
+    gateway = gateway_from_settings(settings)
+
+    async def events():
+        try:
+            async for item in stream_message(db, settings, conversation, payload.content, gateway, permissions, payload.grounding, idempotency_key):
+                yield f"data: {json.dumps(item, separators=(',', ':'))}\n\n"
+            yield "event: close\ndata: {}\n\n"
+        except AssistantError as exc:
+            yield f"event: error\ndata: {json.dumps({'code': exc.code})}\n\n"
+        except Exception:
+            yield "event: error\ndata: {\"code\":\"assistant_unavailable\"}\n\n"
+        finally:
+            db.close()
+
+    return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @approval_router.post("/tool-calls/{tool_call_id}/approve")

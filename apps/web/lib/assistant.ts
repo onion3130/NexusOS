@@ -92,3 +92,51 @@ function idempotencyKey(): string { return typeof crypto.randomUUID === "functio
 export async function approveToolCall(id: string): Promise<void> { const response = await authenticatedFetch(`/api/v1/ai/tool-calls/${encodeURIComponent(id)}/approve`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey() } }); if (!response.ok) { const detail = (await response.json().catch(() => null)) as { detail?: string } | null; const code = typeof detail?.detail === "string" ? detail.detail : ""; throw new Error(FRIENDLY_ERRORS[code] ?? `Approval failed with ${response.status}`); } }
 export async function rejectToolCall(id: string): Promise<void> { const response = await authenticatedFetch(`/api/v1/ai/tool-calls/${encodeURIComponent(id)}/reject`, { method: "POST", headers: { "Idempotency-Key": idempotencyKey() } }); if (!response.ok) throw new Error(`Rejection failed with ${response.status}`); }
 export async function sendMessage(id: string, content: string, grounding: GroundingOptions = { enabled: true, mode: "hybrid", limit: 6 }): Promise<AssistantResult> { return parse<AssistantResult>(await authenticatedFetch(`/api/v1/conversations/${encodeURIComponent(id)}/messages`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content, grounding }) })); }
+
+export async function sendMessageStream(
+  id: string,
+  content: string,
+  grounding: GroundingOptions,
+  onUserMessage: (message: Message) => void,
+  onDelta: (content: string) => void,
+): Promise<AssistantResult> {
+  const response = await authenticatedFetch(`/api/v1/conversations/${encodeURIComponent(id)}/messages/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "text/event-stream", "Idempotency-Key": idempotencyKey() },
+    body: JSON.stringify({ content, grounding }),
+  });
+  if (!response.ok) return parse<AssistantResult>(response);
+  if (!response.body) throw new Error(FRIENDLY_ERRORS.assistant_unavailable);
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: AssistantResult | null = null;
+  let streamError: string | null = null;
+
+  const consume = (block: string) => {
+    const lines = block.split("\n");
+    const data = lines.filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trim()).join("\n");
+    if (!data) return;
+    const parsed = JSON.parse(data) as { type?: string; content?: string; user_message?: Message; assistant_message?: Message; model_run?: AssistantResult["model_run"]; tool_calls?: AssistantResult["tool_calls"]; code?: string };
+    if (parsed.type === "meta" && parsed.user_message) onUserMessage(parsed.user_message);
+    if (parsed.type === "delta" && typeof parsed.content === "string") onDelta(parsed.content);
+    if (parsed.type === "done" && parsed.assistant_message && parsed.model_run) {
+      result = { user_message: parsed.user_message ?? ({} as Message), assistant_message: parsed.assistant_message, model_run: parsed.model_run, tool_calls: parsed.tool_calls ?? [] };
+    }
+    if (parsed.code) streamError = parsed.code;
+  };
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+    const blocks = buffer.split("\n\n");
+    buffer = blocks.pop() ?? "";
+    blocks.forEach(consume);
+    if (done) break;
+  }
+  if (buffer.trim()) consume(buffer);
+  if (streamError) throw new Error(FRIENDLY_ERRORS[streamError] ?? FRIENDLY_ERRORS.assistant_unavailable);
+  if (!result) throw new Error(FRIENDLY_ERRORS.assistant_unavailable);
+  return result;
+}

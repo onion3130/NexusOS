@@ -186,6 +186,20 @@ class ProviderRequestError(AssistantError):
     code = "ai_provider_unavailable"
 
 
+class AssistantInProgressError(AssistantError):
+    """Raised when an idempotent stream is already being processed."""
+
+    code = "assistant_request_in_progress"
+    status_code = 409
+
+
+class AssistantIdempotencyError(AssistantError):
+    """Raised when an idempotency key is reused for different content."""
+
+    code = "assistant_idempotency_conflict"
+    status_code = 409
+
+
 class ToolValidationError(AssistantError):
     """Raised when a provider proposes an unsupported tool call."""
 

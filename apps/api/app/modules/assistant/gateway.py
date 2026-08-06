@@ -7,6 +7,7 @@ import ipaddress
 import json
 import socket
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -34,6 +35,12 @@ class ModelGateway(ABC):
     async def complete(self, messages: list[GatewayMessage], tools: list[ToolDefinition]) -> GatewayCompletion:
         """Return one bounded normalized completion."""
 
+    async def stream(self, messages: list[GatewayMessage]) -> AsyncIterator[str]:
+        """Yield plain-text completion deltas when the provider supports streaming."""
+        raise ProviderRequestError()
+        if False:
+            yield ""
+
 
 class DisabledGateway(ModelGateway):
     """Explicit no-provider gateway used by the safe default configuration."""
@@ -41,6 +48,11 @@ class DisabledGateway(ModelGateway):
     async def complete(self, messages: list[GatewayMessage], tools: list[ToolDefinition]) -> GatewayCompletion:
         """Reject calls without contacting any upstream service."""
         raise ProviderDisabledError()
+
+    async def stream(self, messages: list[GatewayMessage]) -> AsyncIterator[str]:
+        """Reject streaming without contacting any upstream service."""
+        raise ProviderDisabledError()
+        yield ""
 
 
 def _unsafe_address(address: str) -> bool:
@@ -112,8 +124,9 @@ class _PinnedNetworkBackend(AsyncNetworkBackend):
 class _PinnedTransport(httpx.AsyncBaseTransport):
     """Small httpx transport backed by a pinned httpcore connection pool."""
 
-    def __init__(self, address: str, max_response_bytes: int) -> None:
+    def __init__(self, address: str, max_response_bytes: int, streaming: bool = False) -> None:
         self._max_response_bytes = max_response_bytes
+        self._streaming = streaming
         self._pool = httpcore.AsyncConnectionPool(
             network_backend=_PinnedNetworkBackend(address),
             retries=0,
@@ -138,14 +151,22 @@ class _PinnedTransport(httpx.AsyncBaseTransport):
             extensions=extensions,
         )
         core_response = await self._pool.handle_async_request(core_request)
+        if not 200 <= core_response.status < 300:
+            await core_response.aclose()
+            raise ProviderRequestError()
+        if self._streaming:
+            return httpx.Response(
+                status_code=core_response.status,
+                headers=core_response.headers,
+                stream=_PinnedResponseStream(core_response, self._max_response_bytes),
+                request=request,
+            )
         try:
             body = bytearray()
             async for chunk in core_response.aiter_stream():
                 if len(body) + len(chunk) > self._max_response_bytes:
                     raise ProviderRequestError()
                 body.extend(chunk)
-            if not 200 <= core_response.status < 300:
-                raise ProviderRequestError()
             return httpx.Response(
                 status_code=core_response.status,
                 headers=core_response.headers,
@@ -158,6 +179,25 @@ class _PinnedTransport(httpx.AsyncBaseTransport):
     async def aclose(self) -> None:
         """Close the underlying connection pool."""
         await self._pool.aclose()
+
+
+class _PinnedResponseStream(httpx.AsyncByteStream):
+    """Bounded streaming adapter from httpcore to httpx."""
+
+    def __init__(self, response: httpcore.Response, max_response_bytes: int) -> None:
+        self._response = response
+        self._max_response_bytes = max_response_bytes
+        self._read = 0
+
+    async def __aiter__(self):
+        async for chunk in self._response.aiter_stream():
+            self._read += len(chunk)
+            if self._read > self._max_response_bytes:
+                raise ProviderRequestError()
+            yield chunk
+
+    async def aclose(self) -> None:
+        await self._response.aclose()
 
 
 class OpenAICompatibleGateway(ModelGateway):
@@ -213,6 +253,58 @@ class OpenAICompatibleGateway(ModelGateway):
         except (httpx.HTTPError, ValueError, TypeError) as exc:
             raise ProviderRequestError() from exc
         return self._normalize(body)
+
+    async def stream(self, messages: list[GatewayMessage]) -> AsyncIterator[str]:
+        """Stream bounded SSE text deltas from an OpenAI-compatible provider."""
+        if not self.settings.ai_base_url or not self.settings.ai_api_key or not self.settings.ai_api_key.get_secret_value().strip():
+            raise ProviderRequestError()
+        address = await _validate_provider_target(self.settings.ai_base_url)
+        payload = {
+            "model": self.settings.ai_model,
+            "messages": [
+                {"role": item.role, "content": item.content, **({"tool_call_id": item.tool_call_id} if item.tool_call_id else {})}
+                for item in messages
+            ],
+            "temperature": 0.2,
+            "max_tokens": self.settings.ai_max_output_tokens,
+            "stream": True,
+        }
+        headers = {
+            "Authorization": f"Bearer {self.settings.ai_api_key.get_secret_value()}",
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+        }
+        emitted = 0
+        transport = _PinnedTransport(address, self.settings.ai_max_response_bytes, streaming=True)
+        try:
+            timeout = httpx.Timeout(self.settings.ai_timeout_seconds)
+            async with httpx.AsyncClient(timeout=timeout, transport=transport, follow_redirects=False, trust_env=False) as client:
+                async with client.stream("POST", self.settings.ai_base_url, json=payload, headers=headers) as response:
+                    async for line in response.aiter_lines():
+                        if not line.startswith("data:"):
+                            continue
+                        raw = line[5:].strip()
+                        if raw == "[DONE]":
+                            break
+                        try:
+                            body = json.loads(raw)
+                        except (ValueError, TypeError) as exc:
+                            raise ProviderRequestError() from exc
+                        choices = body.get("choices")
+                        if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+                            continue
+                        delta = choices[0].get("delta")
+                        text = delta.get("content") if isinstance(delta, dict) else None
+                        if not isinstance(text, str) or not text:
+                            continue
+                        emitted += len(text)
+                        if emitted > 16000:
+                            raise ProviderRequestError()
+                        yield text
+        except httpx.TimeoutException as exc:
+            raise ProviderTimeoutError() from exc
+        except (httpx.HTTPError, ValueError, TypeError) as exc:
+            raise ProviderRequestError() from exc
 
     def _normalize(self, body: dict[str, Any]) -> GatewayCompletion:
         """Normalize a compatible response without retaining the raw payload."""

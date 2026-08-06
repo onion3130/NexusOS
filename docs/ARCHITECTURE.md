@@ -1,8 +1,8 @@
 # NexusOS architecture
 
-**Current milestone:** v1.5.0 — external source ingestion and source lifecycle management (stable)
-**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service with grounded note context, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
-**Last updated:** 2026-08-04
+**Current milestone:** v1.6.0 — streaming Assistant responses (stable)
+**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service with grounded note context, bounded Assistant SSE streaming, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
+**Last updated:** 2026-08-06
 
 NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an external SSD. The browser, API, persistence, worker, provider, and future host-action boundaries remain separate.
 
@@ -29,7 +29,7 @@ Browser -> authenticated Next.js shell -> same-origin `/api/v1` rewrite -> FastA
 FastAPI
   ├── identity/session boundary
   ├── read-only system telemetry
-  ├── bounded assistant gateway -> typed tool registry
+  ├── bounded assistant gateway -> buffered tools and opt-in text SSE stream
   ├── tasks service -> tasks/categories/tags/reminders/notifications
   ├── notes service -> notes/tags/search projection/retrieval chunks
   ├── sources service -> server-owned source storage -> durable ingestion -> versions/chunks -> retrieval
@@ -123,7 +123,7 @@ External source uploads are stored with generated filenames beneath `DATA_DIR/so
 
 Not implemented today:
 
-- Streaming assistant responses
+- Rich PDF/OCR parsing, arbitrary URLs, and web crawling
 - SMS and calendar notification channels (email and push are implemented)
 - Autonomous memory extraction and model-written notes
 - External document ingestion and file sources

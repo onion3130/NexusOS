@@ -36,6 +36,7 @@
 - Search queries are bounded, parameterized, and normalized; raw FTS5 syntax is not exposed.
 - Note content is rendered as text and is never trusted HTML.
 - Retrieved note content is untrusted source material, escaped before context assembly, explicitly delimited, bounded by source count and context size, and cannot change system instructions, permissions, or tool authorization.
+- Assistant SSE streaming is text-only, authenticated, ownership-scoped, CSRF-protected for cookie mutations, capped by the same output limit, and bounded by an absolute provider deadline. It never attaches tools or accepts approval data; tool-intent requests use the buffered confirmation path.
 - Grounding requires `notes.read`; semantic and hybrid modes require `notes.semantic`. Grounding is skipped when chat AI is disabled, so a disabled deployment does not contact an embedding provider unexpectedly.
 - Assistant source provenance is derived server-side, user-scoped, and exposes metadata only; the source endpoint verifies conversation/message ownership.
 

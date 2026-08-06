@@ -1,11 +1,11 @@
 # NexusOS API
 
-**Current milestone:** v1.5.0 — external source ingestion and source lifecycle management (stable)
-**Status:** Health, identity/session, read-only system, assistant conversations and task actions, notes/search/retrieval, optional embeddings, calendar, finance, media, confirmation-gated maintenance actions, verified SQLite backups, automated restore, retention cleanup, encryption key rotation, audit visibility, read-only workspace views, outbound email/push notification channels, and the out-of-process plugin boundary are implemented. Streaming remains planned.
+**Current milestone:** v1.6.0 — streaming Assistant responses (stable)
+**Status:** Health, identity/session, read-only system, assistant conversations and task actions, bounded SSE streaming, notes/search/retrieval, optional embeddings, calendar, finance, media, confirmation-gated maintenance actions, verified SQLite backups, automated restore, retention cleanup, encryption key rotation, audit visibility, read-only workspace views, outbound email/push notification channels, and the out-of-process plugin boundary are implemented.
 **Base path:** `/api/v1`
-**Last updated:** 2026-08-04
+**Last updated:** 2026-08-06
 
-All browser-authenticated mutations require the readable CSRF cookie value in the `X-CSRF-Token` header. Bearer-authenticated clients may use the same routes without cookie CSRF. Mutation routes accept an `Idempotency-Key`; clients must reuse the key when retrying the same operation. Reusing a key with a different payload returns `422`. All feature resources are user-owned and unauthorized resources return `404`.
+All browser-authenticated mutations require the readable CSRF cookie value in the `X-CSRF-Token` header. Bearer-authenticated clients may use the same routes without cookie CSRF. Mutation routes accept an `Idempotency-Key`; clients must reuse the key when retrying the same operation. Reusing a key with a different payload returns `422` on standard resource mutations; the streaming Assistant route rejects that conflict with `409`. All feature resources are user-owned and unauthorized resources return `404`.
 
 ## Implemented API
 
@@ -217,7 +217,11 @@ The dedicated worker converts due reminders into notifications using a determini
 
 #### `POST /api/v1/conversations/{conversation_id}/messages`
 
-Accepts `content` plus optional bounded `grounding` controls (`enabled`, `mode=lexical|semantic|hybrid`, and `limit`). Grounding requires `notes.read`; semantic and hybrid retrieval additionally require `notes.semantic`. Retrieved note material is explicitly delimited as untrusted reference context, and the response persists server-derived source provenance. Grounding is skipped when `AI_PROVIDER=disabled`.
+Accepts `content` plus optional bounded `grounding` controls (`enabled`, `mode=lexical|semantic|hybrid`, and `limit`). Grounding requires `notes.read`; semantic and hybrid retrieval additionally require `notes.semantic`. Retrieved note material is explicitly delimited as untrusted reference context, and the response persists server-derived source provenance. Grounding is skipped when `AI_PROVIDER=disabled`. This buffered endpoint remains the path for tool-intent requests and confirmation-gated actions.
+
+#### `POST /api/v1/conversations/{conversation_id}/messages/stream`
+
+Requires an `Idempotency-Key` header. Returns authenticated, ownership-scoped Server-Sent Events for ordinary text-only assistant prompts. Events include a persisted user-message `meta` event, bounded `delta` text events, a final `done` event with the persisted assistant message, model-run metadata, and source provenance, followed by a `close` event. The route requires CSRF for cookie-authenticated browser mutations, never exposes provider credentials, never attaches tools, and preserves the buffered endpoint for local lookups and mutating actions. Provider-disabled or upstream failures are emitted as a bounded `error` event. Browser clients send an `Idempotency-Key`; an identical completed retry is replayed without duplicating messages, while a different payload with the same key is rejected.
 
 #### `GET /api/v1/conversations/{conversation_id}/messages/{message_id}/sources`
 
@@ -343,7 +347,6 @@ Returns the current user's bounded host-action proposal, confirmation, rejection
 
 ## Planned API groups
 
-- `GET /api/v1/conversations/{id}/stream`
 - `GET /api/v1/jobs/{id}`
 - `POST /api/v1/system/actions/{action}` (superseded by typed proposals and confirmation)
 

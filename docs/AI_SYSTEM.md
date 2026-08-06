@@ -1,8 +1,8 @@
 # NexusOS AI system
 
-**Current milestone:** v1.5.0 — external source ingestion and source lifecycle management (stable)
-**Status:** The bounded assistant gateway, conversation storage, provider normalization, hosted NVIDIA NIM configuration, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, optional embeddings, semantic/hybrid retrieval, grounded note context with source provenance, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Autonomous memory, external ingestion, streaming, and privileged host control remain deferred.
-**Last updated:** 2026-08-04
+**Current milestone:** v1.6.0 — streaming Assistant responses (stable)
+**Status:** The bounded assistant gateway, conversation storage, provider normalization, hosted NVIDIA NIM configuration, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, optional embeddings, semantic/hybrid retrieval, grounded note context with source provenance, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Autonomous memory, richer document parsing, and privileged host control remain deferred.
+**Last updated:** 2026-08-06
 
 ## Current behavior
 
@@ -83,13 +83,16 @@ Grounded assistant requests now add bounded retrieved note chunks to model conte
 
 External sources are read-only reference material. The source worker creates immutable versions and deterministic chunks; grounded requests may include matching source chunks alongside notes, with `source_type=external_source` provenance. Source content remains escaped, explicitly delimited, bounded, and unable to grant tool permissions or override system policy.
 
+## Streaming responses
+
+The Assistant exposes an opt-in `POST /api/v1/conversations/{conversation_id}/messages/stream` SSE path for ordinary text-only prompts. The provider gateway parses bounded OpenAI-compatible `data:` events, emits text deltas, and persists the final response and source provenance. The web workspace renders deltas incrementally. Tool-intent messages continue through the buffered path so task actions, local lookups, and confirmation workflows are never bypassed.
+
 ## Deferred AI work
 
-- Streaming responses
+- Rich PDF/OCR parsing, arbitrary URLs, and crawling
 - Provider health dashboards
 - Autonomous semantic memory and model-written notes
-- PDF/OCR parsing, external URLs, crawling, and autonomous source-selection; approved-root synchronization is implemented as a worker-side source lifecycle feature
-- Autonomous memory and model-written notes
+- Autonomous source-selection; approved-root synchronization is implemented as a worker-side source lifecycle feature
 - Additional integrations
 - Privileged host control, assistant-triggered restore, cloud/object-storage replication, and autonomous memory
 

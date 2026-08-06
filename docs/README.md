@@ -31,6 +31,7 @@ This directory contains the detailed design, setup, development, deployment, sec
 - [v1.3.1 release notes](releases/v1.3.1.md) — migration compatibility patch
 - [v1.3.2 release notes](releases/v1.3.2.md) — Docker web healthcheck patch
 - [v1.5.0 release notes](releases/v1.5.0.md) — external source ingestion and approved-root synchronization
+- [v1.6.0 release notes](releases/v1.6.0.md) — streaming Assistant responses
 - [Plugin boundary](PLUGIN_BOUNDARY.md) — manifest contract and secure subprocess model
 - [Milestone 9 workspace views](ROADMAP.md#milestone-9-complete--files-projects-git-and-docker-views) — read-only Files, Projects, Git, and Docker scope
 - [Milestone 10 deployment hardening](ROADMAP.md#milestone-10-deployment-hardening) — hardened LAN proxy, systemd, encrypted replication, and recovery gate

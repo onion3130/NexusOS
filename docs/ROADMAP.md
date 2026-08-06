@@ -1,8 +1,8 @@
 # NexusOS roadmap
 
-**Current milestone:** v1.5.0 — external source ingestion and source lifecycle management (stable)
-**Next milestone:** v1.6 — richer document parsing and streaming Assistant responses
-**Last updated:** 2026-08-05
+**Current milestone:** v1.6.0 — streaming Assistant responses (stable)
+**Next milestone:** v1.7 — richer document parsing and source expansion
+**Last updated:** 2026-08-06
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
 
@@ -30,6 +30,7 @@ Milestone 6 is implemented within its approved scope. NexusOS now has an authent
 | 12. Restore and recovery automation | Complete | Confirmation-gated restore from verified local and encrypted off-host backup artifacts with safety backup, staging, digest/integrity verification, and atomic swap |
 | 13. Backup retention and lifecycle | Complete | Policy-driven retention cleanup with last-backup protection, digest-safe pruning of local and encrypted artifacts, and confirmation-gated AES-256 key rotation |
 | 15. External source ingestion | Complete | Bounded text/Markdown uploads, approved-file imports, versioned ingestion, source-aware retrieval, and lifecycle controls |
+| 16. Streaming Assistant responses | Complete | Bounded SSE streaming for ordinary text prompts with buffered tool compatibility |
 
 ## Milestone 6 complete — tasks, reminders, and notifications
 
@@ -232,6 +233,22 @@ Known limitations:
 - Target Raspberry Pi ARM64 provider latency and sustained worker-load validation remain operational checks.
 - Autonomous memory, external ingestion, and model-written notes remain future scope.
 
+## v1.6.0 streaming Assistant responses
+
+Implemented:
+
+- Provider-neutral bounded streaming through OpenAI-compatible SSE responses, including hosted NVIDIA NIM.
+- Authenticated `POST /api/v1/conversations/{conversation_id}/messages/stream` with CSRF, ownership, output, timeout, and error boundaries.
+- Incremental web Assistant rendering with final persisted message replacement and source provenance.
+- Buffered compatibility for tool-intent requests, local system lookups, task mutations, and confirmation workflows.
+- No database migration or new runtime dependency required.
+
+Known limitations:
+
+- Streaming is text-only; tool calls intentionally use the buffered endpoint.
+- PDF/OCR parsing, arbitrary URLs, crawling, autonomous memory, and model-written notes remain future scope.
+- Docker and Raspberry Pi 5 runtime streaming through the selected proxy require target-environment validation.
+
 ## v1.5.0 external source ingestion and lifecycle
 
 Implemented:
@@ -247,7 +264,7 @@ Implemented:
 
 Known limitations:
 
-- PDF, OCR, arbitrary URLs, web crawling, autonomous memory extraction, model-written notes, and streaming remain deferred.
+- PDF, OCR, arbitrary URLs, web crawling, autonomous memory extraction, and model-written notes remain deferred.
 - Source-aware semantic indexing will follow the existing provider-neutral embedding boundary in a future increment.
 - Docker and Raspberry Pi sustained-ingestion validation remain target-environment checks.
 
@@ -265,8 +282,8 @@ Implemented:
 Known limitations:
 
 - Sources are server-derived retrieved-source references, not claims that the model cited or quoted each source.
-- External document ingestion, autonomous memory extraction, model-written notes, and streaming remain deferred.
-- v1.5.0 is the current stable release; richer document parsing, URL ingestion, crawling, autonomous memory, model-written notes, and streaming remain future scope.
+- Rich PDF/OCR parsing, arbitrary URLs, web crawling, autonomous memory extraction, and model-written notes remain deferred.
+- v1.6.0 is the current stable release; richer document parsing, URL ingestion, crawling, autonomous memory, and model-written notes remain future scope.
 
 ## v1.3 provider integration — NVIDIA NIM
 
