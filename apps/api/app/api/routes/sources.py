@@ -9,7 +9,8 @@ from app.core.config import Settings, get_settings
 from app.db.models import Source, SourceChunk, SourceVersion
 from app.db.session import get_db
 from app.modules.identity.dependencies import AuthContext, get_auth_context, require_csrf, require_permission
-from app.modules.sources.schemas import ApprovedFileListResponse, ApprovedFileResponse, SourceChunksResponse, SourceImportRequest, SourceListResponse, SourceResponse, SourceVersionResponse, SourceVersionsResponse
+from app.modules.sources.schemas import ApprovedFileListResponse, ApprovedFileResponse, SourceChunksResponse, SourceImportRequest, SourceListResponse, SourceResponse, SourceUrlCreate, SourceVersionResponse, SourceVersionsResponse
+from app.modules.sources.fetch import create_url_source
 from app.modules.sources.sync import configure_sync, disable_sync, queue_manual_sync, sync_response
 from app.modules.sources.sync_schemas import SourceSyncJobResponse, SourceSyncResponse, SourceSyncUpdate
 from app.modules.sources.service import archive_source, create_upload, delete_source, discover_approved_files, get_source, import_approved_file, list_sources, restore_source, reindex_source, source_chunks, source_response, source_versions
@@ -77,6 +78,17 @@ def import_file(payload: SourceImportRequest, request: Request, settings: Settin
     require_permission("sources.write", context)
     try:
         return _response(import_approved_file(db, settings, context.user.id, payload))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.post("/url", response_model=SourceResponse, status_code=status.HTTP_201_CREATED)
+def create_from_url(payload: SourceUrlCreate, request: Request, settings: Settings = Depends(get_settings), db: OrmSession = Depends(get_db), context: AuthContext = Depends(get_auth_context)):
+    """Create an inert URL source; the SSRF-safe fetch runs only in the worker."""
+    require_csrf(request, context)
+    require_permission("sources.write", context)
+    try:
+        return _response(create_url_source(db, settings, context.user.id, payload))
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
 

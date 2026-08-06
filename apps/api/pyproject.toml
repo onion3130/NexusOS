@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nexus-api"
-version = "1.6.0"
+version = "1.7.0"
 description = "NexusOS API foundation"
 requires-python = ">=3.11"
 dependencies = [
@@ -15,6 +15,7 @@ dependencies = [
   "httpcore>=1.0,<2",
   "httpx>=0.28,<1",
   "Pillow>=11,<12",
+  "pypdf>=5,<7",
   "PyJWT>=2.9,<3",
   "pydantic-settings>=2.7,<3",
   "sqlalchemy>=2.0,<3",

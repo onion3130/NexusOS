@@ -1,14 +1,14 @@
 # NexusOS AI system
 
-**Current milestone:** v1.6.0 — streaming Assistant responses (stable)
-**Status:** The bounded assistant gateway, conversation storage, provider normalization, hosted NVIDIA NIM configuration, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, optional embeddings, semantic/hybrid retrieval, grounded note context with source provenance, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Autonomous memory, richer document parsing, and privileged host control remain deferred.
+**Current milestone:** v1.7.0 — richer document parsing and source expansion (stable)
+**Status:** The bounded assistant gateway, conversation storage, provider normalization, hosted NVIDIA NIM configuration, read-only system/task/note/workspace-view tools, calendar/finance/media services, confirmation-gated task and maintenance mutations, lexical search, source-aware note chunks, PDF/HTML/URL source ingestion, optional embeddings, semantic/hybrid retrieval, grounded note and source context with provenance, outbound email/push delivery, and the always-confirmed out-of-process plugin tool are implemented. Autonomous memory, OCR, crawling, and privileged host control remain deferred.
 **Last updated:** 2026-08-06
 
 ## Current behavior
 
 - `AI_PROVIDER=disabled` remains the safe default.
 - `AI_PROVIDER=nvidia_nim` uses the hosted NVIDIA API Catalog chat endpoint by default; `NVIDIA_API_KEY` remains server-side and custom public endpoints must be explicitly configured.
-- Grounding can retrieve owned note chunks and ingested external text/Markdown chunks through the same bounded, untrusted-source context boundary.
+- Grounding can retrieve owned note chunks and ingested external text/Markdown/PDF/HTML chunks through the same bounded, untrusted-source context boundary.
 - The Assistant workspace reads a redacted provider-status endpoint and uses the existing bounded gateway; it never receives the NVIDIA key or endpoint.
 - Provider credentials stay server-side.
 - The gateway normalizes bounded provider requests and responses.
@@ -81,7 +81,7 @@ Grounded assistant requests now add bounded retrieved note chunks to model conte
 
 ## External source grounding
 
-External sources are read-only reference material. The source worker creates immutable versions and deterministic chunks; grounded requests may include matching source chunks alongside notes, with `source_type=external_source` provenance. Source content remains escaped, explicitly delimited, bounded, and unable to grant tool permissions or override system policy.
+External sources are read-only reference material. The source worker fetches (for URL sources), parses (text, Markdown, PDF, HTML), creates immutable versions and deterministic chunks; grounded requests may include matching source chunks alongside notes, with `source_type=external_source` provenance. Source content remains escaped, explicitly delimited, bounded, and unable to grant tool permissions or override system policy.
 
 ## Streaming responses
 
@@ -89,7 +89,7 @@ The Assistant exposes an opt-in `POST /api/v1/conversations/{conversation_id}/me
 
 ## Deferred AI work
 
-- Rich PDF/OCR parsing, arbitrary URLs, and crawling
+- OCR, web crawling, JavaScript rendering, and arbitrary protocols (PDF and single-page HTTPS URLs are implemented)
 - Provider health dashboards
 - Autonomous semantic memory and model-written notes
 - Autonomous source-selection; approved-root synchronization is implemented as a worker-side source lifecycle feature

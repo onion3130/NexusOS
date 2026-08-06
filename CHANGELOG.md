@@ -6,6 +6,23 @@ All notable NexusOS changes are recorded here. NexusOS releases use Semantic Ver
 
 _No unreleased changes._
 
+## [1.7.0] — 2026-08-06
+
+### Richer document parsing and source expansion
+
+- Added bounded PDF parsing with pure-Python `pypdf` (page-capped, text-bounded, encrypted/malformed/oversized documents rejected with stable error codes) and standard-library HTML-to-text parsing (scripts/styles/iframes skipped, bounded output).
+- Enabled `.pdf` uploads through `POST /api/v1/sources/upload` (≤ 10 MB) with the same generated-name storage, worker ingestion, immutable versions, deterministic chunks, retrieval, and lifecycle controls as text/Markdown sources.
+- Added worker-only single-page HTTPS URL ingestion: `POST /api/v1/sources/url` creates an inert source record and a dedicated `source_fetch` job; the fetch runs only in the worker with the pinned-address, DNS-rebinding-resistant transport already used by the assistant and embedding gateways.
+- URL fetching is bounded by redirect count, timeout, size, content-type allowlist, and public-target validation; every redirect hop is re-validated and private/loopback/reserved/metadata targets are rejected. Fetched bytes are stored under a server-generated name and handed to the existing ingestion pipeline unchanged.
+- Added migration `0020_source_expansion` (nullable `sources.source_url` for URL sources) and parser metadata (`pdf-text`, `html-text`) on immutable source versions.
+- Added the Sources workspace “Add from URL” form and PDF upload support; source responses include `source_url` where relevant.
+- Added parser, fetch/SSRF, URL-route, worker, ownership, and migration regression coverage.
+
+### Release limitations
+
+- OCR, web crawling, JavaScript rendering, arbitrary protocols, autonomous memory extraction, and model-written notes remain deferred.
+- Docker and Raspberry Pi 5 runtime validation require a Docker-enabled ARM64 host.
+
 ## [1.6.0] — 2026-08-06
 
 ### Streaming Assistant responses
@@ -272,4 +289,5 @@ This release is intended for private, local-first use. Docker and Raspberry Pi r
 [1.3.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.3.0
 [1.5.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.5.0
 [1.6.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.6.0
-[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.6.0...HEAD
+[1.7.0]: https://github.com/onion3130/NexusOS/releases/tag/v1.7.0
+[Unreleased]: https://github.com/onion3130/NexusOS/compare/v1.7.0...HEAD

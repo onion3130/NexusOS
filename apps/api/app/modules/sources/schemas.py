@@ -5,11 +5,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.modules.sources.sync_schemas import SourceSyncResponse
 
-SourceKind = Literal["upload", "approved_file"]
+SourceKind = Literal["upload", "approved_file", "url"]
 SourceStatus = Literal["processing", "ready", "failed", "archived"]
 
 
@@ -28,6 +28,7 @@ class SourceResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     archived_at: datetime | None
+    source_url: str | None = None
     sync: SourceSyncResponse | None = None
 
 
@@ -88,6 +89,20 @@ class SourceJobResponse(BaseModel):
     error_code: str | None
     created_at: datetime
     completed_at: datetime | None
+
+
+class SourceUrlCreate(BaseModel):
+    """Validated URL source creation; the fetch itself is worker-only."""
+
+    model_config = {"extra": "forbid"}
+
+    url: str = Field(min_length=1, max_length=2048)
+    title: str | None = Field(default=None, max_length=160)
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, value: str | None) -> str | None:
+        return value.strip() if value else None
 
 
 class SourceImportRequest(BaseModel):

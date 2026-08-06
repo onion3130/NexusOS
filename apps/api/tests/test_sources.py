@@ -46,6 +46,37 @@ def test_upload_rejects_unsafe_or_binary_files(client):
     assert binary.status_code == 422
 
 
+def test_pdf_upload_is_queued_and_ingested(client):
+    from app.modules.sources.parsers import parse_pdf_bytes
+    from tests.test_source_parsers import _minimal_pdf
+
+    payload = _minimal_pdf("Raspberry Pi 5 thermal design")
+    assert "Raspberry Pi 5 thermal design" in parse_pdf_bytes(payload)
+    csrf = _login(client)
+    uploaded = client.post("/api/v1/sources/upload", headers={"X-CSRF-Token": csrf, "X-Source-Filename": "pi-thermal.pdf", "Idempotency-Key": "source-pdf-1"}, content=payload)
+    assert uploaded.status_code == 201, uploaded.text
+    source = uploaded.json()
+    assert source["mime_type"] == "application/pdf"
+    db = get_session_factory()()
+    try:
+        settings = __import__("app.core.config", fromlist=["get_settings"]).get_settings()
+        assert process_source_ingestion(db, settings) == 1
+    finally:
+        db.close()
+    ready = client.get(f"/api/v1/sources/{source['id']}")
+    assert ready.status_code == 200 and ready.json()["status"] == "ready"
+    results = client.get("/api/v1/search/retrieve", params={"q": "thermal design", "mode": "lexical"})
+    assert results.status_code == 200
+    assert any(item["source_type"] == "external_source" for item in results.json())
+
+
+def test_upload_rejects_garbage_pdf_bytes(client):
+    csrf = _login(client)
+    response = client.post("/api/v1/sources/upload", headers={"X-CSRF-Token": csrf, "X-Source-Filename": "broken.pdf", "Idempotency-Key": "source-pdf-bad"}, content=b"not really a pdf")
+    assert response.status_code == 422
+    assert response.json()["detail"] == "pdf_unreadable"
+
+
 def test_source_lifecycle_is_owned_and_soft_deleted(client):
     csrf = _login(client)
     created = client.post("/api/v1/sources/upload", headers={"X-CSRF-Token": csrf, "X-Source-Filename": "private.txt", "Idempotency-Key": "source-life"}, content=b"private source")

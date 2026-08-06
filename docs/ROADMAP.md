@@ -1,7 +1,7 @@
 # NexusOS roadmap
 
-**Current milestone:** v1.6.0 — streaming Assistant responses (stable)
-**Next milestone:** v1.7 — richer document parsing and source expansion
+**Current milestone:** v1.7.0 — richer document parsing and source expansion (stable)
+**Next milestone:** v1.8 — richer retrieval and source expansion
 **Last updated:** 2026-08-06
 
 This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
@@ -31,6 +31,7 @@ Milestone 6 is implemented within its approved scope. NexusOS now has an authent
 | 13. Backup retention and lifecycle | Complete | Policy-driven retention cleanup with last-backup protection, digest-safe pruning of local and encrypted artifacts, and confirmation-gated AES-256 key rotation |
 | 15. External source ingestion | Complete | Bounded text/Markdown uploads, approved-file imports, versioned ingestion, source-aware retrieval, and lifecycle controls |
 | 16. Streaming Assistant responses | Complete | Bounded SSE streaming for ordinary text prompts with buffered tool compatibility |
+| 17. Richer document parsing and source expansion | Complete | Bounded PDF and single-page URL ingestion with worker-only SSRF-safe fetching |
 
 ## Milestone 6 complete — tasks, reminders, and notifications
 
@@ -233,10 +234,26 @@ Known limitations:
 - Target Raspberry Pi ARM64 provider latency and sustained worker-load validation remain operational checks.
 - Autonomous memory, external ingestion, and model-written notes remain future scope.
 
-## v1.6.0 streaming Assistant responses
+## v1.7.0 richer document parsing and source expansion
 
 Implemented:
 
+- Migration `0020_source_expansion` adds nullable `sources.source_url` for URL sources; `kind` supports `upload`, `approved_file`, and `url`.
+- Worker-only parser registry (`pdf-text` via pure-Python `pypdf`, `html-text` via the standard library) with page/text bounds and stable error codes; parsing never runs in the request path.
+- PDF uploads through the existing upload endpoint (≤ 10 MB) with the same generated-name storage, ingestion, immutable versions, deterministic chunks, retrieval, and lifecycle controls as text/Markdown.
+- `POST /api/v1/sources/url` creates inert URL sources; a dedicated `source_fetch` worker cycle performs the fetch with the pinned-address, DNS-rebinding-resistant transport used by the assistant and embedding gateways.
+- Bounded fetching: three redirects (each hop re-validated), 30-second timeout, 10 MB response cap, content-type allowlist (HTML/Markdown/text/PDF), and rejection of private, loopback, link-local, multicast, reserved, metadata, and credential-bearing targets.
+- Fetched bytes are stored under a server-generated name and enter the existing ingestion pipeline unchanged; source responses expose `source_url`.
+- Sources workspace “Add from URL” form and PDF upload support; parser, fetch/SSRF, URL-route, worker, ownership, and migration regression coverage.
+
+Known limitations:
+
+- OCR, web crawling, JavaScript rendering, arbitrary protocols, autonomous memory extraction, and model-written notes remain deferred.
+- Docker and Raspberry Pi sustained ingestion/fetch validation remain target-environment checks.
+
+## v1.6.0 streaming Assistant responses
+
+Implemented:
 - Provider-neutral bounded streaming through OpenAI-compatible SSE responses, including hosted NVIDIA NIM.
 - Authenticated `POST /api/v1/conversations/{conversation_id}/messages/stream` with CSRF, ownership, output, timeout, and error boundaries.
 - Incremental web Assistant rendering with final persisted message replacement and source provenance.
@@ -283,7 +300,7 @@ Known limitations:
 
 - Sources are server-derived retrieved-source references, not claims that the model cited or quoted each source.
 - Rich PDF/OCR parsing, arbitrary URLs, web crawling, autonomous memory extraction, and model-written notes remain deferred.
-- v1.6.0 is the current stable release; richer document parsing, URL ingestion, crawling, autonomous memory, and model-written notes remain future scope.
+- v1.7.0 is the current stable release; OCR, crawling, autonomous memory, and model-written notes remain future scope.
 
 ## v1.3 provider integration — NVIDIA NIM
 

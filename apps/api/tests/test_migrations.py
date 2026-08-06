@@ -27,13 +27,13 @@ def test_legacy_v1_database_upgrades_and_reupgrades_current_head(tmp_path) -> No
         connection.execute(text("INSERT INTO roles (id, key, description) VALUES (:id, 'owner', 'Owner role')"), {"id": "owner-role-for-migration-test"})
     command.upgrade(config, "head")
     with engine.connect() as connection:
-        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0019_source_sync"
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0020_source_expansion"
         permissions = {row[0] for row in connection.execute(text("SELECT key FROM permissions WHERE key IN ('calendar.read', 'finance.read', 'media.read', 'plugins.read', 'notes.semantic', 'sources.read')"))}
         assert permissions == {"calendar.read", "finance.read", "media.read", "plugins.read", "notes.semantic", "sources.read"}
     command.downgrade(config, "0011_backup_lifecycle")
     command.upgrade(config, "head")
     with engine.connect() as connection:
-        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0019_source_sync"
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar() == "0020_source_expansion"
     engine.dispose()
 
 
@@ -49,4 +49,6 @@ def test_schema_upgrade_downgrade_upgrade(tmp_path) -> None:
     assert inspect(engine).get_table_names() == ["alembic_version"]
     command.upgrade(config, "head")
     assert {"sources", "source_sync_configs"}.issubset(inspect(engine).get_table_names())
+    columns = {column["name"] for column in inspect(engine).get_columns("sources")}
+    assert "source_url" in columns
     engine.dispose()

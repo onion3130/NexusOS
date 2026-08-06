@@ -1,6 +1,6 @@
 # NexusOS security baseline
 
-**Status:** v1.5 external source ingestion is implemented alongside the local-first security boundaries; public-internet deployment remains out of scope.
+**Status:** v1.7 PDF/HTML/URL source ingestion is implemented alongside the local-first security boundaries; public-internet deployment remains out of scope.
 **Last updated:** 2026-08-04
 
 ## Runtime boundaries
@@ -15,8 +15,10 @@
 
 ## External source controls
 
-- Uploads accept only bounded UTF-8 `.txt`, `.md`, and `.markdown` content. PDF, executable, credential-like, binary, empty, and oversized files are rejected.
+- Uploads accept bounded `.txt`, `.md`, `.markdown`, and `.pdf` content (≤ 10 MB). PDFs are parsed only in the worker with a page cap (200) and text bound (2 MB) using pure-Python `pypdf`; encrypted, malformed, and oversized documents are rejected with stable error codes. Executable, credential-like, and other binary files are rejected.
 - Uploaded bytes are stored beneath the server-owned `DATA_DIR/sources` directory using generated IDs; client filenames are metadata only and never become storage paths.
+- URL sources are created as inert records; the fetch runs only in the worker through a pinned-address, DNS-rebinding-resistant transport (the same pattern the assistant and embedding gateways use). Private, loopback, link-local, multicast, reserved, metadata, and credential-bearing targets are rejected, and every redirect hop is re-validated before bytes are read.
+- URL fetching is bounded by an HTTPS-only scheme policy, redirect count (3), timeout (30 s), response size (10 MB), and a content-type allowlist (HTML, XHTML, Markdown, text, PDF). Plaintext HTTP is rejected so fetched content cannot be altered or observed by a network intermediary. Fetched bytes are stored under a server-generated name and processed by the same ingestion pipeline; fetched HTML is normalized to plain text and never rendered or executed.
 - Approved-file imports expose opaque IDs from server-configured roots. The server rechecks root confinement, symlink state, size, digest, and UTF-8 decoding before copying.
 - Source records, versions, chunks, and ingestion jobs are user-scoped; source mutations require permissions, cookie CSRF, idempotency conventions, and audit events.
 - Worker ingestion verifies the stored SHA-256, uses bounded reads/chunks/retries, and records redacted error codes. Source content is never executed or rendered as trusted HTML.

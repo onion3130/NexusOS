@@ -1,7 +1,7 @@
 # NexusOS architecture
 
-**Current milestone:** v1.6.0 — streaming Assistant responses (stable)
-**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/host-actions/workspace-views/notifications service with grounded note context, bounded Assistant SSE streaming, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
+**Current milestone:** v1.7.0 — richer document parsing and source expansion (stable)
+**Status:** Current runtime is a FastAPI health/identity/system/assistant/tasks/notes/sources/host-actions/workspace-views/notifications service with grounded note and source context, bounded Assistant SSE streaming, worker-only PDF/HTML parsing and SSRF-safe URL fetching, a dedicated bounded SQLite worker, and an authenticated modular Next.js shell.
 **Last updated:** 2026-08-06
 
 NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an external SSD. The browser, API, persistence, worker, provider, and future host-action boundaries remain separate.
@@ -12,12 +12,14 @@ NexusOS remains a local-first modular monolith for a Raspberry Pi 5 with an exte
 - `apps/api/app/modules/tasks`: task service, schemas, recurrence calculator, and reminder dispatcher.
 - `apps/api/app/modules/notifications`: channel settings, outbound email/push adapters, enqueue/resend service, and bounded delivery worker.
 - `apps/api/app/modules/notes`: canonical notes, SQLite FTS5 search, deterministic chunks, and source-aware retrieval.
-- `apps/api/app/modules/sources`: bounded UTF-8 text/Markdown uploads, approved-root imports, source lifecycle, immutable versions, deterministic chunks, and worker ingestion.
+- `apps/api/app/modules/sources`: bounded text/Markdown/PDF uploads, approved-root imports, single-page URL ingestion, source lifecycle, immutable versions, deterministic chunks, and worker ingestion.
+- `apps/api/app/modules/sources/parsers.py`: bounded worker-only PDF (`pypdf`) and HTML (stdlib) text parsers.
+- `apps/api/app/modules/sources/fetch.py`: worker-only SSRF-safe single-page HTTPS fetch with a pinned-address transport and bounded redirects.
 - `apps/api/app/modules/host_actions`: typed action catalog, proposal lifecycle, SQLite backups, confirmation-gated restore, retention cleanup/key rotation, plugin lifecycle actions, fixed executor, and worker processing.
 - `apps/api/app/modules/plugins`: validated manifests, approved-directory discovery, secret-free JSON-stdio subprocess broker, bounded run history, and capability/risk enforcement.
 - `apps/api/app/worker.py`: dedicated bounded SQLite reminder, confirmed host-action, replication, notification-delivery, media-rescan, and embedding worker.
 - `apps/api/app/db`: SQLAlchemy engine/session and all persisted models.
-- `apps/api/migrations`: explicit Alembic migration history through `0019_source_sync`.
+- `apps/api/migrations`: explicit Alembic migration history through `0020_source_expansion`.
 - `apps/web`: authenticated Next.js shell with overview, assistant, tasks, notifications, and notification settings.
 - `docker-compose.yml`: ARM64 development topology with API, web, and real worker services; proxy and optional AI remain placeholders.
 
@@ -34,6 +36,7 @@ FastAPI
   ├── notes service -> notes/tags/search projection/retrieval chunks
   ├── sources service -> server-owned source storage -> durable ingestion -> versions/chunks -> retrieval
   ├── source synchronization -> approved-root revalidation -> bounded sync jobs -> existing ingestion pipeline
+  ├── source fetching -> worker-only SSRF-safe URL fetch -> bounded bytes -> existing ingestion pipeline
   ├── host-actions service -> typed proposals -> confirmed job queue -> fixed backup/integrity adapters
   ├── workspace-views service -> approved-root file/project/Git adapters -> optional Docker metadata adapter
   ├── backup-replication service -> bounded AES-GCM encryption -> operator-mounted destination adapter
@@ -42,7 +45,7 @@ FastAPI
   └── provider gateway -> optional NVIDIA NIM/OpenAI-compatible chat and embeddings -> bounded worker batches -> serialized vectors
 
 Dedicated worker -> SQLite reminder claims -> notifications -> enqueued channel deliveries
-Dedicated worker -> bounded external source ingestion -> immutable versions/chunks
+Dedicated worker -> bounded source fetch/parsing/ingestion -> immutable versions/chunks
 Dedicated worker -> confirmed host-action claims -> verified backup/integrity/restore results
 Dedicated worker -> encrypted backup replication claims with leases/retries
 Dedicated worker -> outbound channel delivery claims with leases/retries -> email/push
@@ -117,13 +120,13 @@ Notes are canonical user-authored sources. A derived search projection feeds SQL
 
 ## External source architecture
 
-External source uploads are stored with generated filenames beneath `DATA_DIR/sources`; the browser never selects a destination. Approved-file imports use opaque server-issued file IDs and revalidate the configured root, symlink state, size, hash, and UTF-8 content immediately before copying. Optional synchronization stores only the approved root key, relative path, opaque file identifier, bounded interval, and redacted timestamps; every worker check rescans and revalidates the configured root before reading. Changed content is copied atomically into generated private storage and sent through the existing leased ingestion pipeline. The worker uses bounded batches, retries, and no-change hash checks. Source content participates in lexical retrieval as untrusted reference material; it cannot authorize tools or mutate the system.
+External source uploads are stored with generated filenames beneath `DATA_DIR/sources`; the browser never selects a destination. Uploads accept bounded text, Markdown, and PDF bytes; parsing runs only in the worker through a parser registry (`utf8-text`, `pdf-text` via pure-Python `pypdf`, `html-text` via the standard library) with page/text bounds and stable error codes. Approved-file imports use opaque server-issued file IDs and revalidate the configured root, symlink state, size, hash, and UTF-8 content immediately before copying. URL sources are created as inert records; a dedicated worker `source_fetch` cycle performs the fetch using the same pinned-address, DNS-rebinding-resistant transport the assistant and embedding gateways use, re-validating every redirect hop and rejecting private, loopback, link-local, multicast, reserved, metadata, and credential-bearing targets. Fetched bytes are stored under a server-generated name and enter the existing ingestion pipeline unchanged. Optional synchronization stores only the approved root key, relative path, opaque file identifier, bounded interval, and redacted timestamps; every worker check rescans and revalidates the configured root before reading. The worker uses bounded batches, retries, leases, and no-change hash checks. Source content participates in lexical retrieval as untrusted reference material; it cannot authorize tools or mutate the system.
 
 ## Deferred scope
 
 Not implemented today:
 
-- Rich PDF/OCR parsing, arbitrary URLs, and web crawling
+- OCR, web crawling, JavaScript rendering, and arbitrary protocols (PDF and single-page HTTPS URLs are implemented)
 - SMS and calendar notification channels (email and push are implemented)
 - Autonomous memory extraction and model-written notes
 - External document ingestion and file sources

@@ -1,7 +1,7 @@
 # NexusOS API
 
-**Current milestone:** v1.6.0 — streaming Assistant responses (stable)
-**Status:** Health, identity/session, read-only system, assistant conversations and task actions, bounded SSE streaming, notes/search/retrieval, optional embeddings, calendar, finance, media, confirmation-gated maintenance actions, verified SQLite backups, automated restore, retention cleanup, encryption key rotation, audit visibility, read-only workspace views, outbound email/push notification channels, and the out-of-process plugin boundary are implemented.
+**Current milestone:** v1.7.0 — richer document parsing and source expansion (stable)
+**Status:** Health, identity/session, read-only system, assistant conversations and task actions, bounded SSE streaming, notes/search/retrieval, optional embeddings, PDF/HTML/URL source ingestion, calendar, finance, media, confirmation-gated maintenance actions, verified SQLite backups, automated restore, retention cleanup, encryption key rotation, audit visibility, read-only workspace views, outbound email/push notification channels, and the out-of-process plugin boundary are implemented.
 **Base path:** `/api/v1`
 **Last updated:** 2026-08-06
 
@@ -145,7 +145,11 @@ Lists owned external sources. `status_filter=active|archived|all` and bounded pa
 
 #### `POST /api/v1/sources/upload`
 
-Uploads one bounded UTF-8 `.txt`, `.md`, or `.markdown` source. The browser sends the file bytes with `X-Source-Filename`; the server validates the extension, size, UTF-8 content, stores it under a generated name beneath `DATA_DIR/sources`, and queues worker ingestion. PDF and arbitrary binary files are rejected.
+Uploads one bounded `.txt`, `.md`, `.markdown`, or `.pdf` source (≤ 10 MB). The browser sends the file bytes with `X-Source-Filename`; the server validates the extension, size, and (for text) UTF-8 content, stores it under a generated name beneath `DATA_DIR/sources`, and queues worker ingestion. PDFs are parsed only in the worker with a page cap and text bound; encrypted, malformed, or oversized documents are rejected with stable error codes. Arbitrary binary files are rejected.
+
+#### `POST /api/v1/sources/url`
+
+Creates an inert URL source from `{ "url", "title?" }` and queues a worker `source_fetch` job. The endpoint validates the scheme and target at request time for fast feedback; the actual fetch runs only in the worker through a pinned-address, DNS-rebinding-resistant transport with bounded redirects, timeout, size, and a content-type allowlist (HTML, Markdown, text, PDF). Private, loopback, link-local, multicast, reserved, metadata, and credential-bearing targets are rejected; every redirect hop is re-validated. Fetched bytes are stored under a server-generated name and processed by the existing ingestion pipeline. Responses include `source_url` for URL sources.
 
 #### `GET /api/v1/sources/approved-files`
 
@@ -183,7 +187,7 @@ Queues one worker-side synchronization check and returns a bounded job status. F
 
 Perform owned source lifecycle transitions. Delete is soft deletion and never accepts a path.
 
-The dedicated worker processes at most a small bounded source batch, verifies the stored SHA-256, parses UTF-8 text, creates a version and deterministic chunks, and records success/failure audit events.
+The dedicated worker processes at most a small bounded source batch, verifies the stored SHA-256, parses text, Markdown, PDF, or normalized HTML into bounded text, creates a version and deterministic chunks, and records success/failure audit events. URL sources are fetched first by the worker-only `source_fetch` cycle and then enter the same ingestion pipeline.
 
 ### Notifications
 
@@ -340,7 +344,7 @@ Returns the current user's bounded host-action proposal, confirmation, rejection
 - Cookie-authenticated mutations require CSRF validation.
 - CORS allows `PATCH` in addition to existing methods.
 - Database migrations are explicit; startup never mutates schema.
-- Readiness verifies the current Alembic head `0019_source_sync` and the notes FTS5 table.
+- Readiness verifies the current Alembic head `0020_source_expansion` and the notes FTS5 table.
 - Notifications are persistent records; optional outbound email/push channels are server-configured and delivery is worker-side only.
 - No API endpoint accepts arbitrary shell commands, Docker arguments, filesystem paths, reboot/shutdown requests, package operations, or provider URLs from a client.
 - Destructive or state-changing host operations require a durable proposal and explicit confirmation; the assistant follows the same route and cannot approve on the user's behalf. Restore is the highest-risk action and additionally requires a verified source, a fresh safety backup, staged digest/integrity verification, and an atomic swap. Retention cleanup accepts no input and prunes only per the server policy with last-backup protection; key rotation accepts no input and uses only environment-configured keys.

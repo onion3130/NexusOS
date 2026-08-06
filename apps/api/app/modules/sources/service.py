@@ -21,12 +21,13 @@ from app.db.base import utc_now
 from app.db.models import Job, Source, SourceChunk, SourceSyncConfig, SourceVersion
 from app.modules.identity.service import add_audit_event
 from app.modules.notes.service import _split_chunks
+from app.modules.sources.parsers import SourceParseError, html_to_text, parse_pdf_bytes
 from app.modules.sources.schemas import SourceImportRequest
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_SOURCE_COUNT = 500
 MAX_CHUNKS = 500
-ALLOWED_EXTENSIONS = {".txt": "text/plain", ".md": "text/markdown", ".markdown": "text/markdown", ".pdf": "application/pdf"}
+ALLOWED_EXTENSIONS = {".txt": "text/plain", ".md": "text/markdown", ".markdown": "text/markdown", ".pdf": "application/pdf", ".html": "text/html", ".htm": "text/html"}
 SENSITIVE_NAMES = {".env", ".env.local", ".env.production", "id_rsa", "id_ed25519", "authorized_keys"}
 SOURCE_JOB_TYPE = "source_ingest"
 
@@ -58,12 +59,34 @@ def _hash_file(path: Path) -> tuple[int, str]:
 
 def _detect_text(path: Path, extension: str) -> str:
     """Read an allowlisted text source with strict UTF-8 decoding."""
-    if extension == ".pdf":
-        raise ValueError("pdf_ingestion_not_enabled")
     try:
         return path.read_text(encoding="utf-8")
     except UnicodeDecodeError as exc:
         raise ValueError("source_must_be_utf8_text") from exc
+
+
+def _parse_bytes(path: Path, extension: str) -> str:
+    """Parse one allowlisted source file into bounded plain text.
+
+    Dispatch is worker-only and raises a stable ``ValueError`` code for
+    unsupported or unsafe documents; PDF/HTML parsing never runs in the
+    request process.
+    """
+    if extension in {".txt", ".md", ".markdown"}:
+        return _detect_text(path, extension)
+    if extension == ".pdf":
+        try:
+            return parse_pdf_bytes(path.read_bytes())
+        except SourceParseError as exc:
+            raise ValueError(exc.code) from exc
+        except OSError as exc:
+            raise ValueError("source_file_missing") from exc
+    if extension in {".html", ".htm"}:
+        try:
+            return html_to_text(_detect_text(path, extension))
+        except SourceParseError as exc:
+            raise ValueError(exc.code) from exc
+    raise ValueError("unsupported_source_type")
 
 
 def _mime_for(name: str) -> str:
@@ -121,7 +144,7 @@ def discover_approved_files(settings: Settings, *, limit: int = 100) -> list[dic
                     if stat.st_size <= 0 or stat.st_size > MAX_UPLOAD_BYTES:
                         continue
                     size, digest = _hash_file(path)
-                    _detect_text(path, extension)
+                    _parse_bytes(path, extension)
                     relative = path.relative_to(root).as_posix()
                 except (OSError, ValueError):
                     continue
@@ -148,7 +171,7 @@ def _job_for_source(db: OrmSession, source_id: str) -> Job | None:
 
 def _source_response_fields(source: Source) -> dict[str, object]:
     sync = source.sync_config
-    return {"id": source.id, "kind": source.kind, "title": source.title, "original_name": source.original_name, "mime_type": source.mime_type, "size_bytes": source.size_bytes, "sha256": source.sha256, "status": source.status, "current_version": source.current_version, "last_ingested_at": source.last_ingested_at, "last_error_code": source.last_error_code, "created_at": source.created_at, "updated_at": source.updated_at, "archived_at": source.archived_at, "sync": {"id": sync.id, "enabled": sync.enabled, "interval_seconds": sync.interval_seconds, "last_checked_at": sync.last_checked_at, "last_changed_at": sync.last_changed_at, "last_success_at": sync.last_success_at, "last_error_code": sync.last_error_code, "next_check_at": sync.next_check_at} if sync is not None else None}
+    return {"id": source.id, "kind": source.kind, "title": source.title, "original_name": source.original_name, "mime_type": source.mime_type, "size_bytes": source.size_bytes, "sha256": source.sha256, "status": source.status, "current_version": source.current_version, "last_ingested_at": source.last_ingested_at, "last_error_code": source.last_error_code, "created_at": source.created_at, "updated_at": source.updated_at, "archived_at": source.archived_at, "source_url": source.source_url, "sync": {"id": sync.id, "enabled": sync.enabled, "interval_seconds": sync.interval_seconds, "last_checked_at": sync.last_checked_at, "last_changed_at": sync.last_changed_at, "last_success_at": sync.last_success_at, "last_error_code": sync.last_error_code, "next_check_at": sync.next_check_at} if sync is not None else None}
 
 
 def create_upload(db: OrmSession, settings: Settings, user_id: str, filename: str, content: bytes, title: str | None = None) -> Source:
@@ -156,16 +179,22 @@ def create_upload(db: OrmSession, settings: Settings, user_id: str, filename: st
     if not _safe_name(filename):
         raise ValueError("unsafe_source_name")
     extension = _extension(filename)
-    if extension == ".pdf":
-        raise ValueError("pdf_ingestion_not_enabled")
+    if extension not in {".txt", ".md", ".markdown", ".pdf"}:
+        raise ValueError("unsupported_source_type")
     if len(content) == 0 or len(content) > MAX_UPLOAD_BYTES:
         raise ValueError("source_exceeds_size_limit")
-    try:
-        text_content = content.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise ValueError("source_must_be_utf8_text") from exc
-    if not text_content.strip():
-        raise ValueError("source_must_not_be_empty")
+    if extension == ".pdf":
+        # Cheap magic-byte sanity check only; full parsing is worker-side so a
+        # large document never blocks the request event loop.
+        if not content.startswith(b"%PDF-"):
+            raise ValueError("pdf_unreadable")
+    else:
+        try:
+            text_content = content.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError("source_must_be_utf8_text") from exc
+        if not text_content.strip():
+            raise ValueError("source_must_not_be_empty")
     count = db.scalar(select(Source.id).where(Source.user_id == user_id, Source.deleted_at.is_(None)).limit(MAX_SOURCE_COUNT + 1))
     if count is not None and db.query(Source).filter(Source.user_id == user_id, Source.deleted_at.is_(None)).count() >= MAX_SOURCE_COUNT:
         raise ValueError("source_quota_exceeded")
@@ -310,10 +339,17 @@ def reindex_source(db: OrmSession, user_id: str, source_id: str) -> Source | Non
     source = get_source(db, user_id, source_id)
     if source is None:
         return None
-    job = _job_for_source(db, source.id)
-    if job is None:
-        job = Job(job_type=SOURCE_JOB_TYPE, status="queued", payload_json=source.id, available_at=utc_now(), idempotency_key=f"source:{source.id}:reindex:{uuid4()}")
-        db.add(job)
+    if source.kind == "url":
+        from app.modules.sources.fetch import FETCH_JOB_TYPE, queue_source_fetch
+        job = db.scalar(select(Job).where(Job.job_type == FETCH_JOB_TYPE, Job.payload_json == source.id, Job.status.in_(("queued", "processing"))))
+        if job is None:
+            job = queue_source_fetch(db, source.id, idempotency_key=f"source-url:{source.id}:reindex:{uuid4()}")
+            db.add(job)
+    else:
+        job = _job_for_source(db, source.id)
+        if job is None:
+            job = Job(job_type=SOURCE_JOB_TYPE, status="queued", payload_json=source.id, available_at=utc_now(), idempotency_key=f"source:{source.id}:reindex:{uuid4()}")
+            db.add(job)
     source.status = "processing"
     source.last_error_code = None
     db.commit()
@@ -327,7 +363,10 @@ def _parse_source_file(settings: Settings, source: Source) -> tuple[str, str]:
     size, digest = _hash_file(path)
     if digest != source.sha256 or size != source.size_bytes:
         raise ValueError("source_integrity_mismatch")
-    return _detect_text(path, Path(source.original_name).suffix.lower()), "utf8-text"
+    extension = Path(source.original_name).suffix.lower()
+    content = _parse_bytes(path, extension)
+    parser = {".pdf": "pdf-text", ".html": "html-text", ".htm": "html-text"}.get(extension, "utf8-text")
+    return content, parser
 
 
 def process_source_ingestion(db: OrmSession, settings: Settings, *, batch_size: int = 2) -> int:
@@ -359,13 +398,16 @@ def process_source_ingestion(db: OrmSession, settings: Settings, *, batch_size: 
             job.completed_at = utc_now()
             job.locked_until = None
             add_audit_event(db, action="sources.ingest", result="success", actor_user_id=source.user_id, target=source.id, metadata={"version": version.version, "parser": parser})
-        except (OSError, ValueError, UnicodeError):
+        except (OSError, ValueError, UnicodeError) as exc:
             source = db.get(Source, job.payload_json or "")
+            error_code = getattr(exc, "code", None) or str(exc)
+            if not error_code or not str(error_code).startswith(("pdf_", "html_", "source_")):
+                error_code = "source_ingestion_failed"
             if source is not None:
                 source.status = "failed"
-                source.last_error_code = "source_ingestion_failed"
+                source.last_error_code = str(error_code)
             job.status = "failed" if job.attempts >= 3 else "queued"
-            job.last_error_code = "source_ingestion_failed"
+            job.last_error_code = str(error_code)
             job.available_at = datetime.fromtimestamp(now.timestamp() + (2 ** job.attempts) * 30, UTC)
             job.locked_until = None
             if source is not None:

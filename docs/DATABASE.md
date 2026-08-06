@@ -1,7 +1,7 @@
 # NexusOS database
 
-**Current milestone:** v1.6.0 — streaming Assistant responses (stable)
-**Current status:** Identity, assistant, task, notes, source-aware retrieval, external source ingestion, optional embeddings, calendar, finance, media, plugin registry/run history, host-action proposals, backup metadata, restore markers, retention pruning markers, workspace permissions, encrypted replication metadata, and outbound notification channel deliveries are implemented through Alembic revisions `0001_identity` through `0019_source_sync`.
+**Current milestone:** v1.7.0 — richer document parsing and source expansion (stable)
+**Current status:** Identity, assistant, task, notes, source-aware retrieval, external source ingestion, PDF/URL source expansion, optional embeddings, calendar, finance, media, plugin registry/run history, host-action proposals, backup metadata, restore markers, retention pruning markers, workspace permissions, encrypted replication metadata, and outbound notification channel deliveries are implemented through Alembic revisions `0001_identity` through `0020_source_expansion`.
 **Last updated:** 2026-08-06
 
 ## Current database state
@@ -31,6 +31,7 @@ The API uses SQLAlchemy 2.x with SQLite on the Raspberry Pi. SQLite foreign keys
 - `0017_assistant_grounding` adds user-scoped, server-derived `assistant_source_references` for bounded provenance attached to grounded assistant messages. The table stores source identifiers and retrieval metadata, not provider payloads or unrestricted note content.
 - `0018_external_sources` adds user-owned external sources, immutable source versions, deterministic source chunks, source permissions, and external-source provenance columns. Uploaded source bytes remain beneath `DATA_DIR/sources`; parsed chunks are derived and rebuildable.
 - `0019_source_sync` adds optional approved-root synchronization policies with bounded intervals, opaque file linkage, scheduled-check metadata, and worker retry state. No client path or source content is stored in synchronization metadata.
+- `0020_source_expansion` adds a nullable `sources.source_url` column for single-page URL sources. SQLite stores `kind` as text, so the `url` kind needs no column change; URL fetch/parse state remains in jobs and audit metadata, and the revision is fully reversible.
 
 ## Milestone 7 tables
 
@@ -111,7 +112,7 @@ Plugin arguments, subprocess output, credentials, and executable code are not pe
 
 | Entity | Owner | Purpose |
 |---|---|---|
-| `sources` | user | Uploaded or approved-file source metadata and lifecycle state |
+| `sources` | user | Uploaded, imported, or URL source metadata and lifecycle state |
 | `source_versions` | user/source | Immutable parsed content snapshots |
 | `source_chunks` | user/source version | Deterministic source-aware retrieval chunks |
 | `source_sync_configs` | user/source | Optional approved-root synchronization policy and bounded status |
