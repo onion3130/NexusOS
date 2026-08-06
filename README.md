@@ -51,7 +51,7 @@ NexusOS brings an authenticated dashboard, assistant, productivity tools, and re
 | --- | --- |
 | **Current milestone** | v1.7 — richer document parsing and source expansion ✅ |
 | **Current version** | `1.7.0` — stable PDF/URL source release |
-| **Next milestone** | v1.8 — richer retrieval and source expansion |
+| **Next milestone** | v1.8 — richer retrieval and source expansion (planned) |
 
 NexusOS v1.7 adds bounded PDF and single-page URL ingestion so more of your reference material can ground assistant responses, while preserving the existing streaming Assistant, tool-confirmation path, private source grounding, and local-first Raspberry Pi architecture. NVIDIA NIM remains optional and disabled by default. See the [roadmap](docs/ROADMAP.md) for scope and follow-up work.
 
@@ -85,7 +85,7 @@ Use the [documentation index](docs/README.md) to find the right guide:
 - [Setup](docs/SETUP.md) · [Deployment](docs/DEPLOYMENT.md) · [Development](docs/DEVELOPMENT.md)
 - [Environment](docs/ENVIRONMENT.md) · [Security](docs/SECURITY.md) · [API](docs/API.md)
 - [Architecture](docs/ARCHITECTURE.md) · [Database](docs/DATABASE.md) · [AI system](docs/AI_SYSTEM.md)
-- [Roadmap](docs/ROADMAP.md) · [Changelog](CHANGELOG.md)
+- [Roadmap](docs/ROADMAP.md) · [Milestone plans](docs/plans/) · [Changelog](CHANGELOG.md)
 
 ## Community
 

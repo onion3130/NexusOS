@@ -1,10 +1,10 @@
 # NexusOS roadmap
 
 **Current milestone:** v1.7.0 — richer document parsing and source expansion (stable)
-**Next milestone:** v1.8 — richer retrieval and source expansion
+**Next milestone:** v1.8 — richer retrieval and source expansion (planned — [docs/plans/v1.8.md](plans/v1.8.md))
 **Last updated:** 2026-08-06
 
-This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
+Detailed milestone plans live in [docs/plans/](plans/). This roadmap is the source of truth for sequencing. Do not implement a later milestone because its design appears in another document.
 
 ## Checkpoint status — 2026-08-03
 
